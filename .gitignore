@@ -1,0 +1,6 @@
+pids
+*.pid
+*.seed
+.lock-wscript
+node_modules
+.idea

@@ -1,0 +1,26 @@
+{
+  "name": "react-websocket",
+  "version": "0.0.1",
+  "description": "ReactJS Websocket component",
+  "main": "lib/Websocket.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:Sedus/react-websocket.git"
+  },
+  "keywords": [
+    "reactjs",
+    "websocket"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Sedus/react-websocket/issues"
+  },
+  "homepage": "https://github.com/Sedus/react-websocket",
+  "dependencies": {
+    "ws": "^0.7.2"
+  }
+}
