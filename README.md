@@ -45,9 +45,15 @@ The url the websocket connection is listening to.
 #### onMessage
 
 **required**
-The callback function that is called when data has been received.
+The callback called when data is received. Data is `JSON.parse`'d
 
 #### debug
 
 default: **false**
 Set to **true** to see console logging
+
+#### reconnect
+
+**optional**
+If set to a number `n` of seconds, will try to re-establish the connection after a random `[0..n]`
+ seconds delay until successful. If unset, there will be no automatic reconnection.
