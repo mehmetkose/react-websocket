@@ -21,6 +21,6 @@
   },
   "homepage": "https://github.com/Sedus/react-websocket",
   "dependencies": {
-    "ws": "^0.7.2"
+    "ws": "^1.0.1"
   }
 }
