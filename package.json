@@ -2,25 +2,46 @@
   "name": "react-websocket",
   "version": "1.0.1",
   "description": "ReactJS Websocket Listener Component",
-  "main": "lib/Websocket.js",
+  "main": "dist/Websocket.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel --plugins transform-react-jsx --copy-files --out-dir dist --ignore *.test.js src",
+    "prebuild": "rimraf dist"
+  },
+  "babel":{
+    "presets": ["es2015", "stage-2"]
   },
   "repository": {
     "type": "git",
     "url": "git@github.com:mehmetkose/react-websocket.git"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "keywords": [
     "reactjs",
     "websocket"
   ],
-  "maintainers": ["Mehmet Kose <mehmet@linux.com> (https://mehmetkose.github.io/)", "Pim Voeten <sedus.com@gmail.com>"],
+  "maintainers": [
+    "Mehmet Kose <mehmet@linux.com> (https://mehmetkose.github.io/)",
+    "Pim Voeten <sedus.com@gmail.com>"
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/mehmetkose/react-websocket/issues"
   },
   "homepage": "https://github.com/mehmetkose/react-websocket",
   "dependencies": {
-    "ws": "^1.1.1"
+    "ws": "^1.1.1",
+    "tls": "^0.0.1",
+    "fs": "^0.0.2"
+  },
+  "devDependencies": {
+    "babel-cli": "6.10.1",
+    "babel-plugin-transform-react-jsx": "6.8.0",
+    "babel-preset-es2015": "6.9.0",
+    "babel-preset-stage-2": "6.11.0",
+    "rimraf": "2.5.2"
   }
 }
