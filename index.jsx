@@ -13,11 +13,9 @@ class Websocket extends React.Component {
     }
     
     logging(logline) {
-        
         if (this.props.debug === true) {
             console.log(logline);
         }
-
     }
 
     generateInterval (k) {
@@ -25,7 +23,6 @@ class Websocket extends React.Component {
     }
 
     setupWebsocket() {
-       
         let websocket = this.state.ws;
         
         websocket.onopen = () => { 
