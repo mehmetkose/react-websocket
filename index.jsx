@@ -3,14 +3,13 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 class Websocket extends React.Component {
+    
     constructor(props) {
-        
         super(props);
         this.state = {
           ws: new WebSocket(this.props.url),
           attempts: 1
         };
-
     }
     
     logging(logline) {
@@ -60,6 +59,11 @@ class Websocket extends React.Component {
       );
     }
 }
+
+Websocket.defaultProps = { 
+    debug: false,
+    reconnect: true
+};
 
 Websocket.propTypes = {
     url: React.PropTypes.string.isRequired,

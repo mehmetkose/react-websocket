@@ -1,7 +1,6 @@
-# react-websocket: a reactjs websocket component
+# react-websocket [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mehmetkose/react-websocket/edit/master/README.md)
 
 `react-websocket` is a simple to use component for ReactJS applications to setup websocket communication.
-It basically is a very simple wrapper for `ws`. See https://github.com/websockets/ws
 
 The component renders an empty <div> element in the DOM.
 When mounting the component, a websocket connection is opened.
@@ -54,6 +53,6 @@ Set to **true** to see console logging
 
 #### reconnect
 
-**optional**
-If set to a number `n` of seconds, will try to re-establish the connection after a random `[0..n]`
- seconds delay until successful. If unset, there will be no automatic reconnection.
+default: **true**
+
+accelerated reconnection time
