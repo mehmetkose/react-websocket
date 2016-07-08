@@ -1,0 +1,8 @@
+/.*
+
+/bower_components/
+/bower.json
+
+/example/
+/*.sublime-project
+/*.sublime-workspace
