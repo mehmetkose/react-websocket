@@ -57,7 +57,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 	
 	Object.defineProperty(exports, '__esModule', {
-	    value: true
+	  value: true
 	});
 	
 	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
@@ -79,107 +79,85 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _reactDom2 = _interopRequireDefault(_reactDom);
 	
 	var Websocket = (function (_React$Component) {
-	    _inherits(Websocket, _React$Component);
+	  _inherits(Websocket, _React$Component);
 	
-	    function Websocket(props) {
-	        _classCallCheck(this, Websocket);
+	  function Websocket(props) {
+	    _classCallCheck(this, Websocket);
 	
-	        _get(Object.getPrototypeOf(Websocket.prototype), 'constructor', this).call(this, props);
-	        this.state = {
-	            count: 90,
-	            ws: new WebSocket(this.props.url)
-	        };
+	    _get(Object.getPrototypeOf(Websocket.prototype), 'constructor', this).call(this, props);
+	    this.state = {
+	      ws: new WebSocket(this.props.url),
+	      attempts: 1
+	    };
+	  }
+	
+	  _createClass(Websocket, [{
+	    key: 'logging',
+	    value: function logging(logline) {
+	      if (this.props.debug === true) {
+	        console.log(logline);
+	      }
 	    }
+	  }, {
+	    key: 'generateInterval',
+	    value: function generateInterval(k) {
+	      return Math.min(30, Math.pow(2, k) - 1) * 1000;
+	    }
+	  }, {
+	    key: 'setupWebsocket',
+	    value: function setupWebsocket() {
+	      var _this = this;
 	
-	    _createClass(Websocket, [{
-	        key: 'setCount',
-	        value: function setCount(newcount) {
-	            this.setState({ count: this.state.count + newcount });
+	      var websocket = this.state.ws;
+	
+	      websocket.onopen = function () {
+	        _this.logging('Websocket connected');
+	      };
+	
+	      websocket.onmessage = function (evt) {
+	        _this.props.onMessage(evt.data);
+	      };
+	
+	      websocket.onclose = function () {
+	        _this.logging('Websocket disconnected');
+	
+	        if (_this.props.reconnect) {
+	          var time = _this.generateInterval(_this.state.attempts);
+	          setTimeout(function () {
+	            _this.setState({ attempts: _this.state.attempts++ });
+	            _this.setupWebsocket();
+	          }, time);
 	        }
-	    }, {
-	        key: 'componentDidMount',
-	        value: function componentDidMount() {
-	            var _this = this;
+	      };
+	    }
+	  }, {
+	    key: 'componentDidMount',
+	    value: function componentDidMount() {
+	      this.setupWebsocket();
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      return _react2['default'].createElement('div', null);
+	    }
+	  }]);
 	
-	            var websocket = this.state.ws;
-	
-	            websocket.onopen = function () {
-	                console.log('connected');
-	                //websocket.send(1);
-	            };
-	
-	            websocket.onmessage = function (evt) {
-	                var count = parseInt(evt.data) + 1;
-	                _this.setCount(count);
-	                websocket.send(count);
-	
-	                _this.props.onMessage(evt.data);
-	            };
-	
-	            websocket.onclose = function () {
-	                console.log('closed');
-	                if (self.props.reconnect && !self.preventReconnection) {
-	                    var restartDelay = Math.random() * self.props.reconnect;
-	                    setTimeout(function later() {
-	                        self.state.ws.close();
-	                        self.log("Websocket reconnecting");
-	                        self.setState(self.getInitialState());
-	                        self._setupSocket();
-	                    }, restartDelay * 1000);
-	                }
-	            };
-	        }
-	    }, {
-	        key: 'componentWillUnmount',
-	        value: function componentWillUnmount() {}
-	    }, {
-	        key: 'render',
-	        value: function render() {
-	            return _react2['default'].createElement(
-	                'div',
-	                null,
-	                'kamikaze ',
-	                this.props.url
-	            );
-	        }
-	    }]);
-	
-	    return Websocket;
+	  return Websocket;
 	})(_react2['default'].Component);
 	
+	Websocket.defaultProps = {
+	  debug: false,
+	  reconnect: true
+	};
+	
 	Websocket.propTypes = {
-	    url: _react2['default'].PropTypes.string.isRequired,
-	    onMessage: _react2['default'].PropTypes.func.isRequired,
-	    debug: _react2['default'].PropTypes.bool,
-	    reconnect: _react2['default'].PropTypes.number
+	  url: _react2['default'].PropTypes.string.isRequired,
+	  onMessage: _react2['default'].PropTypes.func.isRequired,
+	  debug: _react2['default'].PropTypes.bool,
+	  reconnect: _react2['default'].PropTypes.bool
 	};
 	
 	exports['default'] = Websocket;
-	
-	// import React from 'react';
-
-	// const WebsocketClass = React.createClass({ 
-	//     propTypes: {
-	//         url: React.PropTypes.string.isRequired,
-	//         onMessage: React.PropTypes.func.isRequired,
-	//         debug: React.PropTypes.bool,
-	//         reconnect: React.PropTypes.number
-	//     },
-	//     componentDidMount: function () {
-	//         this.props.onMessage("lalala");
-	//     },
-	//     render: function() {
-	//         const props = this.props;
-
-	//         return (
-	//           <div {...props}>
-	//           {props.url}
-	//           </div>
-	//         );
-	//     }
-	// });
-
-	// export default WebsocketClass;
 	module.exports = exports['default'];
 
 /***/ },
