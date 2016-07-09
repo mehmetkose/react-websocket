@@ -2,6 +2,8 @@
 
 `react-websocket` is a simple to use component for ReactJS applications to setup websocket communication.
 
+** Stability: 2 - Unstable **
+
 The component renders an empty <div> element in the DOM.
 When mounting the component, a websocket connection is opened.
 The connection will be closed when the component will be unmounted.
