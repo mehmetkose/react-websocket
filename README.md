@@ -2,8 +2,6 @@
 
 `react-websocket` is a simple to use component for ReactJS applications to setup websocket communication.
 
-** Stability: 2 - Unstable **
-
 The component renders an empty element in the DOM.
 When mounting the component, a websocket connection is opened.
 The connection will be closed when the component will be unmounted.
@@ -17,23 +15,36 @@ npm install --save react-websocket
 ### Usage
 
 ```js
-  var React = require('react');
-  var Websocket = require('react-websocket');
+  import React from 'react';
+  import Websocket from 'react-websocket';
 
-  var Example = React.createClass({
-  
-    handleData: function(data) {
-       // do something with the data
-       this.setState({
-          foo: data
-       });
-    },
-    
-    render: function() {
-      <Websocket url='ws://localhost:8888/messages'
-                 onMessage={this.handleData}/>
+  class ProductDetail extends React.Component {
+
+    constructor(props) {
+      super(props);
+      this.state = {
+        count: 90
+      };
     }
-  });
+
+    handleData(data) {
+      let result = JSON.parse(data);
+      this.setState({count: this.state.count + result.movement});
+    }
+
+    render() {
+      return (
+        <div>
+          Count: <strong>{this.state.count}</strong>
+
+          <Websocket url='ws://localhost:8888/live/product/12345/' 
+              onMessage={this.handleData.bind(this)}/>
+        </div>
+      );
+    }
+  }
+
+  export default ProductDetail;
 ```
 
 ### Properties
