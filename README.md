@@ -25,12 +25,12 @@ npm install --save react-websocket
     handleData: function(data) {
        // do something with the data
        this.setState({
-          foo: bar
+          foo: data
        });
     },
     
     render: function() {
-      <Websocket url='ws://localhost:3000/messages'
+      <Websocket url='ws://localhost:8888/messages'
                  onMessage={this.handleData}/>
     }
   });
