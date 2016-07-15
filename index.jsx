@@ -50,6 +50,11 @@ class Websocket extends React.Component {
       this.setupWebsocket();
     }
 
+    componentWillUnmount() {
+      let websocket = this.state.ws;
+      websocket.close();
+    }
+
     render() {
       return (
         <div></div>

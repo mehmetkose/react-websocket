@@ -136,6 +136,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	      this.setupWebsocket();
 	    }
 	  }, {
+	    key: 'componentWillUnmount',
+	    value: function componentWillUnmount() {
+	      var websocket = this.state.ws;
+	      websocket.close();
+	    }
+	  }, {
 	    key: 'render',
 	    value: function render() {
 	      return _react2['default'].createElement('div', null);
