@@ -3,15 +3,15 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 class Websocket extends React.Component {
-    
+
     constructor(props) {
         super(props);
         this.state = {
-          ws: new WebSocket(this.props.url),
+          ws: new WebSocket(this.props.url, this.props.protocol),
           attempts: 1
         };
     }
-    
+
     logging(logline) {
         if (this.props.debug === true) {
             console.log(logline);
@@ -19,13 +19,13 @@ class Websocket extends React.Component {
     }
 
     generateInterval (k) {
-      return Math.min(30, (Math.pow(2, k) - 1)) * 1000;  
+      return Math.min(30, (Math.pow(2, k) - 1)) * 1000;
     }
 
     setupWebsocket() {
         let websocket = this.state.ws;
-        
-        websocket.onopen = () => { 
+
+        websocket.onopen = () => {
           this.logging('Websocket connected');
         };
 
@@ -35,7 +35,7 @@ class Websocket extends React.Component {
 
         websocket.onclose = () => {
           this.logging('Websocket disconnected');
-          
+
           if (this.props.reconnect) {
             let time = this.generateInterval(this.state.attempts);
             setTimeout(() => {
@@ -62,7 +62,7 @@ class Websocket extends React.Component {
     }
 }
 
-Websocket.defaultProps = { 
+Websocket.defaultProps = {
     debug: false,
     reconnect: true
 };
@@ -72,6 +72,7 @@ Websocket.propTypes = {
     onMessage: React.PropTypes.func.isRequired,
     debug: React.PropTypes.bool,
     reconnect: React.PropTypes.bool,
+    protocol: React.PropTypes.string
 };
 
 export default Websocket;
