@@ -33,10 +33,11 @@ class Websocket extends React.Component {
           this.props.onMessage(evt.data);
         };
 
+        this.shouldReconnect = this.props.reconnect;
         websocket.onclose = () => {
           this.logging('Websocket disconnected');
 
-          if (this.props.reconnect) {
+          if (this.shouldReconnect) {
             let time = this.generateInterval(this.state.attempts);
             setTimeout(() => {
               this.setState({attempts: this.state.attempts++});
@@ -51,6 +52,7 @@ class Websocket extends React.Component {
     }
 
     componentWillUnmount() {
+      this.shouldReconnect = false;
       let websocket = this.state.ws;
       websocket.close();
     }
