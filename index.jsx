@@ -1,21 +1,20 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom';
 
 class Websocket extends React.Component {
 
     constructor(props) {
-        super(props);
-        this.state = {
-          ws: new WebSocket(this.props.url, this.props.protocol),
-          attempts: 1
-        };
+      super(props);
+      this.state = {
+        ws: new WebSocket(this.props.url, this.props.protocol),
+        attempts: 1
+      };
     }
 
     logging(logline) {
-        if (this.props.debug === true) {
-            console.log(logline);
-        }
+      if (this.props.debug === true) {
+          console.log(logline);
+      }
     }
 
     generateInterval (k) {
@@ -23,28 +22,28 @@ class Websocket extends React.Component {
     }
 
     setupWebsocket() {
-        let websocket = this.state.ws;
+      let websocket = this.state.ws;
+      
+      websocket.onopen = () => {
+        this.logging('Websocket connected');
+      };
 
-        websocket.onopen = () => {
-          this.logging('Websocket connected');
-        };
+      websocket.onmessage = (evt) => {
+        this.props.onMessage(evt.data);
+      };
 
-        websocket.onmessage = (evt) => {
-          this.props.onMessage(evt.data);
-        };
-
-        this.shouldReconnect = this.props.reconnect;
-        websocket.onclose = () => {
-          this.logging('Websocket disconnected');
-
-          if (this.shouldReconnect) {
-            let time = this.generateInterval(this.state.attempts);
-            setTimeout(() => {
-              this.setState({attempts: this.state.attempts++});
-              this.setupWebsocket();
-            }, time);
-          }
+      this.shouldReconnect = this.props.reconnect;
+      websocket.onclose = () => {
+        this.logging('Websocket disconnected');
+        if (this.shouldReconnect) {
+          let time = this.generateInterval(this.state.attempts);
+          setTimeout(() => {
+            this.setState({attempts: this.state.attempts+1});
+            this.setState({ws: new WebSocket(this.props.url, this.props.protocol)});
+            this.setupWebsocket();
+          }, time);
         }
+      }
     }
 
     componentDidMount() {
@@ -78,4 +77,3 @@ Websocket.propTypes = {
 };
 
 export default Websocket;
-
