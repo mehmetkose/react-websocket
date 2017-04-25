@@ -1,30 +1,34 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-import logging, os.path, time, copy, json, random, string
+import logging, os.path
 import tornado.httpserver
 import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.websocket
 import tornado.gen
-import tornado.escape
-
 
 class Application(tornado.web.Application):
 
     def __init__(self):
+        base_dir = os.path.dirname(__file__)
         app_settings = {
-            "debug": False,
+            "debug": True,
+            'static_path': os.path.join(base_dir, "static"),
         }
         tornado.web.Application.__init__(self, [
-            tornado.web.url(r"/", WebSocketHandler, name="websocket"),
+            tornado.web.url(r"/", MainHandler, name="main"),
+            tornado.web.url(r"/live", WebSocketHandler, name="websocket"),
         ], **app_settings)
 
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render('index.html')
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     listenners = []
-    
+
     def check_origin(self, origin):
         return True
 
