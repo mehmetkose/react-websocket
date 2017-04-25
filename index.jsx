@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import PropTypes from 'prop-types';
 
 class Websocket extends React.Component {
 
@@ -72,12 +72,12 @@ Websocket.defaultProps = {
 };
 
 Websocket.propTypes = {
-    url: React.PropTypes.string.isRequired,
-    onMessage: React.PropTypes.func.isRequired,
-    debug: React.PropTypes.bool,
-    reconnect: React.PropTypes.bool,
-    protocol: React.PropTypes.string,
-    reconnectIntervalInMilliSeconds : React.PropTypes.number
+    url: PropTypes.string.isRequired,
+    onMessage: PropTypes.func.isRequired,
+    debug: PropTypes.bool,
+    reconnect: PropTypes.bool,
+    protocol: PropTypes.string,
+    reconnectIntervalInMilliSeconds : PropTypes.number
 };
 
 export default Websocket;
