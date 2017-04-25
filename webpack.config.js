@@ -14,9 +14,9 @@ module.exports = {
   devtool: 'eval',
   entry: entry,
   output: {
-    path: path.join(__dirname, 'example'),
+    path: path.join(__dirname, 'example', 'static'),
     filename: 'bundle.js',
-    publicPath: '/example/',
+    publicPath: '/example/static/',
   },
   plugins: [
     new webpack.HotModuleReplacementPlugin(),
