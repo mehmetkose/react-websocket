@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "ReactJS Websocket Listener Component",
   "main": "build/index.js",
   "scripts": {
@@ -21,7 +21,6 @@
   ],
   "maintainers": [
     "Mehmet Kose <mehmet@linux.com> (https://mehmetkose.github.io/)",
-    "Pim Voeten <sedus.com@gmail.com> (http://sedus.com/)"
   ],
   "license": "MIT",
   "bugs": {
