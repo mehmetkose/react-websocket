@@ -18,7 +18,10 @@ class Websocket extends React.Component {
     }
 
     generateInterval (k) {
-      return Math.min(30, (Math.pow(2, k) - 1)) * 1000;
+        if(this.props.reconnectIntervalInMilliSeconds > 0) {
+            return this.props.reconnectIntervalInMilliSeconds;
+        }
+        return Math.min(30, (Math.pow(2, k) - 1)) * 1000;
     }
 
     setupWebsocket() {
@@ -73,7 +76,8 @@ Websocket.propTypes = {
     onMessage: React.PropTypes.func.isRequired,
     debug: React.PropTypes.bool,
     reconnect: React.PropTypes.bool,
-    protocol: React.PropTypes.string
+    protocol: React.PropTypes.string,
+    reconnectIntervalInMilliSeconds : React.PropTypes.number
 };
 
 export default Websocket;
