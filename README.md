@@ -37,7 +37,7 @@ npm install --save react-websocket
         <div>
           Count: <strong>{this.state.count}</strong>
 
-          <Websocket url='ws://localhost:8888/live/product/12345/' 
+          <Websocket url='ws://localhost:8888/live/product/12345/'
               onMessage={this.handleData.bind(this)}/>
         </div>
       );
@@ -58,6 +58,14 @@ The url the websocket connection is listening to.
 
 **required**
 The callback called when data is received. Data is `JSON.parse`'d
+
+#### onOpen
+
+The callback called when the connection is successfully opened.
+
+#### onOpen
+
+The callback called when the connection is closed either due to server disconnect or network error.
 
 #### debug
 
