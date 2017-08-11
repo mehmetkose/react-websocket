@@ -63,7 +63,7 @@ The callback called when data is received. Data is `JSON.parse`'d
 
 The callback called when the connection is successfully opened.
 
-#### onOpen
+#### onClose
 
 The callback called when the connection is closed either due to server disconnect or network error.
 
