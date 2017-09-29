@@ -6,7 +6,9 @@ class Websocket extends React.Component {
     constructor(props) {
       super(props);
       this.state = {
-        ws: new WebSocket(this.props.url, this.props.protocol),
+        ws: (window.WebSocket) ?
+          new window.WebSocket(this.props.url, this.props.protocol) :
+          new window.MozWebSocket(this.props.url, this.props.protocol),
         attempts: 1
       };
     }
@@ -44,7 +46,9 @@ class Websocket extends React.Component {
           let time = this.generateInterval(this.state.attempts);
           this.timeoutID = setTimeout(() => {
             this.setState({attempts: this.state.attempts+1});
-            this.setState({ws: new WebSocket(this.props.url, this.props.protocol)});
+            this.setState({ws: (window.WebSocket) ?
+              new window.WebSocket(this.props.url, this.props.protocol) :
+              new window.MozWebSocket(this.props.url, this.props.protocol)});
             this.setupWebsocket();
           }, time);
         }
