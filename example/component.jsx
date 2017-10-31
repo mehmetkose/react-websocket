@@ -12,11 +12,22 @@ class App extends React.Component {
   handleClose() {
     alert("disconnected:(");
   }
+
+  sendMessage(message){
+    this.refWebSocket.sendMessage(message);
+  }
+
   render() {
     return (
-      <Websocket url='ws://localhost:8888/live' onMessage={this.handleData}
-              onOpen={this.handleOpen} onClose={this.handleClose}
-              reconnect={true} debug={true}/>
+      <div>
+        <button onClick={() => this.sendMessage("Hello")} >Send Message</button>
+        <Websocket url='ws://localhost:8888/live' onMessage={this.handleData}
+                onOpen={this.handleOpen} onClose={this.handleClose}
+                reconnect={true} debug={true}
+                ref={Websocket => {
+                  this.refWebSocket = Websocket;
+                }}/>
+      </div>
     );
   }
 }
