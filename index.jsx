@@ -62,6 +62,11 @@ class Websocket extends React.Component {
       websocket.close();
     }
 
+    sendMessage(message){
+      let websocket = this.state.ws;
+      websocket.send(message);
+    }
+
     render() {
       return (
         <div></div>
