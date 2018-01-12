@@ -9,6 +9,7 @@ class Websocket extends React.Component {
         ws: new WebSocket(this.props.url, this.props.protocol),
         attempts: 1
       };
+      this.sendMessage = this.sendMessage.bind(this);
     }
 
     logging(logline) {
