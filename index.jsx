@@ -33,7 +33,8 @@ class Websocket extends React.Component {
       };
 
       websocket.onmessage = (evt) => {
-        this.props.onMessage(evt.data);
+        try { this.props.onMessage(JSON.parse(evt.data)); }
+        catch(err) { this.logging(err); }
       };
 
       this.shouldReconnect = this.props.reconnect;
