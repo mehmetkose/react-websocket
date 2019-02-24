@@ -1,5 +1,5 @@
 import React from 'react';
-import Websocket from '../index.jsx';
+import Websocket from 'react-websocket';
 
 class App extends React.Component {
 
