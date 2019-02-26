@@ -1,6 +1,10 @@
 # react-websocket [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mehmetkose/react-websocket/edit/master/README.md)
 
-`react-websocket` is a easy-to-use component for ReactJS applications for websocket communication.
+`react-websocket` is a easy-to-use React component for websocket communications.
+
+## Help Wanted
+
+Things here are running very slowly as I have a lot of other stuff to take care at the moment so please don't be upset if I don't answer your question or if a PR sits unreviewed for a few days or weeks. Anyone interested in helping it move faster can help by submitting or reviewing PR's and answering each other's questions.
 
 
 ### Installing
