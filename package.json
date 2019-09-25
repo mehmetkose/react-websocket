@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "ReactJS Websocket Listener Component",
   "main": "build/index.js",
   "publishConfig": { "registry": "https://npm.pkg.github.com/" },
