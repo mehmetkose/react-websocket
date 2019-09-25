@@ -3,6 +3,7 @@
   "version": "2.0.1",
   "description": "ReactJS Websocket Listener Component",
   "main": "build/index.js",
+  "publishConfig": { "registry": "https://npm.pkg.github.com/" },
   "scripts": {
     "start": "cross-env NODE_ENV=development node server.js",
     "compile-example": "webpack",
