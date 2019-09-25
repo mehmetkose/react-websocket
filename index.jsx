@@ -43,9 +43,9 @@ class Websocket extends React.Component {
       };
 
       this.shouldReconnect = this.props.reconnect;
-      websocket.onclose = () => {
-        this.logging('Websocket disconnected');
-        if (typeof this.props.onClose === 'function') this.props.onClose();
+      websocket.onclose = (evt) => {
+        this.logging(`Websocket disconnected,the reason: ${evt.reason},the code: ${evt.code}`);
+        if (typeof this.props.onClose === 'function') this.props.onClose(evt.code,evt.reason);
         if (this.shouldReconnect) {
           let time = this.generateInterval(this.state.attempts);
           this.timeoutID = setTimeout(() => {
