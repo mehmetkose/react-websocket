@@ -34,6 +34,10 @@ class Websocket extends React.Component {
         if (typeof this.props.onOpen === 'function') this.props.onOpen();
       };
 
+      websocket.onerror = (e) => {
+        if (typeof this.props.onError === 'function') this.props.onError(e)
+      }
+
       websocket.onmessage = (evt) => {
         this.props.onMessage(evt.data);
       };
@@ -86,6 +90,7 @@ Websocket.propTypes = {
     onMessage: PropTypes.func.isRequired,
     onOpen: PropTypes.func,
     onClose: PropTypes.func,
+    onError: PropTypes.func,
     debug: PropTypes.bool,
     reconnect: PropTypes.bool,
     protocol: PropTypes.string,
