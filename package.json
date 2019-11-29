@@ -1,18 +1,21 @@
 {
-  "name": "react-websocket",
-  "version": "2.1.0",
+  "name": "@figassis/react-websocket",
+  "version": "2.1.1",
   "description": "ReactJS Websocket Listener Component",
   "main": "build/index.js",
-  "publishConfig": { "registry": "https://npm.pkg.github.com/" },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/"
+  },
   "scripts": {
     "start": "cross-env NODE_ENV=development node server.js",
     "compile-example": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prerelease": "cross-env NODE_ENV=production webpack --config webpack.prod.config.js"
+    "prerelease": "cross-env NODE_ENV=production webpack --config webpack.prod.config.js",
+    "build": "cross-env NODE_ENV=production webpack --config webpack.prod.config.js"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:mehmetkose/react-websocket.git"
+    "url": "git+ssh://git@github.com/figassis/react-websocket.git"
   },
   "keywords": [
     "reactjs",
@@ -21,13 +24,13 @@
     "connection"
   ],
   "maintainers": [
-    "Mehmet Kose <mehmet@linux.com> (https://mehmetkose.github.io/)"
+    "Assis Ngolo <figassis@gmail.com>"
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mehmetkose/react-websocket/issues"
+    "url": "https://github.com/figassis/react-websocket/issues"
   },
-  "homepage": "https://github.com/mehmetkose/react-websocket",
+  "homepage": "https://github.com/figassis/react-websocket",
   "example": {
     "script": "example/component.jsx"
   },

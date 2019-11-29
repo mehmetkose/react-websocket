@@ -6,8 +6,8 @@ class Websocket extends React.Component {
     super(props);
     this.state = {
       ws: window.WebSocket
-        ? new window.WebSocket(this.props.url, this.props.protocol)
-        : new window.MozWebSocket(this.props.url, this.props.protocol),
+        ? new window.WebSocket(this.props.url, this.props.protocols)
+        : new window.MozWebSocket(this.props.url, this.props.protocols),
       attempts: 1
     };
     this.sendMessage = this.sendMessage.bind(this);
@@ -56,8 +56,8 @@ class Websocket extends React.Component {
           this.setState({ attempts: this.state.attempts + 1 });
           this.setState({
             ws: window.WebSocket
-              ? new window.WebSocket(this.props.url, this.props.protocol)
-              : new window.MozWebSocket(this.props.url, this.props.protocol)
+              ? new window.WebSocket(this.props.url, this.props.protocols)
+              : new window.MozWebSocket(this.props.url, this.props.protocols)
           });
           this.setupWebsocket();
         }, time);
@@ -99,7 +99,7 @@ Websocket.propTypes = {
   onError: PropTypes.func,
   debug: PropTypes.bool,
   reconnect: PropTypes.bool,
-  protocol: PropTypes.string,
+  protocols: PropTypes.arrayOf(PropTypes.string),
   reconnectIntervalInMilliSeconds: PropTypes.number
 };
 
