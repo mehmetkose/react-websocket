@@ -23,7 +23,7 @@
     "connection"
   ],
   "maintainers": [
-    "Mehmet Kose <mehmet@linux.com> (https://mehmetkose.github.io/)"
+    "Mehmet Kose <mehmet@sourcream.uk> (https://sourcream.uk/)"
   ],
   "license": "MIT",
   "bugs": {
@@ -34,18 +34,18 @@
     "script": "example/component.jsx"
   },
   "devDependencies": {
-    "babel": "^5.8.23",
-    "babel-loader": "^5.3.1",
-    "cross-env": "^3.1.4",
-    "prop-types": "^15.5.8",
-    "react": "^15.5.4",
-    "react-dom": "^15.5.4",
-    "react-hot-loader": "^1.3.0",
-    "webpack": "^1.10.1",
-    "webpack-dev-server": ">=3.1.11"
+    "babel": "^6.23.0",
+    "babel-loader": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "prop-types": "^15.7.2",
+    "react": "^16.4.2",
+    "react-dom": "^16.4.2",
+    "react-hot-loader": "^4.13.0",
+    "webpack": "^5.58.1",
+    "webpack-dev-server": ">=4.3.1"
   },
   "peerDependencies": {
-    "react": ">0.14.5",
-    "react-dom": ">0.14.5"
+    "react": ">17.0.2",
+    "react-dom": ">17.0.2"
   }
 }
