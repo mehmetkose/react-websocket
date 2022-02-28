@@ -10,6 +10,8 @@ class Websocket extends React.Component {
         : new window.MozWebSocket(this.props.url, this.props.protocol),
       attempts: 1
     };
+    this.open = this.open.bind(this);
+    this.close = this.close.bind(this);
     this.sendMessage = this.sendMessage.bind(this);
     this.setupWebsocket = this.setupWebsocket.bind(this);
   }
@@ -79,6 +81,15 @@ class Websocket extends React.Component {
   sendMessage(message) {
     let websocket = this.state.ws;
     websocket.send(message);
+  }
+
+  open() {
+    this.setupWebsocket();
+  }
+
+  close() {
+    let websocket = this.state.ws;
+    websocket.close();
   }
 
   render() {
