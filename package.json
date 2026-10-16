@@ -123,5 +123,12 @@
       ],
       "limit": "2.6 kB"
     }
-  ]
+  ],
+  "overrides": {
+    "@docsearch/react": {
+      "react": "$react",
+      "react-dom": "$react-dom",
+      "@types/react": "$@types/react"
+    }
+  }
 }
