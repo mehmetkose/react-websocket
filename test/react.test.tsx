@@ -219,3 +219,75 @@ describe('module-level clients', () => {
     expect(MockWebSocket.last.sent).toEqual(['ping']);
   });
 });
+
+describe('reported issues', () => {
+  it('#46: changing the url reconnects to the new one', () => {
+    const [first, second] = [uniqueUrl(), uniqueUrl()];
+    const { rerender } = render(<Status url={first} />);
+    act(() => MockWebSocket.last.open());
+    const old = MockWebSocket.last;
+
+    rerender(<Status url={second} />);
+    expect(MockWebSocket.last.url).toBe(second);
+    expect(screen.getByRole('button').textContent).toBe('connecting:-');
+    act(() => vi.runAllTimers());
+    expect(old.closedWith).toBeDefined();
+
+    act(() => MockWebSocket.last.open());
+    act(() => MockWebSocket.last.receive('from second'));
+    expect(screen.getByRole('button').textContent).toBe('open:from second');
+  });
+
+  it('#51 #38 #5: onOpen, onClose (with code and reason) and onError reach the component', () => {
+    const calls: unknown[] = [];
+    const url = uniqueUrl();
+    function Watcher() {
+      useWebSocket(url, {
+        WebSocket: MockImpl,
+        json: true,
+        onOpen: () => calls.push('open'),
+        onClose: close => calls.push(close),
+        onError: error => calls.push(error instanceof Error ? error.name : error.type)
+      });
+      return null;
+    }
+    render(<Watcher />);
+    act(() => MockWebSocket.last.open());
+    act(() => MockWebSocket.last.receive('not json'));
+    act(() => MockWebSocket.last.onerror?.(new Event('error')));
+    act(() => MockWebSocket.last.finishClose(4001, 'session expired'));
+    expect(calls).toEqual([
+      'open',
+      'MessageError',
+      'error',
+      { code: 4001, reason: 'session expired', wasClean: false }
+    ]);
+  });
+
+  it('#50: close() disconnects for good, without unmounting', () => {
+    function Closer() {
+      const { status, close } = useWebSocket(url, { WebSocket: MockImpl });
+      return <button onClick={() => close()}>{status}</button>;
+    }
+    const url = uniqueUrl();
+    render(<Closer />);
+    act(() => MockWebSocket.last.open());
+    act(() => screen.getByRole('button').click());
+    act(() => MockWebSocket.last.finishClose(1000));
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(screen.getByRole('button').textContent).toBe('closed');
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('#37: send() needs no ref and serializes objects with json', () => {
+    function Sender() {
+      const { send } = useWebSocket<unknown, { hello: string }>(url, { WebSocket: MockImpl, json: true });
+      return <button onClick={() => send({ hello: 'server' })}>send</button>;
+    }
+    const url = uniqueUrl();
+    render(<Sender />);
+    act(() => screen.getByRole('button').click()); // before open: queued
+    act(() => MockWebSocket.last.open());
+    expect(MockWebSocket.last.sent).toEqual(['{"hello":"server"}']);
+  });
+});

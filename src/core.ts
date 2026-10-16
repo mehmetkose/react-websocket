@@ -9,6 +9,7 @@ export type {
   Snapshot,
   StandardSchemaV1,
   Status,
+  UrlSource,
   WebSocketClient,
   WebSocketOptions
 } from './types';

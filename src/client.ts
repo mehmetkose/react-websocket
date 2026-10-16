@@ -6,6 +6,7 @@ import {
   type SendData,
   type Snapshot,
   type StandardSchemaResult,
+  type UrlSource,
   type WebSocketClient,
   type WebSocketOptions
 } from './types';
@@ -80,7 +81,7 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
 
 /** @internal `onTeardown` lets the React registry forget clients nobody holds anymore. */
 export function createClient<In = unknown, Out = unknown>(
-  url: string,
+  url: UrlSource,
   options: WebSocketOptions<In, Out> = {},
   onTeardown?: () => void
 ): WebSocketClient<In, Out> {
@@ -110,6 +111,8 @@ export function createClient<In = unknown, Out = unknown>(
   let unavailable: Deferred | null = null;
   let startScheduled = false;
   let inbox: Promise<void> | null = null;
+  // Bumped per connection attempt so a slow `url()` can't resurrect a cancelled one.
+  let generation = 0;
   let windowBound = false;
   let retryTimer: Timer;
   let teardownTimer: Timer;
@@ -210,10 +213,42 @@ export function createClient<In = unknown, Out = unknown>(
     retryTimer = undefined;
     const Impl = getImpl();
     if (!Impl) return;
+    const id = ++generation;
+    set({ status: snapshot.attempt === 0 ? 'connecting' : 'reconnecting' });
 
+    let target: string | Promise<string>;
+    try {
+      target = typeof url === 'string' ? url : url();
+    } catch (error) {
+      urlFailed(error);
+      return;
+    }
+    if (typeof target === 'string') {
+      start(Impl, target);
+      return;
+    }
+    Promise.resolve(target).then(
+      resolved => {
+        if (id === generation && wanted) start(Impl, resolved);
+      },
+      error => {
+        if (id === generation && wanted) urlFailed(error);
+      }
+    );
+  }
+
+  /** `url()` threw or rejected (e.g. a token refresh failed): count it as a failed attempt. */
+  function urlFailed(error: unknown) {
+    const reason = error instanceof Error ? error : new Error(String(error));
+    log('url() failed', reason);
+    emit('error', reason);
+    retryOrFail({ code: 1006, reason: 'url() failed', wasClean: false }, reason);
+  }
+
+  function start(Impl: typeof WebSocket, target: string) {
     let socket: WebSocket;
     try {
-      socket = new Impl(url, options.protocols);
+      socket = new Impl(target, options.protocols);
     } catch (error) {
       // e.g. an invalid URL; retrying won't help.
       emit('error', error as Error);
@@ -222,8 +257,7 @@ export function createClient<In = unknown, Out = unknown>(
     }
     if (options.binaryType) socket.binaryType = options.binaryType;
     ws = socket;
-    log('connecting', url);
-    set({ status: snapshot.attempt === 0 ? 'connecting' : 'reconnecting' });
+    log('connecting', target);
 
     socket.onopen = event => {
       log('open');
@@ -246,6 +280,11 @@ export function createClient<In = unknown, Out = unknown>(
   function handleClose(info: CloseInfo) {
     stopHeartbeat();
     log('closed', info);
+    retryOrFail(info);
+    emit('close', info);
+  }
+
+  function retryOrFail(info: CloseInfo, error?: Error) {
     if (
       wanted &&
       retry &&
@@ -259,10 +298,11 @@ export function createClient<In = unknown, Out = unknown>(
       set({ status: 'reconnecting', attempt });
       log(`reconnecting in ${delay}ms (attempt ${attempt})`);
       retryTimer = setTimeout(open, delay);
-      emit('close', info);
     } else {
-      fail(new Error(`WebSocket closed (code ${info.code}${info.reason ? `: ${info.reason}` : ''})`));
-      emit('close', info);
+      fail(
+        error ??
+          new Error(`WebSocket closed (code ${info.code}${info.reason ? `: ${info.reason}` : ''})`)
+      );
     }
   }
 
@@ -376,6 +416,7 @@ export function createClient<In = unknown, Out = unknown>(
 
   function stop(code?: number, reason?: string) {
     wanted = false;
+    generation++;
     clearTimeout(retryTimer);
     retryTimer = undefined;
     stopHeartbeat();
@@ -488,9 +529,12 @@ export function createClient<In = unknown, Out = unknown>(
 /**
  * Create a WebSocket client. Nothing connects until it is used by a hook,
  * `connect()` is called, or `ready` is read.
+ *
+ * `url` may be a function (sync or async), called before every connection attempt;
+ * use it to put a fresh auth token in the URL on each reconnect.
  */
 export function createWebSocket<In = unknown, Out = unknown>(
-  url: string,
+  url: UrlSource,
   options?: WebSocketOptions<In, Out>
 ): WebSocketClient<In, Out> {
   return createClient(url, options);

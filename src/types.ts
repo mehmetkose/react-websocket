@@ -1,3 +1,6 @@
+/** A URL, or a function resolving one before each connection attempt (e.g. with a fresh token). */
+export type UrlSource = string | (() => string | Promise<string>);
+
 export type Status = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 
 export interface Snapshot<In> {
@@ -107,7 +110,7 @@ export interface EventMap<In> {
 }
 
 export interface WebSocketClient<In = unknown, Out = unknown> {
-  readonly url: string;
+  readonly url: UrlSource;
   /** Resolves once open. Reading it starts an idle connection. Rejects if the client gives up or is closed. */
   readonly ready: Promise<void>;
   /** The underlying socket, if any. Escape hatch. */

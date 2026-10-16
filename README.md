@@ -140,6 +140,53 @@ const prices = createWebSocket('wss://api.example.com/ticks', { json: true, sche
 
 `react-websocket/core` exports `createWebSocket` with no React dependency. The client is a plain store with `subscribe`, `getSnapshot`, `on`, `send`, `connect`, `close`, `reconnect` and `ready`.
 
+## Recipes
+
+### Authentication
+
+Browsers can't set headers on a WebSocket. Send the token in the URL (or as a sub-protocol) instead. If you pass a function as `url`, it's called before **every** connection attempt, so reconnects pick up a fresh token:
+
+```ts
+const live = createWebSocket(async () => {
+  const token = await getFreshToken();
+  return `wss://api.example.com/live?token=${encodeURIComponent(token)}`;
+});
+```
+
+If the function throws or rejects, that counts as a failed attempt: you get `onError`, then a retry with backoff. To fail for good on an auth close code, use `reconnect: { shouldReconnect: close => close.code !== 4001 }`.
+
+### Many message types on one socket
+
+Django Channels groups, pub/sub topics and similar features all arrive on the same socket. Tag messages on the server and route them on the client:
+
+```tsx
+type LiveEvent = { group: 'prices'; price: number } | { group: 'chat'; text: string };
+const live = createWebSocket<LiveEvent>('wss://api.example.com/ws', { json: true });
+
+function Chat() {
+  useWebSocketEvent(live, 'message', event => {
+    if (event.group === 'chat') addLine(event.text);
+  });
+  // …
+}
+```
+
+### Changing the URL
+
+With `useWebSocket(url)`, changing `url` closes the old connection and opens the new one. For example, ``useWebSocket(`wss://…/rooms/${roomId}`)`` follows `roomId`. Debounce the URL if it comes straight from a text field.
+
+### Intervals and throttling
+
+The server decides when to push messages. To poll, call `send` from your own `setInterval`. For a fast stream you don't need to render on every message: collect messages with `useWebSocketEvent` and update state on your own schedule.
+
+### Testing
+
+Pass a fake implementation through the `WebSocket` option (for example [mock-socket](https://github.com/thoov/mock-socket)). Under Node without a DOM, or during a server render, nothing connects unless you pass one:
+
+```ts
+useWebSocket(url, { WebSocket: MockWebSocket });
+```
+
 ## Migrating from v2
 
 v2 was a class component that rendered an empty `<div>`. v3 replaces it with hooks.

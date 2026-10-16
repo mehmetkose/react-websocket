@@ -416,3 +416,81 @@ describe('acquire()', () => {
     expect(ws.getSnapshot().status).toBe('connecting');
   });
 });
+
+describe('reported issues', () => {
+  it('#33: a successful reconnect resets the backoff', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+    ws.connect();
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(2000);
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(4000);
+    expect(MockWebSocket.instances).toHaveLength(4);
+
+    MockWebSocket.last.open();
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().attempt).toBe(1);
+    vi.advanceTimersByTime(1000); // back to minDelay, not 8000
+    expect(MockWebSocket.instances).toHaveLength(5);
+  });
+
+  describe('#13: auth tokens via a url function', () => {
+    it('resolves the url before every attempt', () => {
+      let token = 0;
+      const ws = createWebSocket(() => `ws://x?token=${++token}`, {
+        WebSocket: MockImpl,
+        reconnect: noJitter
+      });
+      ws.connect();
+      expect(MockWebSocket.last.url).toBe('ws://x?token=1');
+      MockWebSocket.last.finishClose();
+      vi.advanceTimersByTime(1000);
+      expect(MockWebSocket.last.url).toBe('ws://x?token=2');
+    });
+
+    it('waits for an async url and queues sends meanwhile', async () => {
+      const ws = createWebSocket(async () => 'ws://x?token=abc', { WebSocket: MockImpl });
+      ws.connect();
+      ws.send('early');
+      expect(ws.getSnapshot().status).toBe('connecting');
+      expect(MockWebSocket.instances).toHaveLength(0);
+      await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+      MockWebSocket.last.open();
+      expect(MockWebSocket.last.sent).toEqual(['early']);
+    });
+
+    it('treats a failing url function as a failed attempt and retries', async () => {
+      let calls = 0;
+      const onError = vi.fn();
+      const ws = createWebSocket(
+        async () => {
+          if (++calls === 1) throw new Error('token endpoint down');
+          return 'ws://x';
+        },
+        { WebSocket: MockImpl, reconnect: noJitter }
+      );
+      ws.on('error', onError);
+      ws.connect();
+      await vi.waitFor(() => expect(ws.getSnapshot().status).toBe('reconnecting'));
+      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'token endpoint down' }));
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(MockWebSocket.instances).toHaveLength(1);
+    });
+
+    it('drops a url that resolves after close()', async () => {
+      let resolve!: (url: string) => void;
+      const ws = createWebSocket(() => new Promise<string>(r => (resolve = r)), {
+        WebSocket: MockImpl
+      });
+      ws.connect();
+      ws.close();
+      resolve('ws://x');
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(MockWebSocket.instances).toHaveLength(0);
+      expect(ws.getSnapshot().status).toBe('closed');
+    });
+  });
+});
