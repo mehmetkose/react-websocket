@@ -34,7 +34,7 @@ If the function throws or its promise rejects (for example the token refresh fai
 While the function is pending, the status is `connecting` (or `reconnecting`), and `send()` calls are queued as usual.
 
 ::: warning Tokens in URLs are logged
-URLs often end up in server and proxy access logs. Prefer short-lived, single-purpose tokens over long-lived session tokens. See [SECURITY.md](https://github.com/mehmetkose/react-websocket/blob/master/SECURITY.md).
+URLs often end up in server and proxy access logs. Prefer short-lived, single-purpose tokens over long-lived session tokens. See [SECURITY.md](https://github.com/mehmetkose/react-websocket/blob/main/SECURITY.md).
 :::
 
 ## Token as a sub-protocol

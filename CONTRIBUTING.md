@@ -107,12 +107,12 @@ For maintainers:
 
 1. Update `version` in `package.json` (`npm version <major|minor|patch> --no-git-tag-version`).
 2. Move the `Unreleased` entries in `CHANGELOG.md` under the new version and date.
-3. Commit, push, and make sure CI is green on `master`.
+3. Commit, push, and make sure CI is green on `main`.
 4. Create a GitHub release with a tag matching the version (for example `3.0.0`), using the changelog entry as notes.
 
 Publishing the release runs `.github/workflows/release.yml`, which runs every check (`prepublishOnly`) and publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements) through npm trusted publishing. No npm token is stored in the repository. One-time setup: on npmjs.com, add a trusted publisher for this repository with the workflow `release.yml` and environment `npm`, and create the `npm` environment in the GitHub repository settings.
 
-The documentation site deploys to GitHub Pages from `master` through `.github/workflows/docs.yml`.
+The documentation site deploys to GitHub Pages from `main` through `.github/workflows/docs.yml`.
 
 ## License
 

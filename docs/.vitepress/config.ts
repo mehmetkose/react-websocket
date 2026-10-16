@@ -22,9 +22,9 @@ export default defineConfig({
       {
         text: 'v3',
         items: [
-          { text: 'Changelog', link: `${repo}/blob/master/CHANGELOG.md` },
+          { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
           { text: 'Migrating from v2', link: '/migration' },
-          { text: 'Contributing', link: `${repo}/blob/master/CONTRIBUTING.md` }
+          { text: 'Contributing', link: `${repo}/blob/main/CONTRIBUTING.md` }
         ]
       }
     ],
@@ -79,7 +79,7 @@ export default defineConfig({
       { icon: 'npm', link: 'https://www.npmjs.com/package/react-websocket' }
     ],
     editLink: {
-      pattern: `${repo}/edit/master/docs/:path`,
+      pattern: `${repo}/edit/main/docs/:path`,
       text: 'Edit this page on GitHub'
     },
     footer: {
