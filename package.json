@@ -1,28 +1,73 @@
 {
   "name": "react-websocket",
-  "version": "2.2.0",
-  "description": "ReactJS Websocket Listener Component",
-  "main": "build/index.js",
+  "version": "3.0.0",
+  "description": "Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./core": {
+      "import": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.js"
+      },
+      "require": {
+        "types": "./dist/core.d.cts",
+        "default": "./dist/core.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
+    "access": "public"
   },
   "scripts": {
-    "start": "webpack --config webpack.config.js --watch",
-    "compile-example": "webpack --config webpack.config.js --mode production",
-    "build": "webpack --config webpack.prod.config.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "prerelease": "npm run build"
+    "build": "rm -rf dist && tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:package": "npm run build && publint --strict && attw --pack . --profile node16",
+    "size": "npm run build && size-limit",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "example": "vite example",
+    "example:server": "python3 example/server.py",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run check:package"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:mehmetkose/react-websocket.git"
+    "url": "git+https://github.com/mehmetkose/react-websocket.git"
   },
   "keywords": [
-    "reactjs",
-    "websocket",
     "react",
-    "connection"
+    "websocket",
+    "hooks",
+    "realtime",
+    "reconnect",
+    "suspense"
   ],
+  "author": "Mehmet Kose <mehmet@sourcream.uk> (https://sourcream.uk/)",
   "maintainers": [
     "Mehmet Kose <mehmet@sourcream.uk> (https://sourcream.uk/)"
   ],
@@ -31,22 +76,59 @@
     "url": "https://github.com/mehmetkose/react-websocket/issues"
   },
   "homepage": "https://github.com/mehmetkose/react-websocket",
-  "example": {
-    "script": "example/component.jsx"
-  },
   "peerDependencies": {
-    "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
-    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+    "react": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.7",
-    "@babel/preset-env": "^8.0.7",
-    "@babel/preset-react": "^8.0.1",
-    "babel-loader": "^10.1.1",
-    "prop-types": "^15.8.1",
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@eslint/js": "^10.0.1",
+    "@size-limit/preset-small-lib": "^14.2.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@vitest/coverage-v8": "^5.0.3",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "jsdom": "^30.1.2",
+    "prettier": "^3.9.9",
+    "publint": "^0.3.25",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "webpack": "^5.111.1",
-    "webpack-cli": "^7.2.3"
+    "size-limit": "^14.2.0",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vite": "^8.3.4",
+    "vitepress": "^1.6.4",
+    "vitest": "^5.0.3"
+  },
+  "size-limit": [
+    {
+      "name": "react-websocket (useWebSocket)",
+      "path": "dist/index.js",
+      "import": "{ useWebSocket }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "3 kB"
+    },
+    {
+      "name": "react-websocket/core (createWebSocket)",
+      "path": "dist/core.js",
+      "import": "{ createWebSocket }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "2.6 kB"
+    }
+  ],
+  "overrides": {
+    "@docsearch/react": {
+      "react": "$react",
+      "react-dom": "$react-dom",
+      "@types/react": "$@types/react"
+    }
   }
 }

@@ -2,3 +2,7 @@
 bower_components
 node_modules
 *.log
+dist
+coverage
+docs/.vitepress/cache
+docs/.vitepress/dist

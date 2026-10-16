@@ -1,28 +1,21 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-import asyncio, logging, os.path
+import asyncio, logging
 import tornado.httpserver
 import tornado.options
 import tornado.web
 import tornado.websocket
 
+tornado.options.define("port", default=8888, help="port to listen on")
+
 class Application(tornado.web.Application):
 
     def __init__(self):
-        base_dir = os.path.dirname(__file__)
-        app_settings = {
-            "debug": True,
-            'static_path': os.path.join(base_dir, "static"),
-        }
+        # The page itself is served by Vite (`npm run example`).
         tornado.web.Application.__init__(self, [
-            tornado.web.url(r"/", MainHandler, name="main"),
             tornado.web.url(r"/live", WebSocketHandler, name="websocket"),
-        ], **app_settings)
-
-class MainHandler(tornado.web.RequestHandler):
-    def get(self):
-        self.render('index.html')
+        ], debug=True)
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     listenners = []
@@ -45,8 +38,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 async def main():
     tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(Application())
-    http_server.listen(8888)
-    logging.info("application running on http://localhost:8888")
+    port = tornado.options.options.port
+    http_server.listen(port)
+    logging.info("websocket server running on ws://localhost:%d/live", port)
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

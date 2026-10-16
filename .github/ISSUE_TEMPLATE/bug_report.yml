@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work the way the docs say it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please search [existing issues](https://github.com/mehmetkose/react-websocket/issues) first.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Include errors and console output.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A link to a repository or StackBlitz/CodeSandbox, or a short self-contained code snippet. Issues without a reproduction may be closed.
+      render: tsx
+    validations:
+      required: true
+  - type: input
+    id: library-version
+    attributes:
+      label: react-websocket version
+      placeholder: 3.0.0
+    validations:
+      required: true
+  - type: input
+    id: react-version
+    attributes:
+      label: React version
+      placeholder: 19.3.1
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Browser or runtime
+      placeholder: Chrome 141, Safari 26, Node 24, …
+    validations:
+      required: true
+  - type: input
+    id: framework
+    attributes:
+      label: Framework or bundler
+      placeholder: Next.js 16 (App Router), React Router 7, Vite 8, …
+  - type: textarea
+    id: server
+    attributes:
+      label: Server details
+      description: WebSocket server (library, version), proxies or load balancers in between, close codes you see.

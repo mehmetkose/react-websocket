@@ -1,0 +1,182 @@
+# Getting started
+
+This guide takes you from installation to a working, typed, shared connection in a few minutes.
+
+## Install
+
+::: code-group
+
+```sh [npm]
+npm install react-websocket
+```
+
+```sh [pnpm]
+pnpm add react-websocket
+```
+
+```sh [yarn]
+yarn add react-websocket
+```
+
+```sh [bun]
+bun add react-websocket
+```
+
+:::
+
+`react` 18 or 19 is a peer dependency. There are no other dependencies.
+
+## Your first connection
+
+Call `useWebSocket` with a URL. The connection opens when the component mounts and closes when it unmounts.
+
+```tsx
+import { useWebSocket } from 'react-websocket';
+
+export function Echo() {
+  const { status, lastMessage, send } = useWebSocket('wss://echo.websocket.org');
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <p>Last message: {String(lastMessage ?? '—')}</p>
+      <button onClick={() => send('hello')}>Send</button>
+    </div>
+  );
+}
+```
+
+`status` moves through `'connecting'` → `'open'`, and to `'reconnecting'` if the connection drops. `lastMessage` is the most recent message. You can call `send` at any time: if the socket isn't open yet, the message is queued and sent as soon as it opens.
+
+## Handle every message
+
+`lastMessage` only holds the latest message. To act on each one, for example to append it to a list, pass `onMessage`:
+
+```tsx
+import { useState } from 'react';
+import { useWebSocket } from 'react-websocket';
+
+export function Log() {
+  const [lines, setLines] = useState<string[]>([]);
+  useWebSocket<string>('wss://api.example.com/log', {
+    onMessage: line => setLines(previous => [...previous, line])
+  });
+
+  return <pre>{lines.join('\n')}</pre>;
+}
+```
+
+Handlers (`onOpen`, `onMessage`, `onClose`, `onError`) always see your latest props and state, and changing them never reconnects. You don't need `useCallback` or `useEffectEvent` for them.
+
+## JSON and types
+
+Most servers send JSON. Turn on `json` and describe your messages with the two type parameters: `In` for messages you receive and `Out` for messages you send.
+
+```tsx
+import { useState } from 'react';
+import { useWebSocket } from 'react-websocket';
+
+type ChatIn = { user: string; text: string };
+type ChatOut = { text: string };
+
+export function Chat() {
+  const [messages, setMessages] = useState<ChatIn[]>([]);
+  const [draft, setDraft] = useState('');
+
+  const { status, send } = useWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', {
+    json: true,
+    onMessage: message => setMessages(list => [...list, message])
+  });
+
+  return (
+    <form
+      onSubmit={event => {
+        event.preventDefault();
+        send({ text: draft }); // typed as ChatOut, sent as JSON
+        setDraft('');
+      }}
+    >
+      <ul>
+        {messages.map((m, i) => (
+          <li key={i}>
+            <b>{m.user}</b>: {m.text}
+          </li>
+        ))}
+      </ul>
+      <input value={draft} onChange={e => setDraft(e.target.value)} />
+      <button disabled={status === 'closed'}>Send</button>
+    </form>
+  );
+}
+```
+
+Type parameters describe what you expect; they don't check it at runtime. To validate untrusted input, pass a `schema` from zod, valibot or arktype, and the types are inferred from it. See [Messages and types](./messages.md).
+
+## Share one connection across components
+
+Components that call `useWebSocket` with the same URL already share one socket. When several parts of your app use the same feed, it's clearer to define the connection once, at module level, with `createWebSocket`:
+
+```ts
+// chat.ts
+import { createWebSocket } from 'react-websocket';
+
+type ChatIn = { user: string; text: string };
+type ChatOut = { text: string };
+
+export const chat = createWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', {
+  json: true
+});
+```
+
+```tsx
+// Header.tsx
+import { useWebSocketStatus } from 'react-websocket';
+import { chat } from './chat';
+
+export function Header() {
+  const status = useWebSocketStatus(chat); // re-renders only when the status changes
+  return <span className={`dot dot-${status}`} />;
+}
+```
+
+```tsx
+// Composer.tsx
+import { useWebSocket } from 'react-websocket';
+import { chat } from './chat';
+
+export function Composer() {
+  const { send } = useWebSocket(chat);
+  return <button onClick={() => send({ text: 'hi' })}>Say hi</button>;
+}
+```
+
+Nothing connects until a component uses `chat`. Learn more in [Shared clients](./shared-clients.md).
+
+## Connect conditionally
+
+Pass `null` as the URL, or `enabled: false`, to stay disconnected:
+
+```tsx
+const { status } = useWebSocket(user ? `wss://api.example.com/users/${user.id}` : null);
+```
+
+Changing the URL closes the old connection and opens the new one.
+
+## Production checklist
+
+Before you ship, consider:
+
+- [ ] **Validate messages** with a `schema`. See [Messages and types](./messages.md#validating-with-a-schema).
+- [ ] **Authenticate** with a URL function so reconnects get a fresh token. See [Authentication](./authentication.md).
+- [ ] **Decide when to give up.** Set `reconnect.maxAttempts` or `shouldReconnect` for close codes that mean "don't retry". See [Reconnecting](./reconnecting.md).
+- [ ] **Detect dead connections** behind proxies and load balancers with a `heartbeat`. See [Heartbeats](./reconnecting.md#heartbeats).
+- [ ] **Bound the queue** with `queue: { limit }` if users can stay offline for long.
+- [ ] **Show connection state** to users (`status`, `attempt`).
+- [ ] **Avoid re-rendering per message** on high-frequency streams. See [Performance](./performance.md).
+
+## Next steps
+
+- [Shared clients](./shared-clients.md): one connection, many components.
+- [Suspense](./suspense.md): wait for the connection with `use(client.ready)`.
+- [Server rendering and Next.js](./ssr.md)
+- [API reference](../api/index.md)

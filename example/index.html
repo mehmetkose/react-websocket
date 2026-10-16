@@ -1,13 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>React Websocket Example</title>
-</head>
-<body>
-  <h1>React-Websocket</h1>
-  <p>Check the console.</p>
-  <div id="content"></div>
-  <script src="static/bundle.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>react-websocket example</title>
+    <style>
+      body {
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      .status {
+        display: inline-block;
+        padding: 0 0.5rem;
+        border-radius: 4px;
+        background: #eee;
+      }
+      .status[data-status='open'] {
+        background: #c8f2c8;
+      }
+      .status[data-status='reconnecting'] {
+        background: #ffe3a8;
+      }
+      .status[data-status='closed'] {
+        background: #f6c3c3;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>react-websocket</h1>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
 </html>
