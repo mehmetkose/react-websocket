@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-import logging, os.path
+import asyncio, logging, os.path
 import tornado.httpserver
-import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.websocket
-import tornado.gen
 
 class Application(tornado.web.Application):
 
@@ -32,7 +30,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
 
-    @tornado.gen.engine
     def open(self):
         WebSocketHandler.listenners.append(self)
 
@@ -40,19 +37,17 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if self in WebSocketHandler.listenners:
             WebSocketHandler.listenners.remove(self)
 
-    @tornado.gen.engine
     def on_message(self, wsdata):
         for listenner in WebSocketHandler.listenners:
             listenner.write_message(wsdata)
 
 
-@tornado.gen.coroutine
-def main():
+async def main():
     tornado.options.parse_command_line()
     http_server = tornado.httpserver.HTTPServer(Application())
     http_server.listen(8888)
     logging.info("application running on http://localhost:8888")
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    tornado.ioloop.IOLoop.current().run_sync(main)
-    tornado.ioloop.IOLoop.current().start()
+    asyncio.run(main())

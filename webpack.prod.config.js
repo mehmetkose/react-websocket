@@ -1,8 +1,8 @@
 var path = require('path');
 
-// currently, this is for bower
 var config = {
-  devtool: 'sourcemap',
+  mode: 'production',
+  devtool: 'source-map',
   entry: {
     index: './index.jsx',
   },
@@ -11,18 +11,21 @@ var config = {
     publicPath: './build',
     filename: 'index.js',
     sourceMapFilename: 'index.map',
-    library: 'Spinner',
-    libraryTarget: 'umd',
+    library: {
+      name: 'Spinner',
+      type: 'umd',
+    },
+    globalObject: 'this',
   },
   module: {
-    loaders: [{
-      test: /\.(js|jsx)/,
-      loader: 'babel',
+    rules: [{
+      test: /\.jsx?$/,
+      exclude: /node_modules/,
+      use: 'babel-loader',
     }],
   },
-  plugins: [],
   resolve: {
-    extensions: ['', '.js', '.jsx'],
+    extensions: ['.js', '.jsx'],
   },
   externals: {
     'react': {

@@ -1,35 +1,21 @@
 var path = require('path');
-var webpack = require('webpack');
-
-var entry = ['./example/index.jsx'];
-
-if (process.env.NODE_ENV === 'development') {
-  entry = entry.concat([
-    'webpack-dev-server/client?http://localhost:3000',
-    'webpack/hot/only-dev-server',
-  ]);
-}
 
 module.exports = {
-  devtool: 'eval',
-  entry: entry,
+  mode: 'development',
+  devtool: 'eval-source-map',
+  entry: './example/index.jsx',
   output: {
     path: path.join(__dirname, 'example', 'static'),
     filename: 'bundle.js',
-    publicPath: '/example/static/',
   },
-  plugins: [
-    new webpack.HotModuleReplacementPlugin(),
-    new webpack.NoErrorsPlugin(),
-  ],
   resolve: {
-    extensions: ['', '.js', '.jsx'],
+    extensions: ['.js', '.jsx'],
   },
   module: {
-    loaders: [{
+    rules: [{
       test: /\.jsx?$/,
-      loaders: ['react-hot', 'babel'],
-      exclude: /build|lib|node_modules/,
+      exclude: /build|node_modules/,
+      use: 'babel-loader',
     }],
   },
 };

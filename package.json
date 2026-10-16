@@ -7,10 +7,11 @@
     "registry": "https://npm.pkg.github.com/"
   },
   "scripts": {
-    "start": "cross-env NODE_ENV=development node server.js",
-    "compile-example": "webpack",
+    "start": "webpack --config webpack.config.js --watch",
+    "compile-example": "webpack --config webpack.config.js --mode production",
+    "build": "webpack --config webpack.prod.config.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prerelease": "cross-env NODE_ENV=production webpack --config webpack.prod.config.js"
+    "prerelease": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -33,19 +34,19 @@
   "example": {
     "script": "example/component.jsx"
   },
-  "devDependencies": {
-    "babel": "^6.23.0",
-    "babel-loader": "^8.2.2",
-    "cross-env": "^7.0.3",
-    "prop-types": "^15.7.2",
-    "react": "^16.4.2",
-    "react-dom": "^16.4.2",
-    "react-hot-loader": "^4.13.0",
-    "webpack": "^5.58.1",
-    "webpack-dev-server": ">=4.3.1"
-  },
   "peerDependencies": {
-    "react": ">17.0.2",
-    "react-dom": ">17.0.2"
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.7",
+    "@babel/preset-env": "^8.0.7",
+    "@babel/preset-react": "^8.0.1",
+    "babel-loader": "^10.1.1",
+    "prop-types": "^15.8.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "webpack": "^5.111.1",
+    "webpack-cli": "^7.2.3"
   }
 }
