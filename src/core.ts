@@ -4,6 +4,7 @@ export type {
   CloseInfo,
   EventMap,
   HeartbeatOptions,
+  QueueOptions,
   ReconnectOptions,
   SendData,
   Snapshot,

@@ -79,12 +79,18 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
   return typeof (value as PromiseLike<T> | null)?.then === 'function';
 }
 
-/** @internal `onTeardown` lets the React registry forget clients nobody holds anymore. */
-export function createClient<In = unknown, Out = unknown>(
+/**
+ * @internal Option key for a callback run when the client tears down, which lets the hooks'
+ * URL registry forget clients nobody holds anymore. A registered symbol rather than an export,
+ * because the hooks entry imports the client from the `core` entry at runtime.
+ */
+const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
+
+function createClient<In = unknown, Out = unknown>(
   url: UrlSource,
-  options: WebSocketOptions<In, Out> = {},
-  onTeardown?: () => void
+  options: WebSocketOptions<In, Out> & { [ON_TEARDOWN]?: () => void } = {}
 ): WebSocketClient<In, Out> {
+  const onTeardown = options[ON_TEARDOWN];
   const log = options.logger ?? (() => {});
   const retry =
     options.reconnect === false
@@ -93,6 +99,12 @@ export function createClient<In = unknown, Out = unknown>(
           ...RECONNECT_DEFAULTS,
           ...(typeof options.reconnect === 'object' ? options.reconnect : {})
         };
+  const queueLimit =
+    options.queue === false
+      ? 0
+      : typeof options.queue === 'object'
+        ? Math.max(0, options.queue.limit ?? Infinity)
+        : Infinity;
 
   let snapshot: Snapshot<In> = { status: 'idle', lastMessage: undefined, attempt: 0 };
   const storeListeners = new Set<() => void>();
@@ -106,8 +118,13 @@ export function createClient<In = unknown, Out = unknown>(
   let ws: WebSocket | null = null;
   let wanted = false;
   let refs = 0;
+  // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
+  let pinned = false;
   let pending: SendData[] = [];
   let ready: Deferred | null = null;
+  // Opened at least once since the client was last started. `ready` stays resolved through
+  // automatic reconnects so `use(client.ready)` doesn't swap content for a fallback on every blip.
+  let opened = false;
   let unavailable: Deferred | null = null;
   let startScheduled = false;
   let inbox: Promise<void> | null = null;
@@ -261,13 +278,17 @@ export function createClient<In = unknown, Out = unknown>(
 
     socket.onopen = event => {
       log('open');
+      opened = true;
       set({ status: 'open', attempt: 0 });
       startHeartbeat(socket);
+      ready?.resolve();
+      // `open` listeners go first, so a handshake sent from `onOpen` (e.g. auth) precedes
+      // whatever was queued while disconnected.
+      emit('open', event);
+      if (ws !== socket) return; // a listener closed or replaced it
       const queued = pending;
       pending = [];
       for (const data of queued) socket.send(data);
-      ready?.resolve();
-      emit('open', event);
     };
     socket.onmessage = event => receive(event, socket);
     socket.onerror = event => emit('error', event);
@@ -293,8 +314,6 @@ export function createClient<In = unknown, Out = unknown>(
     ) {
       const attempt = snapshot.attempt + 1;
       const delay = backoff(attempt);
-      // `ready` was fulfilled by the previous connection; future waiters wait for the next one.
-      if (ready?.settled) ready = null;
       set({ status: 'reconnecting', attempt });
       log(`reconnecting in ${delay}ms (attempt ${attempt})`);
       retryTimer = setTimeout(open, delay);
@@ -308,6 +327,7 @@ export function createClient<In = unknown, Out = unknown>(
 
   function fail(reason: unknown) {
     wanted = false;
+    opened = false;
     unbindWindow();
     pending = [];
     set({ status: 'closed' });
@@ -353,7 +373,7 @@ export function createClient<In = unknown, Out = unknown>(
     const schema = options.schema;
     if (!schema) return deliver(value as In, event, socket);
 
-    let result: ReturnType<typeof schema['~standard']['validate']>;
+    let result: ReturnType<(typeof schema)['~standard']['validate']>;
     try {
       result = schema['~standard'].validate(value);
     } catch (cause) {
@@ -396,22 +416,44 @@ export function createClient<In = unknown, Out = unknown>(
       ws.send(data);
       return true;
     }
-    if (options.queue === false) log('dropped message: socket is not open');
-    else pending.push(data);
+    if (queueLimit === 0) {
+      log('dropped message: socket is not open');
+      return false;
+    }
+    if (!getImpl()) {
+      // e.g. during a server render: this client can never connect, so don't hold on to it.
+      log('dropped message: no WebSocket implementation available');
+      return false;
+    }
+    pending.push(data);
+    if (pending.length > queueLimit) {
+      pending.shift();
+      log(`dropped oldest queued message: queue limit (${queueLimit}) reached`);
+    }
     return false;
   }
 
   function begin() {
     wanted = true;
-    if (ready?.settled) ready = null;
+    // Starting over after `close()` or giving up: wait for a new connection.
+    if (snapshot.status === 'idle' || snapshot.status === 'closed') {
+      opened = false;
+      if (ready?.settled) ready = null;
+    }
     snapshot = { ...snapshot, attempt: 0 }; // open() notifies
     bindWindow();
     open();
   }
 
-  function connect() {
+  /** Start connecting unless already wanted. Used by holders (`acquire`, `ready`). */
+  function ensureConnecting() {
     if (wanted || !getImpl()) return;
     begin();
+  }
+
+  function connect() {
+    pinned = true;
+    ensureConnecting();
   }
 
   function stop(code?: number, reason?: string) {
@@ -430,6 +472,8 @@ export function createClient<In = unknown, Out = unknown>(
   }
 
   function close(code = 1000, reason?: string) {
+    pinned = false;
+    opened = false;
     stop(code, reason);
     set({ status: 'closed', attempt: 0 });
     rejectReady(new Error('WebSocket was closed'));
@@ -449,11 +493,12 @@ export function createClient<In = unknown, Out = unknown>(
   }
 
   function teardown() {
-    if (refs > 0) return;
+    if (refs > 0 || pinned) return;
     // Someone may be suspended on `ready`; let the attempt finish.
     if (ready && !ready.settled) return;
     stop();
     ready = null;
+    opened = false;
     set({ status: 'idle', attempt: 0 });
     onTeardown?.();
   }
@@ -461,7 +506,7 @@ export function createClient<In = unknown, Out = unknown>(
   function acquire() {
     refs++;
     clearTimeout(teardownTimer);
-    if (snapshot.status === 'idle') connect();
+    if (snapshot.status === 'idle') ensureConnecting();
     let released = false;
     return () => {
       if (released) return;
@@ -490,12 +535,12 @@ export function createClient<In = unknown, Out = unknown>(
         startScheduled = true;
         queueMicrotask(() => {
           startScheduled = false;
-          if (snapshot.status === 'idle') connect();
+          if (snapshot.status === 'idle') ensureConnecting();
         });
       }
       if (!ready) {
         ready = createDeferred();
-        if (snapshot.status === 'open') ready.resolve();
+        if (opened) ready.resolve();
       }
       return ready.promise;
     },
@@ -527,11 +572,23 @@ export function createClient<In = unknown, Out = unknown>(
 }
 
 /**
- * Create a WebSocket client. Nothing connects until it is used by a hook,
- * `connect()` is called, or `ready` is read.
+ * Create a WebSocket client, usually at module level, to share across components.
  *
- * `url` may be a function (sync or async), called before every connection attempt;
- * use it to put a fresh auth token in the URL on each reconnect.
+ * Nothing connects until a hook uses it, `ready` is read, or `connect()` is called.
+ * It closes one tick after the last hook unmounts, unless `connect()` was called.
+ *
+ * @param url - A URL, or a function (sync or async) called before every connection
+ *   attempt, e.g. to put a fresh auth token in the URL on each reconnect.
+ * @typeParam In - Type of incoming messages. Inferred from `options.schema` if given.
+ * @typeParam Out - Type accepted by `send()`.
+ *
+ * @example
+ * ```ts
+ * type ChatIn = { user: string; text: string };
+ * type ChatOut = { text: string };
+ *
+ * export const chat = createWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', { json: true });
+ * ```
  */
 export function createWebSocket<In = unknown, Out = unknown>(
   url: UrlSource,

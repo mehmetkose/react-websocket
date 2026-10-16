@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://mehmetkose.github.io/react-websocket/
+    about: Guides, recipes and the full API reference.
+  - name: Questions and discussions
+    url: https://github.com/mehmetkose/react-websocket/discussions
+    about: Ask usage questions and share ideas here.

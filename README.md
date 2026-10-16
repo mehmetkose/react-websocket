@@ -1,18 +1,23 @@
-# react-websocket [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mehmetkose/react-websocket/edit/master/README.md) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket?ref=badge_shield)
+# react-websocket
 
-Hooks-first WebSocket client for React 18 and 19.
+**Hooks-first WebSocket client for React 18 and 19.** Shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 2.5 kB with zero dependencies.
 
-- **Shared connections:** components using the same URL share one socket, and StrictMode never opens duplicates.
-- **Auto-reconnect:** exponential backoff with jitter. It also retries right away when the browser comes back online or the tab becomes visible.
-- **Send queue:** `send()` before the socket is open just works; the message goes out on connect.
-- **Typed messages:** `json: true`, or your own parser, or validate with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype).
-- **Suspense:** `use(socket.ready)` waits until the socket is connected.
-- **SSR-safe:** never connects during a server render. Hooks are marked `'use client'`.
-- Zero dependencies, ESM + CJS, written in TypeScript.
+[![npm](https://img.shields.io/npm/v/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
+[![CI](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml)
+[![bundle size](https://img.shields.io/bundlejs/size/react-websocket)](https://bundlejs.com/?q=react-websocket)
+[![types](https://img.shields.io/npm/types/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
+[![license](https://img.shields.io/npm/l/react-websocket.svg)](LICENSE)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket?ref=badge_shield)
 
-## Help Wanted
+**[Documentation](https://mehmetkose.github.io/react-websocket/)** · [Getting started](https://mehmetkose.github.io/react-websocket/guide/getting-started) · [API](https://mehmetkose.github.io/react-websocket/api/) · [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Changelog](CHANGELOG.md)
 
-Things here are running very slowly as I have a lot of other stuff to take care at the moment so please don't be upset if I don't answer your question or if a PR sits unreviewed for a few days or weeks. Anyone interested in helping it move faster can help by submitting or reviewing PR's and answering each other's questions.
+- **Shared connections.** Components using the same URL share one socket. StrictMode, `<Activity>` and route transitions never open duplicates.
+- **Auto-reconnect.** Exponential backoff with jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. Optional heartbeats detect dead links.
+- **Send queue.** `send()` before the socket is open just works. The message goes out on connect.
+- **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
+- **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
+- **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
+- **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
 
 ## Install
 
@@ -26,55 +31,47 @@ npm install react-websocket
 import { useState } from 'react';
 import { useWebSocket } from 'react-websocket';
 
-function ProductDetail({ id }: { id: string }) {
-  const [count, setCount] = useState(90);
-  const { status, send } = useWebSocket<{ movement: number }>(`wss://api.example.com/live/product/${id}`, {
+type ChatIn = { user: string; text: string };
+type ChatOut = { text: string };
+
+function Chat() {
+  const [messages, setMessages] = useState<ChatIn[]>([]);
+  const { status, send } = useWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', {
     json: true,
-    onMessage: ({ movement }) => setCount(c => c + movement)
+    onMessage: message => setMessages(list => [...list, message])
   });
 
   return (
-    <div>
-      Count: <strong>{count}</strong> ({status})
-      <button onClick={() => send({ type: 'refresh' })}>Refresh</button>
-    </div>
+    <>
+      <p>{status}</p>
+      <ul>
+        {messages.map((m, i) => (
+          <li key={i}>
+            {m.user}: {m.text}
+          </li>
+        ))}
+      </ul>
+      <button onClick={() => send({ text: 'hi' })}>Say hi</button>
+    </>
   );
 }
 ```
 
-`useWebSocket(url, options)` returns:
-
-| Field | |
-| --- | --- |
-| `status` | `'idle' \| 'connecting' \| 'open' \| 'reconnecting' \| 'closed'` |
-| `lastMessage` | The latest (parsed) message, or `undefined` |
-| `attempt` | Consecutive failed attempts since the last successful open |
-| `send(message)` | Sends now, or queues until open. Returns `true` if it was sent immediately |
-| `close(code?, reason?)` | Closes and stops reconnecting |
-| `reconnect()` | Drops the socket and connects again right away |
-| `client` | The underlying client (see below) |
-
-`send`, `close` and `reconnect` keep the same identity between renders. Handlers (`onOpen`, `onMessage`, `onClose`, `onError`) always see your latest props and state, and changing them never reconnects. Pass `url = null` or `enabled: false` to stay disconnected.
-
-`useWebSocket` re-renders on every message, so it fits low-to-moderate traffic. For high-frequency streams, see below.
+Handlers always see your latest props and state, and changing them never reconnects. `send`, `close` and `reconnect` keep the same identity between renders.
 
 ## Shared clients
 
-Define a connection once at module level and use it anywhere:
+Define a connection once and use it anywhere, including outside React:
 
 ```tsx
 import { createWebSocket, useWebSocketEvent, useWebSocketStatus } from 'react-websocket';
-
-type ChatIn = { user: string; text: string };
-type ChatOut = { text: string };
 
 export const chat = createWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', { json: true });
 
 function Messages() {
   const [messages, setMessages] = useState<ChatIn[]>([]);
-  // Listen without re-rendering on every message.
-  useWebSocketEvent(chat, 'message', m => setMessages(list => [...list, m]));
-  return <ul>{messages.map((m, i) => <li key={i}>{m.user}: {m.text}</li>)}</ul>;
+  useWebSocketEvent(chat, 'message', m => setMessages(list => [...list, m])); // no re-render per message
+  return <ul>{/* … */}</ul>;
 }
 
 function Header() {
@@ -83,15 +80,15 @@ function Header() {
 }
 ```
 
-The client connects lazily, the first time a hook mounts or `ready` is read. It closes a tick after the last hook unmounts. That tick is why StrictMode's mount/unmount/mount and route transitions don't churn the socket.
+The client connects when the first component uses it and closes a tick after the last one unmounts.
 
-### Suspense
+## Suspense
 
 ```tsx
 import { use, Suspense } from 'react';
 
 function Room() {
-  use(chat.ready); // React 19: suspend until connected
+  use(chat.ready); // React 19: suspend until the first connection
   return <Messages />;
 }
 
@@ -102,110 +99,64 @@ function Room() {
 </ErrorBoundary>;
 ```
 
-`ready` resolves when the socket opens. It rejects (and goes to the error boundary) if the client gives up reconnecting or `close()` is called. During a server render it rejects, so React renders that boundary on the client instead.
+`ready` stays resolved through automatic reconnects, so a network blip shows your `status` UI instead of replacing the page with a spinner. It rejects if the client gives up or `close()` is called.
 
-## Options
+## API at a glance
 
-Pass these to `createWebSocket(url, options)` or `useWebSocket(url, options)`:
+| Export | |
+| --- | --- |
+| `useWebSocket(url \| client, options?)` | Connect; returns `{ status, lastMessage, attempt, send, close, reconnect, client }` |
+| `useWebSocketEvent(client, type, listener)` | Handle `'open'`, `'message'`, `'close'` or `'error'` without re-rendering |
+| `useWebSocketStatus(client)` | The status; re-renders only when it changes |
+| `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
+| `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 
 | Option | Default | |
 | --- | --- | --- |
 | `protocols` | | Sub-protocols for the `WebSocket` constructor |
 | `binaryType` | `'blob'` | |
 | `json` | `false` | `JSON.parse` incoming and `JSON.stringify` outgoing messages |
-| `parse(data)` | | Custom decoder; takes precedence over `json` |
-| `serialize(message)` | | Custom encoder; takes precedence over `json` |
-| `schema` | | Standard Schema to validate incoming messages. Types are inferred from it |
-| `reconnect` | `true` | `false`, or `{ maxAttempts: Infinity, minDelay: 1000, maxDelay: 30000, factor: 2, jitter: 0.5, shouldReconnect(close) }` |
-| `heartbeat` | | `{ interval, message: 'ping', pong?, timeout? }`. A missing reply within `timeout` forces a reconnect |
-| `queue` | `true` | Buffer `send()` calls while not open |
+| `parse(data)` / `serialize(message)` | | Custom codec; takes precedence over `json` |
+| `schema` | | Standard Schema validation; types are inferred |
+| `reconnect` | `true` | `false`, or `{ maxAttempts, minDelay, maxDelay, factor, jitter, shouldReconnect }` |
+| `heartbeat` | | `{ interval, message, pong, timeout }` |
+| `queue` | `true` | `false`, or `{ limit }` |
 | `logger` | | e.g. `console.debug` |
-| `WebSocket` | global | Custom implementation (tests, Node) |
+| `WebSocket` | global | Custom implementation for tests or Node |
 
-`useWebSocket` also accepts `onOpen`, `onMessage(message, event)`, `onClose({ code, reason, wasClean })`, `onError(error)` and `enabled`.
+`useWebSocket` also takes `onOpen`, `onMessage`, `onClose`, `onError` and `enabled`. The [API reference](https://mehmetkose.github.io/react-websocket/api/) documents everything.
 
-Hooks that share a URL also share one connection, and its options come from whichever hook created it first. If you need different options for the same URL, use `createWebSocket`.
+## Guides
 
-Messages that fail `parse` or `schema` aren't delivered. They're reported to `onError` as a `MessageError` carrying `data` and `issues`.
+- [Shared clients](https://mehmetkose.github.io/react-websocket/guide/shared-clients) · [Messages and types](https://mehmetkose.github.io/react-websocket/guide/messages) · [Reconnecting and heartbeats](https://mehmetkose.github.io/react-websocket/guide/reconnecting)
+- [Suspense](https://mehmetkose.github.io/react-websocket/guide/suspense) · [Server rendering and Next.js](https://mehmetkose.github.io/react-websocket/guide/ssr) · [StrictMode, Activity and lifecycle](https://mehmetkose.github.io/react-websocket/guide/lifecycle)
+- [Authentication](https://mehmetkose.github.io/react-websocket/guide/authentication) · [Performance](https://mehmetkose.github.io/react-websocket/guide/performance) · [Testing](https://mehmetkose.github.io/react-websocket/guide/testing) · [Without React](https://mehmetkose.github.io/react-websocket/guide/without-react)
+- [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Troubleshooting](https://mehmetkose.github.io/react-websocket/troubleshooting) · [Migrating from v2](https://mehmetkose.github.io/react-websocket/migration)
 
-```ts
-import { z } from 'zod';
+The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it locally.
 
-const Tick = z.object({ symbol: z.string(), price: z.number() });
-const prices = createWebSocket('wss://api.example.com/ticks', { json: true, schema: Tick });
-// prices.getSnapshot().lastMessage is typed { symbol: string; price: number } | undefined
-```
+## Compatibility
 
-### Without React
-
-`react-websocket/core` exports `createWebSocket` with no React dependency. The client is a plain store with `subscribe`, `getSnapshot`, `on`, `send`, `connect`, `close`, `reconnect` and `ready`.
-
-## Recipes
-
-### Authentication
-
-Browsers can't set headers on a WebSocket. Send the token in the URL (or as a sub-protocol) instead. If you pass a function as `url`, it's called before **every** connection attempt, so reconnects pick up a fresh token:
-
-```ts
-const live = createWebSocket(async () => {
-  const token = await getFreshToken();
-  return `wss://api.example.com/live?token=${encodeURIComponent(token)}`;
-});
-```
-
-If the function throws or rejects, that counts as a failed attempt: you get `onError`, then a retry with backoff. To fail for good on an auth close code, use `reconnect: { shouldReconnect: close => close.code !== 4001 }`.
-
-### Many message types on one socket
-
-Django Channels groups, pub/sub topics and similar features all arrive on the same socket. Tag messages on the server and route them on the client:
-
-```tsx
-type LiveEvent = { group: 'prices'; price: number } | { group: 'chat'; text: string };
-const live = createWebSocket<LiveEvent>('wss://api.example.com/ws', { json: true });
-
-function Chat() {
-  useWebSocketEvent(live, 'message', event => {
-    if (event.group === 'chat') addLine(event.text);
-  });
-  // …
-}
-```
-
-### Changing the URL
-
-With `useWebSocket(url)`, changing `url` closes the old connection and opens the new one. For example, ``useWebSocket(`wss://…/rooms/${roomId}`)`` follows `roomId`. Debounce the URL if it comes straight from a text field.
-
-### Intervals and throttling
-
-The server decides when to push messages. To poll, call `send` from your own `setInterval`. For a fast stream you don't need to render on every message: collect messages with `useWebSocketEvent` and update state on your own schedule.
-
-### Testing
-
-Pass a fake implementation through the `WebSocket` option (for example [mock-socket](https://github.com/thoov/mock-socket)). Under Node without a DOM, or during a server render, nothing connects unless you pass one:
-
-```ts
-useWebSocket(url, { WebSocket: MockWebSocket });
-```
+| | |
+| --- | --- |
+| React | 18 and 19 (`use(client.ready)` needs 19; `<Activity>` is handled on 19.2+). Tested in CI against both |
+| Runtimes | Modern browsers; Node via the `WebSocket` option |
+| Frameworks | Vite, Next.js (App and Pages Router), Remix/React Router, Astro islands, and any React setup |
 
 ## Migrating from v2
 
-v2 was a class component that rendered an empty `<div>`. v3 replaces it with hooks.
-
-| v2 | v3 |
-| --- | --- |
-| `<Websocket url onMessage />` | `useWebSocket(url, { onMessage })` |
-| `ref.sendMessage(msg)` | `const { send } = useWebSocket(...)` |
-| `onOpen` / `onClose(code, reason)` / `onError` | `onOpen` / `onClose({ code, reason, wasClean })` / `onError` |
-| `reconnect={false}` | `reconnect: false` |
-| `reconnectIntervalInMilliSeconds={n}` | `reconnect: { minDelay: n, maxDelay: n, jitter: 0 }` |
-| `protocol="x"` | `protocols: 'x'` |
-| `debug` | `logger: console.debug` |
-| `ref.open()` / `ref.close()` | `enabled`, or `reconnect()` / `close()` |
-| Raw `evt.data` passed to `onMessage` | Same by default; `json: true` to parse |
+v2 was a `<Websocket>` class component. v3 replaces it with hooks: `<Websocket url onMessage />` becomes `useWebSocket(url, { onMessage })`, and `ref.sendMessage(msg)` becomes `send(msg)`. See the [migration guide](https://mehmetkose.github.io/react-websocket/migration) for the full mapping.
 
 ## Example
 
-See [`example/`](example) for a Tornado broadcast server and a Vite + React 19 client.
+[`example/`](example) has a Tornado broadcast server and a Vite + React 19 client.
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). To report a vulnerability, follow [SECURITY.md](SECURITY.md).
 
 ## License
+
+[MIT](LICENSE)
+
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket?ref=badge_large)

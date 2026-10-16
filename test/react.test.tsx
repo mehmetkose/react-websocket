@@ -1,5 +1,7 @@
-import { StrictMode, Suspense, use, useState } from 'react';
+import { Activity, StrictMode, Suspense, use, useState } from 'react';
 import { act, render, screen } from '@testing-library/react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import {
   createWebSocket,
   useWebSocket,
@@ -8,6 +10,10 @@ import {
   type WebSocketClient
 } from '../src';
 import { MockImpl, MockWebSocket } from './mock';
+
+// React 18 has neither `use` nor `<Activity>`; CI also runs this suite against it.
+const itReact19 = it.skipIf(typeof use !== 'function');
+const itActivity = it.skipIf(typeof Activity === 'undefined');
 
 let n = 0;
 const uniqueUrl = () => `ws://test/${++n}`;
@@ -58,7 +64,10 @@ describe('useWebSocket(url)', () => {
     );
     expect(MockWebSocket.instances).toHaveLength(1);
     act(() => MockWebSocket.last.receive('x'));
-    expect(screen.getAllByRole('button').map(b => b.textContent)).toEqual(['connecting:x', 'connecting:x']);
+    expect(screen.getAllByRole('button').map(b => b.textContent)).toEqual([
+      'connecting:x',
+      'connecting:x'
+    ]);
   });
 
   it('opens a single socket under StrictMode', () => {
@@ -70,6 +79,84 @@ describe('useWebSocket(url)', () => {
     act(() => vi.runAllTimers());
     expect(MockWebSocket.instances).toHaveLength(1);
     expect(MockWebSocket.last.closedWith).toBeUndefined();
+  });
+
+  itActivity('releases the connection while hidden by <Activity> and reconnects when shown', () => {
+    const url = uniqueUrl();
+    const view = (mode: 'visible' | 'hidden') => (
+      <Activity mode={mode}>
+        <Status url={url} />
+      </Activity>
+    );
+    const { rerender } = render(view('visible'));
+    act(() => MockWebSocket.last.open());
+
+    rerender(view('hidden'));
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.last.closedWith).toBeDefined();
+
+    // Like a remount: the URL's only user left, so it starts from a fresh client.
+    rerender(view('visible'));
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances.filter(s => !s.closedWith)).toHaveLength(1);
+    expect(screen.getByRole('button').textContent).toBe('connecting:-');
+    act(() => MockWebSocket.last.open());
+    expect(screen.getByRole('button').textContent).toBe('open:-');
+  });
+
+  itActivity("keeps a module-level client's lastMessage across <Activity> hide/show", () => {
+    const client = createWebSocket<string>(uniqueUrl(), { WebSocket: MockImpl });
+    function Last() {
+      const { status, lastMessage } = useWebSocket(client);
+      return <p>{`${status}:${lastMessage ?? '-'}`}</p>;
+    }
+    const view = (mode: 'visible' | 'hidden') => (
+      <Activity mode={mode}>
+        <Last />
+      </Activity>
+    );
+    const { rerender } = render(view('visible'));
+    act(() => MockWebSocket.last.open());
+    act(() => MockWebSocket.last.receive('kept'));
+
+    rerender(view('hidden'));
+    act(() => vi.runAllTimers());
+    expect(client.getSnapshot().status).toBe('idle');
+
+    rerender(view('visible'));
+    expect(screen.getByRole('paragraph').textContent).toBe('connecting:kept');
+    expect(MockWebSocket.instances).toHaveLength(2);
+  });
+
+  itActivity('does not open a socket for content pre-rendered in a hidden <Activity>', () => {
+    render(
+      <Activity mode="hidden">
+        <Status url={uniqueUrl()} />
+      </Activity>
+    );
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances).toHaveLength(0);
+  });
+
+  it('opens a single socket when hydrating under StrictMode', async () => {
+    const url = uniqueUrl();
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<Status url={url} />);
+    document.body.append(container);
+    await act(async () => {
+      hydrateRoot(
+        container,
+        <StrictMode>
+          <Status url={url} />
+        </StrictMode>
+      );
+    });
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.last.closedWith).toBeUndefined();
+    expect(container.textContent).toBe('connecting:-');
+    container.remove();
   });
 
   it('closes after unmount', () => {
@@ -167,7 +254,7 @@ describe('module-level clients', () => {
     expect(screen.getByText('open')).toBeTruthy();
   });
 
-  it('use(client.ready) suspends until connected', async () => {
+  itReact19('use(client.ready) suspends until connected', async () => {
     vi.useRealTimers();
     function Room() {
       use(chat.ready);
@@ -189,7 +276,7 @@ describe('module-level clients', () => {
     expect(MockWebSocket.instances).toHaveLength(1);
   });
 
-  it('use(client.ready) does not suspend when already open', () => {
+  itReact19('use(client.ready) does not suspend when already open', () => {
     chat.connect();
     MockWebSocket.last.open();
     void chat.ready;
@@ -203,6 +290,23 @@ describe('module-level clients', () => {
       </Suspense>
     );
     expect(screen.getByText('ready')).toBeTruthy();
+  });
+
+  itReact19('use(client.ready) keeps content on screen during an automatic reconnect', () => {
+    chat.connect();
+    MockWebSocket.last.open();
+    function Room() {
+      use(chat.ready);
+      return <span>room:{useWebSocketStatus(chat)}</span>;
+    }
+    render(
+      <Suspense fallback={<span>fallback</span>}>
+        <Room />
+      </Suspense>
+    );
+    act(() => MockWebSocket.last.finishClose(1006));
+    expect(screen.getByText('room:reconnecting')).toBeTruthy();
+    expect(screen.queryByText('fallback')).toBeNull();
   });
 
   it('useWebSocket(client) exposes the client state and actions', () => {
@@ -281,7 +385,10 @@ describe('reported issues', () => {
 
   it('#37: send() needs no ref and serializes objects with json', () => {
     function Sender() {
-      const { send } = useWebSocket<unknown, { hello: string }>(url, { WebSocket: MockImpl, json: true });
+      const { send } = useWebSocket<unknown, { hello: string }>(url, {
+        WebSocket: MockImpl,
+        json: true
+      });
       return <button onClick={() => send({ hello: 'server' })}>send</button>;
     }
     const url = uniqueUrl();

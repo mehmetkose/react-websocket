@@ -33,7 +33,8 @@ function Composer() {
           {status}
           {status === 'reconnecting' ? ` (attempt ${attempt})` : ''}
         </span>{' '}
-        <button onClick={reconnect}>Reconnect</button> <button onClick={() => close()}>Close</button>
+        <button onClick={reconnect}>Reconnect</button>{' '}
+        <button onClick={() => close()}>Close</button>
       </p>
       <form onSubmit={submit}>
         <input value={text} onChange={e => setText(e.target.value)} placeholder="Say something" />{' '}

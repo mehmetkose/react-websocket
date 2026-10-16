@@ -69,6 +69,24 @@ describe('sending', () => {
     expect(MockWebSocket.last.sent).toEqual(['a', 'b', 'c']);
   });
 
+  it('sends messages from open listeners before the queue (auth handshakes)', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.on('open', () => ws.send('auth'));
+    ws.send('queued');
+    ws.connect();
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['auth', 'queued']);
+  });
+
+  it('does not flush the queue if an open listener closes the client', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.on('open', () => ws.close());
+    ws.send('queued');
+    ws.connect();
+    expect(() => MockWebSocket.last.open()).not.toThrow();
+    expect(MockWebSocket.last.sent).toEqual([]);
+  });
+
   it('drops instead of queueing when queue is false', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: false });
     ws.connect();
@@ -77,8 +95,23 @@ describe('sending', () => {
     expect(MockWebSocket.last.sent).toEqual([]);
   });
 
+  it('drops the oldest queued message beyond queue.limit', () => {
+    const logger = vi.fn();
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { limit: 2 }, logger });
+    ws.connect();
+    ws.send('a');
+    ws.send('b');
+    ws.send('c');
+    expect(logger).toHaveBeenCalledWith(expect.stringContaining('queue limit (2)'));
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['b', 'c']);
+  });
+
   it('serializes with json or a custom serializer', () => {
-    const json = createWebSocket<unknown, { n: number }>('ws://x', { WebSocket: MockImpl, json: true });
+    const json = createWebSocket<unknown, { n: number }>('ws://x', {
+      WebSocket: MockImpl,
+      json: true
+    });
     json.connect();
     MockWebSocket.last.open();
     json.send({ n: 1 });
@@ -325,7 +358,11 @@ describe('heartbeat', () => {
     vi.advanceTimersByTime(1000);
     vi.advanceTimersByTime(500);
     expect(socket.closedWith).toEqual({ code: 4000, reason: 'heartbeat timeout' });
-    expect(onClose).toHaveBeenCalledWith({ code: 4000, reason: 'heartbeat timeout', wasClean: false });
+    expect(onClose).toHaveBeenCalledWith({
+      code: 4000,
+      reason: 'heartbeat timeout',
+      wasClean: false
+    });
     expect(ws.getSnapshot().status).toBe('reconnecting');
 
     socket.finishClose(4000); // late close of the dead socket is ignored
@@ -348,18 +385,43 @@ describe('ready', () => {
     expect(ws.ready).toBe(ready);
   });
 
-  it('is a new pending promise while reconnecting', async () => {
+  it('stays resolved while reconnecting automatically', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
     ws.connect();
     MockWebSocket.last.open();
     const first = ws.ready;
     MockWebSocket.last.finishClose();
-    const second = ws.ready;
-    expect(second).not.toBe(first);
-    expect((second as any).status).toBe('pending');
-    vi.advanceTimersByTime(1000);
+    expect(ws.getSnapshot().status).toBe('reconnecting');
+    expect(ws.ready).toBe(first);
+    expect((first as any).status).toBe('fulfilled');
+  });
+
+  it('is resolved when first read during a reconnect after having opened', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+    ws.connect();
     MockWebSocket.last.open();
-    await expect(second).resolves.toBeUndefined();
+    MockWebSocket.last.finishClose();
+    expect((ws.ready as any).status).toBe('fulfilled');
+  });
+
+  it('rejects after giving up and is pending again after reconnect()', async () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 1 }
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().status).toBe('closed');
+    await expect(ws.ready).rejects.toThrow('code 1006');
+
+    ws.reconnect();
+    const next = ws.ready;
+    expect((next as any).status).toBe('pending');
+    MockWebSocket.last.open();
+    await expect(next).resolves.toBeUndefined();
   });
 
   it('rejects after close() and is fresh again after connect()', async () => {
@@ -414,6 +476,26 @@ describe('acquire()', () => {
     release();
     vi.runAllTimers();
     expect(ws.getSnapshot().status).toBe('connecting');
+  });
+
+  it('keeps a connect()ed client open after the last release, until close()', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    const release = ws.acquire();
+    MockWebSocket.last.open();
+    release();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('open');
+    expect(MockWebSocket.last.closedWith).toBeUndefined();
+
+    ws.close();
+    expect(ws.getSnapshot().status).toBe('closed');
+    // After close() it is reference-counted again.
+    const releaseAgain = ws.acquire();
+    ws.reconnect();
+    releaseAgain();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('idle');
   });
 });
 
@@ -474,7 +556,9 @@ describe('reported issues', () => {
       ws.on('error', onError);
       ws.connect();
       await vi.waitFor(() => expect(ws.getSnapshot().status).toBe('reconnecting'));
-      expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'token endpoint down' }));
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'token endpoint down' })
+      );
       await vi.advanceTimersByTimeAsync(1000);
       expect(MockWebSocket.instances).toHaveLength(1);
     });

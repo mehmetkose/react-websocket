@@ -1,0 +1,119 @@
+# Contributing
+
+Thanks for helping improve react-websocket. Bug reports, documentation fixes, tests and features are all welcome.
+
+## A note on response times
+
+This project is maintained in spare time, and the maintainer has a lot of other things to take care of. Please don't be discouraged if a question goes unanswered or a pull request waits a few days, or even weeks, for review. It's not a sign that your contribution isn't wanted.
+
+The fastest way to move things along is to help each other: reviewing open pull requests, reproducing reported bugs, and answering questions in issues and [discussions](https://github.com/mehmetkose/react-websocket/discussions) all make a real difference.
+
+## Before you start
+
+- **Bugs:** [open an issue](https://github.com/mehmetkose/react-websocket/issues/new/choose) with a minimal reproduction, if there isn't one already.
+- **Features and API changes:** open an issue or discussion first, so we can agree on the design before you spend time on code.
+- **Security issues:** don't open a public issue. See [SECURITY.md](SECURITY.md).
+
+## Setup
+
+You need Node.js 22 or later.
+
+```sh
+git clone https://github.com/mehmetkose/react-websocket.git
+cd react-websocket
+npm ci
+npm test
+```
+
+## Scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm test` | Run the test suite once |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run tests with a coverage report (and enforce the thresholds) |
+| `npm run lint` | ESLint, including `eslint-plugin-react-hooks` |
+| `npm run format` / `format:check` | Format with Prettier / check formatting |
+| `npm run typecheck` | Type-check `src`, `test` and `example` |
+| `npm run build` | Build `dist/` (ESM, CJS and type definitions) with tsup |
+| `npm run check:package` | Build, then validate the package with publint and Are the Types Wrong |
+| `npm run size` | Build, then check bundle sizes against the size-limit budgets |
+| `npm run docs:dev` | Run the documentation site locally |
+| `npm run example:server` | Start the example's Tornado WebSocket server (`pip install -r example/requirements.txt` first) |
+| `npm run example` | Start the example's Vite app against that server |
+
+Before opening a pull request, run:
+
+```sh
+npm run lint && npm run format:check && npm run typecheck && npm test && npm run check:package && npm run size
+```
+
+CI runs the same checks, plus the tests against React 18.
+
+## Project layout
+
+```
+src/
+  types.ts     Public types, options and MessageError (with TSDoc: it's the IDE documentation)
+  client.ts    createWebSocket: connection, reconnect, queue, heartbeat, decoding, ready
+  core.ts      The react-websocket/core entry (no React)
+  react.ts     The hooks and the URL-keyed registry of shared clients
+  index.ts     The main entry (core + hooks), built with a 'use client' banner
+test/
+  mock.ts          MockWebSocket: a controllable fake WebSocket
+  core.test.ts     The client, without React
+  react.test.tsx   The hooks (jsdom)
+  ssr.test.tsx     Server rendering (Node environment)
+docs/          The VitePress documentation site
+example/       Vite + React example app and Tornado server
+```
+
+## Writing tests
+
+- **Use `MockWebSocket`** from `test/mock.ts`, passed through the `WebSocket` option. Drive the server's side with `open()`, `receive(data)` and `finishClose(code, reason)`, and inspect `sent` and `closedWith`.
+- **Use fake timers** (`vi.useFakeTimers()`) for anything involving reconnect delays, heartbeats or the deferred close after unmount. Pass `jitter: 0` for exact delays. Suspense tests need real timers, because React schedules retries itself.
+- **Give each test a unique URL** (see `uniqueUrl()` in `react.test.tsx`), since hooks with the same URL share a client.
+- **Wrap updates in `act()`** in React tests.
+- **Keep React 18 working.** CI also runs the suite against React 18. Tests that need React 19 APIs must be skipped there, using the helpers at the top of `react.test.tsx`:
+
+  ```ts
+  const itReact19 = it.skipIf(typeof use !== 'function');
+  const itActivity = it.skipIf(typeof Activity === 'undefined');
+  ```
+
+- **Name regression tests after the issue** they cover (`'#46: changing the url reconnects to the new one'`).
+
+## Pull request checklist
+
+- [ ] Tests cover the change, and `npm test` passes.
+- [ ] Lint, formatting, types, package checks and size budgets pass (see above).
+- [ ] Public API changes have TSDoc in `src/types.ts` or `src/react.ts`, and the relevant pages in `docs/` are updated.
+- [ ] `CHANGELOG.md` has an entry under the unreleased version.
+- [ ] The PR description explains the why, and links the issue it fixes.
+
+Keep pull requests focused: one fix or feature per PR is much quicker to review.
+
+## Code style
+
+Prettier and ESLint enforce formatting and the hooks rules. Beyond that:
+
+- Keep the library dependency-free and the bundles small; the size budgets will tell you.
+- Match the existing comment style: short comments that explain *why*, not *what*.
+- Behaviour must be safe under StrictMode, `<Activity>`, concurrent rendering and server rendering.
+
+## Releasing
+
+For maintainers:
+
+1. Update `version` in `package.json` (`npm version <major|minor|patch> --no-git-tag-version`).
+2. Move the `Unreleased` entries in `CHANGELOG.md` under the new version and date.
+3. Commit, push, and make sure CI is green on `master`.
+4. Create a GitHub release with a tag matching the version (for example `3.0.0`), using the changelog entry as notes.
+
+Publishing the release runs `.github/workflows/release.yml`, which runs every check (`prepublishOnly`) and publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements) through npm trusted publishing. No npm token is stored in the repository. One-time setup: on npmjs.com, add a trusted publisher for this repository with the workflow `release.yml` and environment `npm`, and create the `npm` environment in the GitHub repository settings.
+
+The documentation site deploys to GitHub Pages from `master` through `.github/workflows/docs.yml`.
+
+## License
+
+By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).

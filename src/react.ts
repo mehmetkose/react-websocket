@@ -1,5 +1,7 @@
 import { useEffect, useInsertionEffect, useRef, useSyncExternalStore } from 'react';
-import { createClient } from './client';
+// Import the client through the `core` entry: the build keeps it external, so both entries
+// share one copy of it (and of `MessageError`).
+import { createWebSocket } from './core';
 import type {
   CloseInfo,
   EventMap,
@@ -9,23 +11,40 @@ import type {
   WebSocketOptions
 } from './types';
 
+/**
+ * Per-component event handlers. They always see the component's latest props and
+ * state, and changing them never reconnects.
+ */
 export interface WebSocketHandlers<In> {
+  /** The socket opened (initially or after a reconnect). */
   onOpen?: (event: Event) => void;
+  /** A message arrived and passed `parse`/`json` and `schema`. */
   onMessage?: (message: In, event: MessageEvent) => void;
+  /** A socket closed. Called whether or not it will be retried. */
   onClose?: (close: CloseInfo) => void;
+  /** A socket error `Event`, a `MessageError`, or an `Error` from the constructor or `url` function. */
   onError?: (error: Event | Error) => void;
-  /** `false` releases this component's hold on the connection and stops its handlers. Default: true. */
+  /**
+   * `false` releases this component's hold on the connection and stops its handlers.
+   * The connection closes once nothing else holds it.
+   * @default true
+   */
   enabled?: boolean;
 }
 
+/** Options for `useWebSocket(url, options)`: connection options plus handlers. */
 export interface UseWebSocketOptions<In, Out>
-  extends WebSocketOptions<In, Out>,
-    WebSocketHandlers<In> {}
+  extends WebSocketOptions<In, Out>, WebSocketHandlers<In> {}
 
+/** What `useWebSocket` returns: the current {@link Snapshot} plus stable actions. */
 export interface UseWebSocketResult<In, Out> extends Snapshot<In> {
+  /** Send now, or queue until open. Returns `true` if sent immediately. Stable identity. */
   send: (message: Out) => boolean;
+  /** Close and stop reconnecting (for every component sharing the connection). Stable identity. */
   close: (code?: number, reason?: string) => void;
+  /** Drop the socket and connect again right away. Stable identity. */
   reconnect: () => void;
+  /** The underlying client, or `null` when the URL is `null`/`undefined`. */
   client: WebSocketClient<In, Out> | null;
 }
 
@@ -36,18 +55,24 @@ const noopSubscribe = () => () => {};
 const noopSend = () => false;
 const noop = () => {};
 
+// Same key as `ON_TEARDOWN` in ./client, which this entry must not import directly.
+const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
+
 // Hooks given the same URL (and protocols) share one connection.
 const registry = new Map<string, WebSocketClient<any, any>>();
 
 function sharedClient<In, Out>(url: string, options: WebSocketOptions<In, Out>) {
   // Don't let server renders accumulate clients that can never be torn down.
-  if (typeof window === 'undefined') return createClient(url, options);
+  if (typeof window === 'undefined') return createWebSocket(url, options);
   const key = `${url}\u0000${JSON.stringify(options.protocols ?? null)}`;
   let client = registry.get(key) as WebSocketClient<In, Out> | undefined;
   if (!client) {
-    const created: WebSocketClient<In, Out> = createClient(url, options, () => {
-      if (registry.get(key) === created) registry.delete(key);
-    });
+    const created: WebSocketClient<In, Out> = createWebSocket(url, {
+      ...options,
+      [ON_TEARDOWN]: () => {
+        if (registry.get(key) === created) registry.delete(key);
+      }
+    } as WebSocketOptions<In, Out>);
     registry.set(key, created);
     client = created;
   }
@@ -70,11 +95,27 @@ function useHold(client: WebSocketClient<any, any> | null, enabled: boolean) {
 }
 
 /**
- * Connect to `url` (shared by every hook using the same URL) or use a client from
- * `createWebSocket()`. Pass `null` to stay disconnected.
+ * Connect to a WebSocket and re-render with its status and latest message.
  *
- * Re-renders on status changes and on every message; for high-frequency streams
- * prefer `useWebSocketEvent` + `useWebSocketStatus`.
+ * - With a URL, every component using the same URL (and `protocols`) shares one
+ *   connection. Its options come from whichever component created it first.
+ * - With a client from `createWebSocket()`, options are the client's; only handlers
+ *   and `enabled` apply here.
+ * - With `null` or `undefined`, nothing connects and the status stays `idle`.
+ *
+ * The connection opens on mount and closes one tick after the last component using it
+ * unmounts, so StrictMode and `<Activity>` don't open duplicate sockets.
+ *
+ * Re-renders on status changes and on every message. For high-frequency streams use
+ * `useWebSocketEvent` and `useWebSocketStatus` instead.
+ *
+ * @example
+ * ```tsx
+ * const { status, lastMessage, send } = useWebSocket<Price, Order>('wss://api.example.com/prices', {
+ *   json: true,
+ *   onMessage: price => console.log(price)
+ * });
+ * ```
  */
 export function useWebSocket<In = unknown, Out = unknown>(
   url: string | null | undefined,
@@ -120,7 +161,15 @@ export function useWebSocket<In, Out>(
   };
 }
 
-/** Listen to a client's events without re-rendering. Keeps the connection open while mounted. */
+/**
+ * Listen to a client's events without re-rendering the component. The listener always
+ * sees the latest props and state. Keeps the connection open while mounted.
+ *
+ * @example
+ * ```tsx
+ * useWebSocketEvent(chat, 'message', message => setMessages(list => [...list, message]));
+ * ```
+ */
 export function useWebSocketEvent<In, K extends keyof EventMap<In>>(
   client: WebSocketClient<In, any> | null | undefined,
   type: K,
@@ -139,7 +188,15 @@ export function useWebSocketEvent<In, K extends keyof EventMap<In>>(
   }, [client, type, latest]);
 }
 
-/** Just the connection status; re-renders only when it changes. Keeps the connection open while mounted. */
+/**
+ * The connection status of a client. Re-renders only when the status changes, not on
+ * messages. Keeps the connection open while mounted.
+ *
+ * @example
+ * ```tsx
+ * const status = useWebSocketStatus(chat); // 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed'
+ * ```
+ */
 export function useWebSocketStatus(client: WebSocketClient<any, any> | null | undefined): Status {
   const status = useSyncExternalStore(
     client ? client.subscribe : noopSubscribe,

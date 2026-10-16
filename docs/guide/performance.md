@@ -1,0 +1,116 @@
+# Performance
+
+This page explains when components re-render, how to handle high-frequency streams, and what the library costs in bundle size.
+
+## What re-renders when
+
+| Hook | Re-renders on |
+| --- | --- |
+| [`useWebSocket`](../api/use-websocket.md) | Every status change **and every message** (`lastMessage` changes) |
+| [`useWebSocketStatus`](../api/use-websocket-status.md) | Status changes only |
+| [`useWebSocketEvent`](../api/use-websocket-event.md) | Never. It calls your listener instead |
+
+`useWebSocket` is the convenient choice for chat, notifications and other streams of a few messages per second. For market data, telemetry, cursors or anything that can send dozens of messages per second, split the work:
+
+- `useWebSocketStatus(client)` for the connection indicator.
+- `useWebSocketEvent(client, 'message', listener)` to receive messages without rendering, and update state on your own schedule.
+
+## Batching a fast stream
+
+This component receives every tick but renders at most once per animation frame:
+
+```tsx
+import { useEffect, useRef, useState } from 'react';
+import { createWebSocket, useWebSocketEvent, useWebSocketStatus } from 'react-websocket';
+
+type Tick = { symbol: string; price: number };
+
+const ticks = createWebSocket<Tick>('wss://api.example.com/ticks', { json: true });
+
+export function Prices() {
+  const status = useWebSocketStatus(ticks);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const buffer = useRef<Record<string, number>>({});
+  const frame = useRef(0);
+
+  useWebSocketEvent(ticks, 'message', tick => {
+    buffer.current[tick.symbol] = tick.price;
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      const batch = buffer.current;
+      buffer.current = {};
+      setPrices(previous => ({ ...previous, ...batch }));
+    });
+  });
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  return (
+    <section>
+      <p>Feed: {status}</p>
+      <ul>
+        {Object.entries(prices).map(([symbol, price]) => (
+          <li key={symbol}>
+            {symbol}: {price}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+```
+
+A few things to note:
+
+- React already batches state updates made in the same task, but each WebSocket message is its own task, so without a buffer every message is a render.
+- You can swap `requestAnimationFrame` for `setTimeout(…, 250)` to throttle further.
+- If you only need the latest value and never render it (say, to send it with the next order), keep it in a ref and skip state entirely.
+
+## Expensive derived UI
+
+When a message triggers expensive rendering (a big chart, a filtered table), keep the input responsive by marking that work as non-urgent.
+
+Wrap the state update in `startTransition`:
+
+```tsx
+import { startTransition, useState } from 'react';
+
+useWebSocketEvent(feed, 'message', rows => {
+  startTransition(() => setRows(rows));
+});
+```
+
+Or defer the expensive child with `useDeferredValue`:
+
+```tsx
+import { useDeferredValue } from 'react';
+
+const { lastMessage } = useWebSocket(feed);
+const deferred = useDeferredValue(lastMessage);
+return <BigChart data={deferred} />; // wrap BigChart in memo()
+```
+
+Keep updates that must feel instant, like a connection indicator or the message the user just sent, outside of transitions.
+
+## React Compiler and memoization
+
+The hooks are compatible with the [React Compiler](https://react.dev/learn/react-compiler) and with hand-written memoization:
+
+- **Handlers don't need `useCallback`.** `onMessage`, `onOpen`, `onClose`, `onError` and `useWebSocketEvent` listeners always see your latest props and state, and passing a new function never reconnects.
+- **The options object doesn't need `useMemo`.** For URL hooks, connection options are read once, when the shared client is created.
+- **Returned actions are stable.** `send`, `close` and `reconnect` from `useWebSocket` keep the same identity across renders, so you can pass them to memoized children or list them in effect dependencies.
+- **Snapshots are immutable.** `getSnapshot()` returns the same object until something changes, as `useSyncExternalStore` requires.
+
+## Bundle size
+
+| Entry | Import | Size (min + gzip) |
+| --- | --- | --- |
+| `react-websocket` | `useWebSocket` | ~2.5 kB |
+| `react-websocket/core` | `createWebSocket` | ~2.2 kB |
+
+Sizes are measured by [size-limit](https://github.com/ai/size-limit) in CI, with budgets that fail the build if they grow. React is a peer dependency and not counted.
+
+- **Zero dependencies.** Nothing else is installed with the package.
+- **Tree-shakeable.** The package is marked `"sideEffects": false` and ships ES modules, so bundlers drop what you don't import.
+- **`react-websocket/core`** has no React import at all; see [Without React](./without-react.md).
