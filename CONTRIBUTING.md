@@ -46,6 +46,7 @@ npm test
 | `npm run example:hono` | Build the library, install it into the Hono example, and start its server and Vite app on http://localhost:5173 |
 | `npm run example:astro` | Build the library, install it into the Astro example, and start the demo on http://localhost:4321 |
 | `npm run example:remix` | Build the library, install it into the Remix 3 example, and start the demo on http://localhost:44100 |
+| `npm run example:game` | Build the library, install it into the game example, and start its server and Vite app on http://localhost:5180 |
 
 Before opening a pull request, run:
 
@@ -65,12 +66,14 @@ src/
   react.ts     The hooks and the URL-keyed registry of shared clients
   index.ts     The main entry (core + hooks), built with a 'use client' banner
   chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
+  timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
   react.test.tsx   The hooks (jsdom)
   ssr.test.tsx     Server rendering (Node environment)
   chaos.test.ts    The chaos WebSocket, alone and with the client
+  timeline.test.ts The timeline, with fake timers standing in for the clock
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly
@@ -78,6 +81,7 @@ examples/
   hono/        Vite + React chat against a Hono server, sharing message types, with the built package
   astro/       Astro islands demo of every feature, with its own WebSocket server and the built package
   remix/       Remix 3 demo of every feature with react-websocket/core (no React), with the built package
+  game/        Multiplayer canvas game: a Node server with a fixed tick, the timeline and a chaos panel
 ```
 
 ## Writing tests

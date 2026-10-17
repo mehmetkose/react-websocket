@@ -57,10 +57,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 ### Games
 
-- **Snapshot interpolation, prediction and rollback** (`createWebSocketTimeline`). Buffer server snapshots by
-  server time and render at `serverNow() - delay`. Inputs carry sequence numbers; when the server confirms
-  one, replay the inputs it hasn't seen yet. Every multiplayer web game rewrites this, and the clock sync it
-  needs is already here.
 - **Adaptive send rate.** Lower the input tick rate and coalesce keyed sends based on RTT and
   `bufferedAmount`, so players on poor connections degrade smoothly instead of building up lag. Builds on
   `send(message, { maxBuffered })`.

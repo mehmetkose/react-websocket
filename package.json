@@ -37,6 +37,16 @@
         "default": "./dist/chaos.cjs"
       }
     },
+    "./timeline": {
+      "import": {
+        "types": "./dist/timeline.d.ts",
+        "default": "./dist/timeline.js"
+      },
+      "require": {
+        "types": "./dist/timeline.d.cts",
+        "default": "./dist/timeline.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -68,6 +78,7 @@
     "example:hono": "npm --prefix examples/hono run update-library && npm --prefix examples/hono run dev",
     "example:astro": "npm --prefix examples/astro run update-library && npm --prefix examples/astro run dev",
     "example:remix": "npm --prefix examples/remix run update-library && npm --prefix examples/remix run dev",
+    "example:game": "npm --prefix examples/game run update-library && npm --prefix examples/game run dev",
     "prepublishOnly": "npm run check && npm test && npm run check:package"
   },
   "repository": {
@@ -171,6 +182,13 @@
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",
       "limit": "2.1 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/timeline (createWebSocketTimeline)",
+      "path": "dist/timeline.js",
+      "import": "{ createWebSocketTimeline }",
+      "limit": "1 kB",
       "gzip": true
     }
   ],

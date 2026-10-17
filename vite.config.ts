@@ -30,6 +30,15 @@ export default defineConfig({
     { ...shared, entry: { core: 'src/core.ts' }, format: ['esm', 'cjs'] },
     // A development tool with no imports, built on its own so it shares no chunks with `core`.
     { ...shared, entry: { chaos: 'src/chaos.ts' }, format: ['esm', 'cjs'] },
+    // Imports only types from `core`, so it ships no imports and needs no client directive.
+    {
+      ...shared,
+      entry: { timeline: 'src/timeline.ts' },
+      format: {
+        esm: { plugins: [coreAsExternal('./core.js')] },
+        cjs: { plugins: [coreAsExternal('./core.cjs')] }
+      }
+    },
     // The hooks are client-only; mark them so Server Components frameworks bundle them correctly.
     {
       ...shared,
@@ -69,7 +78,8 @@ export default defineConfig({
       'examples/nextjs',
       'examples/hono',
       'examples/astro',
-      'examples/remix'
+      'examples/remix',
+      'examples/game'
     ],
     plugins: ['eslint', 'typescript', 'react'],
     options: { typeAware: true, typeCheck: true },

@@ -1,0 +1,31 @@
+{
+  "name": "react-websocket-game-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --kill-others --names server,vite \"node --watch server.ts\" \"vite\"",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "update-library": "npm --prefix ../.. run build && node -e \"require('fs').rmSync('node_modules/react-websocket', { recursive: true, force: true })\" && npm install"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-websocket": "file:../..",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}

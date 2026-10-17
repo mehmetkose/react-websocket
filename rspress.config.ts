@@ -57,7 +57,8 @@ export default defineConfig({
       alias: {
         'react-websocket$': './src/index.ts',
         'react-websocket/core': './src/core.ts',
-        'react-websocket/chaos': './src/chaos.ts'
+        'react-websocket/chaos': './src/chaos.ts',
+        'react-websocket/timeline': './src/timeline.ts'
       }
     }
   },
@@ -122,6 +123,7 @@ export default defineConfig({
             { text: 'createWebSocketRequests', link: '/api/create-websocket-requests' },
             { text: 'createWebSocketLatency', link: '/api/create-websocket-latency' },
             { text: 'createWebSocketResponder', link: '/api/create-websocket-responder' },
+            { text: 'createWebSocketTimeline', link: '/api/create-websocket-timeline' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },
             { text: 'Options', link: '/api/options' },
             { text: 'Types', link: '/api/types' }
