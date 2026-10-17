@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `useWebSocket(url)` registers the client it shares for a URL when a component mounts, not while it renders. A render
+  that React threw away, for example because it suspended or a transition was interrupted, used to decide the
+  connection's options for every component that came after, and left a client behind that nothing used. Now the
+  options come from the first component to mount. Components that mount together still share one connection, and
+  what they `send` from a mount effect reaches it.
+- A component with `enabled: false` follows the connection other components open for its URL, and its own once they
+  have all gone.
+
 ## [4.5.0] - 2026-10-17
 
 ### Added
@@ -304,6 +316,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.5.0...HEAD
 [4.5.0]: https://github.com/mehmetkose/react-websocket/compare/4.4.0...4.5.0
 [4.4.0]: https://github.com/mehmetkose/react-websocket/compare/4.3.0...4.4.0
 [4.3.0]: https://github.com/mehmetkose/react-websocket/compare/4.2.0...4.3.0

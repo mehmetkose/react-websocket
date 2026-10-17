@@ -27,7 +27,9 @@ function Status() {
 }
 ```
 
-The connection's options come from **whichever component created it first**. Later hooks with the same URL reuse it as-is, and their connection options (`json`, `reconnect`, `schema`, …) are ignored. Their handlers (`onMessage`, `onOpen`, …) and `enabled` still apply. If two parts of your app need different options for the same URL, use a module-level client.
+The connection's options come from **the first component to mount** with that URL. Later hooks with the same URL reuse it as-is, and their connection options (`json`, `reconnect`, `schema`, …) are ignored. Their handlers (`onMessage`, `onOpen`, …) and `enabled` still apply. If two parts of your app need different options for the same URL, use a module-level client.
+
+Only mounted components count. A component whose render React throws away, because it suspended or because a transition was interrupted, doesn't open the connection or decide its options. Components that mount together share one connection too, and anything they `send` from a mount effect reaches it. A component with `enabled: false` shows the shared connection's status without opening one.
 
 In development, a hook whose connection options differ from the first one's logs a `console.warn` that names them. Options written inline count as the same when they have the same contents, even though they are new objects and functions on every render. A `schema` is compared by identity, so create schemas outside components: on React 18, StrictMode's second render can't be told apart from another component, and a schema created during render warns there.
 

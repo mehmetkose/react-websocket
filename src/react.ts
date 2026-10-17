@@ -82,8 +82,22 @@ const noop = () => {};
 // Same key as `ON_TEARDOWN` in ./client, which this entry must not import directly.
 const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 
-// Hooks given the same URL (and protocols) share one connection.
+// Hooks given the same URL (and protocols) share one connection: the client of the first
+// component to commit. It's registered from an effect, never during render, so a render React
+// throws away can't decide the connection's options or leave a client behind.
 const registry = new Map<string, WebSocketClient<any, any>>();
+const registryListeners = new Set<() => void>();
+
+function subscribeRegistry(listener: () => void) {
+  registryListeners.add(listener);
+  return () => {
+    registryListeners.delete(listener);
+  };
+}
+
+function registryChanged() {
+  for (const listener of [...registryListeners]) listener();
+}
 
 // Development only: the options (and `useId` of the component) each URL client was created with,
 // to warn when another component passes different ones for the same URL.
@@ -150,25 +164,28 @@ function warnOnConflict(
   );
 }
 
-function sharedClient<In, Out>(url: string, options: WebSocketOptions<In, Out>, id: string) {
-  // Don't let server renders accumulate clients that can never be torn down.
-  if (typeof window === 'undefined') return createWebSocket(url, options);
-  const key = `${url}\u0000${JSON.stringify(options.protocols ?? null)}`;
-  let client = registry.get(key) as WebSocketClient<In, Out> | undefined;
-  if (!client) {
-    const created: WebSocketClient<In, Out> = createWebSocket(url, {
-      ...options,
-      [ON_TEARDOWN]: () => {
-        if (registry.get(key) === created) registry.delete(key);
+/** The client shared for `key`, or `own` until a component using it has committed. */
+const shared_ = (key: string | null, own: WebSocketClient<any, any> | null) =>
+  key === null ? null : (registry.get(key) ?? own);
+
+/** A component's own client for a URL. It becomes the shared one if the component commits first. */
+function ownClient<In, Out>(
+  url: string,
+  key: string,
+  options: WebSocketOptions<In, Out>,
+  id: string
+): WebSocketClient<In, Out> {
+  const created: WebSocketClient<In, Out> = createWebSocket(url, {
+    ...options,
+    [ON_TEARDOWN]: () => {
+      if (registry.get(key) === created) {
+        registry.delete(key);
+        registryChanged();
       }
-    } as WebSocketOptions<In, Out>);
-    registry.set(key, created);
-    client = created;
-    if (process.env.NODE_ENV !== 'production') origins.set(created, { options, id });
-  } else if (process.env.NODE_ENV !== 'production') {
-    warnOnConflict(url, key, client, options, id);
-  }
-  return client;
+    }
+  } as WebSocketOptions<In, Out>);
+  if (process.env.NODE_ENV !== 'production') origins.set(created, { options, id });
+  return created;
 }
 
 /** Always-current value for use inside effects and event listeners (a `useEffectEvent` stand-in). */
@@ -190,8 +207,9 @@ function useHold(client: WebSocketClient<any, any> | null, enabled: boolean) {
  * Connect to a WebSocket and re-render with its status and latest message.
  *
  * - With a URL, every component using the same URL (and `protocols`) shares one
- *   connection. Its options come from whichever component created it first; in
- *   development, a component passing different ones gets a console warning.
+ *   connection. Its options come from the first of them to mount; in development, a
+ *   component passing different ones gets a console warning. A render React throws away
+ *   never decides them.
  * - With a client from `createWebSocket()`, options are the client's; only handlers
  *   and `enabled` apply here.
  * - With `null` or `undefined`, nothing connects and the status stays `idle`.
@@ -223,9 +241,30 @@ export function useWebSocket<In, Out>(
   options: UseWebSocketOptions<In, Out> = {}
 ): UseWebSocketResult<In, Out> {
   const id = useId();
+  const url = typeof target === 'string' ? target : null;
+  const key = url === null ? null : `${url}\u0000${JSON.stringify(options.protocols ?? null)}`;
+  // This component's own client for the URL, made once per URL: connection options are read
+  // when it's created, as for the shared client it may become.
+  const make = () => ({ key, client: key === null ? null : ownClient(url!, key, options, id) });
+  const [made, setMade] = useState(make);
+  let own = made.client;
+  if (made.key !== key) {
+    const next = make();
+    own = next.client;
+    setMade(next);
+  }
+  // The shared client once a component using the URL has committed; this one's own until then.
+  const shared = useSyncExternalStore(
+    subscribeRegistry,
+    () => shared_(key, own),
+    () => own
+  ) as WebSocketClient<In, Out> | null;
   const client =
-    target == null ? null : typeof target === 'string' ? sharedClient(target, options, id) : target;
+    key === null ? ((target as WebSocketClient<In, Out> | null | undefined) ?? null) : shared;
   const enabled = options.enabled ?? true;
+  if (process.env.NODE_ENV !== 'production' && client !== own && key !== null) {
+    warnOnConflict(url!, key, client!, options, id);
+  }
 
   const snapshot = useSyncExternalStore<Snapshot<In>>(
     client ? client.subscribe : noopSubscribe,
@@ -244,13 +283,38 @@ export function useWebSocket<In, Out>(
     ];
     return () => offs.forEach(off => off());
   }, [client, enabled, handlers]);
-  useHold(client, enabled);
+  useEffect(() => {
+    if (key === null || !enabled) return;
+    // The first component to commit shares its client. A component that rendered before then,
+    // with its own, holds the shared one right away and re-renders with it.
+    if (!registry.has(key)) {
+      registry.set(key, own!);
+      registryChanged();
+    }
+    return registry.get(key)!.acquire();
+  }, [key, own, client, enabled]);
+  useHold(key === null ? client : null, enabled);
+
+  // For a URL, act on the shared client at call time, so a message sent from a mount effect
+  // before this component re-renders with the shared client still reaches it.
+  const actions = useMemo(
+    () =>
+      key === null
+        ? null
+        : {
+            send: (message: Out, sendOptions?: SendOptions) =>
+              shared_(key, own)!.send(message, sendOptions),
+            close: (code?: number, reason?: string) => shared_(key, own)!.close(code, reason),
+            reconnect: () => shared_(key, own)!.reconnect()
+          },
+    [key, own]
+  );
 
   return {
     ...snapshot,
-    send: client ? client.send : noopSend,
-    close: client ? client.close : noop,
-    reconnect: client ? client.reconnect : noop,
+    send: actions ? actions.send : client ? client.send : noopSend,
+    close: actions ? actions.close : client ? client.close : noop,
+    reconnect: actions ? actions.reconnect : client ? client.reconnect : noop,
     client
   };
 }

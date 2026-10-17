@@ -29,7 +29,7 @@ Also check that you don't have two copies of the package installed (`npm ls reac
 
 ## My options are ignored
 
-Components using the same URL share one client, and its options come from **whichever component created it first**. Later components' connection options (`json`, `reconnect`, `heartbeat`, …) don't apply. Handlers (`onMessage`, …) and `enabled` are always per component.
+Components using the same URL share one client, and its options come from **the first component to mount** with that URL. Later components' connection options (`json`, `reconnect`, `heartbeat`, …) don't apply. Handlers (`onMessage`, …) and `enabled` are always per component.
 
 If different components need different options, or you want them defined in one place, use a [shared client](./guide/shared-clients.md):
 

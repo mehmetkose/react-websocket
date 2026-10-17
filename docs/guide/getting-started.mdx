@@ -113,7 +113,7 @@ Type parameters describe what you expect; they don't check it at runtime. To val
 Components that call `useWebSocket` with the same URL already share one socket.
 
 :::warning Options come from the first component
-A shared socket keeps the options of whichever component connected first. Later components with the same URL reuse it as-is, so their connection options (`json`, `reconnect`, `schema`, …) are ignored; only their handlers and `enabled` apply. See [Shared clients](./shared-clients.md#by-url).
+A shared socket keeps the options of the first component to mount with that URL. Later components with the same URL reuse it as-is, so their connection options (`json`, `reconnect`, `schema`, …) are ignored; only their handlers and `enabled` apply. See [Shared clients](./shared-clients.md#by-url).
 :::
 
 When several parts of your app use the same feed, define the connection once, at module level, with `createWebSocket`. Its options then live in one place:

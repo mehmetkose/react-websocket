@@ -4,18 +4,6 @@ Ideas that have been checked against the current code (4.0.0) and are worth doin
 promise or a schedule. Items marked **behavior change** alter a default, so they need either a major
 version or an opt-in first.
 
-## Design fixes
-
-### Create shared URL clients outside render
-
-Hooks with the same URL share one client, and its options come from whichever hook rendered first. A development
-warning now names options that a later hook passes differently, but `sharedClient()` still writes to the registry
-during render, so a render that React discards can decide which options win, and leaves behind an entry nothing
-acquired.
-
-- Look at creating the registry entry outside render, or replacing an entry that no committed hook ever
-  acquired.
-
 ## Features
 
 These build on what exists already: the `WebSocket` injection option, `latency.serverNow()`, volatile and
