@@ -263,6 +263,7 @@ chat.send({ text: 'sent while offline' }); // returns false: queued
 | `true` (default) | Queue up to 100 messages; when full, the **oldest** is dropped |
 | `{ limit: 500 }` | Queue up to 500 |
 | `{ limit: Infinity }` | Queue every message |
+| `{ maxAge: 30_000 }` | Drop a message that has waited longer than 30 s instead of sending it |
 | `false` | Drop the message (logged via `logger`) |
 
 The queue is cleared when you call `close()` and when the client gives up reconnecting, so stale messages aren't sent on a later connection.
@@ -280,6 +281,22 @@ chat.send({ type: 'cursor', x, y }, { key: 'cursor' }); // only the newest is qu
 ```
 
 `send()` returns `true` only when the message went out immediately. Use it if you need to know whether a message was queued.
+
+### Expiring stale messages
+
+A message that waited through a long outage can be stale by the time it goes out: a "typing…" indicator, a price quote, a request the user has given up on. `maxAge` drops a queued message once it has waited longer than that many milliseconds, for the whole queue or per message:
+
+```ts
+const chat = createWebSocket(url, { json: true, queue: { maxAge: 60_000 } });
+
+chat.send({ type: 'typing' }, { maxAge: 3000 }); // pointless after 3 s
+chat.send({ type: 'message', text }); // up to a minute, from queue.maxAge
+chat.send({ type: 'receipt', id }, { maxAge: Infinity }); // whenever we're back
+```
+
+A message's own `maxAge` overrides `queue.maxAge`. Without either, a message waits as long as the queue is kept.
+
+The age is checked when the socket opens, before the queue is sent, and whenever another message is queued. A message dropped this way calls its [`onDrop`](../api/types.md#sendoptions), like one replaced by `key` or evicted by `limit`, and a [request](../api/create-websocket-requests.md) dropped this way rejects. The fresh messages go out first, then the `onDrop`s run, so one that sends again goes after them. Ages use `Date.now()`, so time the computer spends asleep counts.
 
 ### Control messages first
 

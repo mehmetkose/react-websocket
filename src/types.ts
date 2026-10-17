@@ -211,10 +211,18 @@ export interface SendOptions {
    */
   maxBuffered?: number;
   /**
+   * Drop the message instead of sending it if it has been queued for longer than this many
+   * ms, for messages that go stale during a long outage, such as "typing" or a price quote.
+   * Overrides `queue.maxAge`. Checked when the socket opens and whenever another message is
+   * queued; `onDrop` is called then.
+   */
+  maxAge?: number;
+  /**
    * Called if the message is dropped from the queue without being sent: replaced by a
-   * newer message with the same `key`, or evicted by `queue.limit`. Not called when the
-   * queue is cleared because the client closed or gave up, or when `send()` drops the
-   * message right away (`volatile` while not open, or `maxBuffered`) and returns `false`.
+   * newer message with the same `key`, evicted by `queue.limit`, or older than `maxAge`. Not
+   * called when the queue is cleared because the client closed or gave up, or when `send()`
+   * drops the message right away (`volatile` while not open, or `maxBuffered`) and returns
+   * `false`.
    */
   onDrop?: () => void;
 }
@@ -228,6 +236,13 @@ export interface QueueOptions {
    * @default 100
    */
   limit?: number;
+  /**
+   * Drop a queued message instead of sending it once it has waited longer than this many ms,
+   * calling its `onDrop`. A message's own `maxAge` overrides it. Checked when the socket opens
+   * and whenever another message is queued.
+   * @default Infinity
+   */
+  maxAge?: number;
 }
 
 /**

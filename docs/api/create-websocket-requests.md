@@ -98,13 +98,14 @@ In React, [`useWebSocketStream`](./use-websocket-stream.md) folds the replies in
 | `key` | `string` | Passed to `send()`: replaces a queued request with the same key, and the replaced request rejects |
 | `priority` | `boolean` | Passed to `send()`: queues the request ahead of messages queued without `priority`. For a cancel that must not wait behind a backlog |
 | `maxBuffered` | `number` | Passed to `send()`: while open, reject right away if more than this many bytes are already waiting in the send buffer |
+| `maxAge` | `number` | Passed to `send()`: reject instead of sending if the request has waited in the queue longer than this many ms |
 | `onDrop` | `() => void` | Called if the request is dropped from the queue before it's sent. The request rejects either way |
 
 ## Behavior
 
 - **Rejects, never hangs.** A request rejects on timeout (a `DOMException` named `TimeoutError`), when `error` returns a value, when its signal aborts, when the connection it was sent on closes, on `close()`, when the client gives up, and on `dispose()`. A stream throws in the same cases.
 - **Lost connections.** A reply can only arrive on the connection the request was sent on. When that connection closes, including through `reconnect()`, the request rejects instead of waiting through the reconnect.
-- **Queued while disconnected.** A request made while connecting or reconnecting waits in the client's send queue and goes out when the socket opens. Its timeout runs from the call. With `volatile`, or on a `closed` client, it rejects right away. So does a request dropped by `maxBuffered` while open. If it's dropped from the queue before it's sent (replaced by a newer request with the same `key`, or evicted by `queue.limit`), it rejects then. On a client created with `queue: false`, the request is dropped and only rejects on timeout, so pass `volatile` there.
+- **Queued while disconnected.** A request made while connecting or reconnecting waits in the client's send queue and goes out when the socket opens. Its timeout runs from the call. With `volatile`, or on a `closed` client, it rejects right away. So does a request dropped by `maxBuffered` while open. If it's dropped from the queue before it's sent (replaced by a newer request with the same `key`, evicted by `queue.limit`, or older than `maxAge`), it rejects then. On a client created with `queue: false`, the request is dropped and only rejects on timeout, so pass `volatile` there.
 - **Unique ids per client.** Ids count up per client, shared by every manager on it, so two managers on one client never send the same id.
 - **Holds the connection.** A pending request or stream holds the client like a mounted hook, so it works without React. The client is released when the request settles or the stream ends.
 - **Streams.** `stream()` sends right away, like `request()`. Replies that arrive before the loop reads them are buffered, so a slow loop misses nothing. A stream is read once, by one loop. `request()` with `done` set still resolves with the first reply.

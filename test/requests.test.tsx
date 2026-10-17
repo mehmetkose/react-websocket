@@ -299,6 +299,16 @@ describe('createWebSocketRequests', () => {
     await expect(second).rejects.toThrow('closed');
   });
 
+  it('rejects a request that waited in the queue longer than its maxAge', async () => {
+    const { client, rpc } = setup();
+    client.connect();
+    const stale = rpc.request({ type: 'join', room: 'a' }, { maxAge: 1000, timeout: 0 });
+    vi.advanceTimersByTime(1500);
+    MockWebSocket.last.open();
+    await expect(stale).rejects.toThrow('dropped from the send queue');
+    expect(sent()).toEqual([]);
+  });
+
   it('gives each request a unique id across managers on one client', async () => {
     const { client, rpc } = setup();
     const other = createWebSocketRequests(client, {

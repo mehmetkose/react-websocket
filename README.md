@@ -140,7 +140,7 @@ function Room() {
 | `schema` | | Standard Schema validation; types are inferred |
 | `reconnect` | `true` | `false`, or `{ maxAttempts, minDelay, maxDelay, factor, jitter, minUptime, shouldReconnect, retryAfter }` |
 | `heartbeat` | | `{ interval, message, pong, timeout }` |
-| `queue` | `true` (100 messages) | `false`, or `{ limit }` |
+| `queue` | `true` (100 messages) | `false`, or `{ limit, maxAge }` |
 | `logger` | | e.g. `console.debug` |
 | `WebSocket` | global | Custom implementation for tests, Node, or chaos testing |
 
