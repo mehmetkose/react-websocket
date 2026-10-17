@@ -103,6 +103,7 @@ Some cases worth trying:
   ```
 
 - **Rejected credentials.** `Chaos.drop(4001, 'unauthorized')` tests your [`shouldReconnect`](./reconnecting.md#giving-up) and [authentication](./authentication.md) handling.
+- **An overloaded server.** `Chaos.drop(1013, '30')` closes with Try Again Later and a 30-second delay, so you can check that your UI copes with a [long wait](./reconnecting.md#overloaded-servers-1013).
 - **A message your server doesn't send yet.** `inject` takes any string or binary data. It isn't lost or corrupted, so you can try a new message type, or a valid message that fails your `schema`.
 
 `configure` merges into the current faults, so `configure({ loss: 0.1 })` leaves `latency` alone. Each option is replaced whole: `configure({ loss: { in: 0.1 } })` replaces an earlier `{ out }`. Changing `drop`, `stall` or `enabled` restarts the timers of open connections. `configure({ enabled: false })` turns off every random fault without forgetting the settings. The methods work whether it's enabled or not.

@@ -105,6 +105,28 @@ export interface ReconnectOptions {
    * @default retryableClose
    */
   shouldReconnect?: (close: CloseInfo) => boolean;
+  /**
+   * How long the server asked the client to wait before trying again, in ms, read from the
+   * close. Return `undefined` when it didn't ask. The client waits that long plus the usual
+   * backoff, so clients told the same delay still spread out, and the `online` and
+   * `visibilitychange` events don't cut the wait short.
+   *
+   * The default, `retryAfter`, reads a `1013` (Try Again Later) close whose reason is a number
+   * of seconds, like an HTTP `Retry-After` header. Your own function replaces it.
+   *
+   * A `1013` close that names no delay still waits longer than other closes: its backoff starts
+   * at `maxDelay`.
+   *
+   * @example
+   * ```ts
+   * import { retryAfter } from 'react-websocket';
+   *
+   * // Our server also closes with 4429 and the delay in ms as the reason.
+   * retryAfter: close => (close.code === 4429 ? Number(close.reason) : retryAfter(close))
+   * ```
+   * @default retryAfter
+   */
+  retryAfter?: (close: CloseInfo) => number | undefined;
 }
 
 /** Application-level keep-alive. Useful behind proxies that drop idle connections. */

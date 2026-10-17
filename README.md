@@ -127,6 +127,7 @@ function Room() {
 | `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 | `retryableClose(close)` | The default `reconnect.shouldReconnect`: retries every close except `1002`, `1003` and `1008` |
+| `retryAfter(close)` | The default `reconnect.retryAfter`: the delay a `1013` (Try Again Later) close asks for, in seconds in its reason |
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
@@ -137,7 +138,7 @@ function Room() {
 | `json` | `false` | `JSON.parse` incoming and `JSON.stringify` outgoing messages |
 | `parse(data)` / `serialize(message)` | | Custom codec; takes precedence over `json` |
 | `schema` | | Standard Schema validation; types are inferred |
-| `reconnect` | `true` | `false`, or `{ maxAttempts, minDelay, maxDelay, factor, jitter, minUptime, shouldReconnect }` |
+| `reconnect` | `true` | `false`, or `{ maxAttempts, minDelay, maxDelay, factor, jitter, minUptime, shouldReconnect, retryAfter }` |
 | `heartbeat` | | `{ interval, message, pong, timeout }` |
 | `queue` | `true` (100 messages) | `false`, or `{ limit }` |
 | `logger` | | e.g. `console.debug` |

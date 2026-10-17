@@ -51,7 +51,7 @@ interface CloseInfo {
 }
 ```
 
-Passed to `onClose`, the `'close'` event and `shouldReconnect`. Common codes: `1000` normal closure, `1001` going away, `1006` abnormal closure (no close frame, such as a network loss), `1008` policy violation, `1011` server error, `4000` heartbeat timeout (from this library), `4000`–`4999` application-defined. By default, `1002`, `1003` and `1008` aren't retried (see [`retryableClose`](../guide/reconnecting.md#giving-up)).
+Passed to `onClose`, the `'close'` event and `shouldReconnect`. Common codes: `1000` normal closure, `1001` going away, `1006` abnormal closure (no close frame, such as a network loss), `1008` policy violation, `1011` server error, `1013` try again later, `4000` heartbeat timeout (from this library), `4000`–`4999` application-defined. By default, `1002`, `1003` and `1008` aren't retried (see [`retryableClose`](../guide/reconnecting.md#giving-up)), and a `1013` is retried after a longer wait (see [Overloaded servers](../guide/reconnecting.md#overloaded-servers-1013)).
 
 ### MessageError
 

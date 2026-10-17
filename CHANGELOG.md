@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Close code `1013` (Try Again Later) gets a longer wait. If its reason is a number of seconds, like an HTTP
+  `Retry-After` header (`ws.close(1013, '30')`), the client waits that long plus the usual backoff, so clients told
+  the same delay still spread out. Otherwise its backoff starts at `maxDelay`. Coming back online or to the tab no
+  longer cuts such a wait short. It used to be retried like any other close, after about a second.
+- `reconnect.retryAfter(close)` reads how long the server asked to wait, in ms, so a server can name a delay with a
+  close code of its own. Its default is the new `retryAfter` export, from both `react-websocket` and
+  `react-websocket/core`. See [Overloaded servers](https://mehmetkose.github.io/react-websocket/guide/reconnecting#overloaded-servers-1013).
+
 ## [4.0.0] - 2026-10-17
 
 Safer defaults for reconnecting and queueing. No APIs change, but four defaults do, so this is a major release. Each
@@ -239,6 +251,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.0.0...HEAD
 [4.0.0]: https://github.com/mehmetkose/react-websocket/compare/3.6.0...4.0.0
 [3.6.0]: https://github.com/mehmetkose/react-websocket/compare/3.5.0...3.6.0
 [3.5.0]: https://github.com/mehmetkose/react-websocket/compare/3.4.0...3.5.0
