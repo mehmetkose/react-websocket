@@ -76,6 +76,7 @@ src/
   tabs.ts      The react-websocket/tabs entry: one WebSocket shared by every tab
   replay.ts    The react-websocket/replay entry: record sessions and replay them
   devtools.ts  The react-websocket/devtools entry: a development panel for every client
+  webtransport.ts  The react-websocket/webtransport entry: WebTransport behind the WebSocket API
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
@@ -92,6 +93,7 @@ test/
   tabs.test.ts       Shared tabs, with Node's BroadcastChannel and a fake Web Locks API
   replay.test.ts     Recording through the mock socket, and replaying through the client
   devtools.test.tsx  The devtools panel, with every kind of source
+  webtransport.test.ts  WebTransport framing, datagrams and fallbacks, with a fake WebTransport
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

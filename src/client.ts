@@ -134,6 +134,9 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
  */
 const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 
+/** @internal Method key on a socket that sends `volatile` messages as datagrams (WebTransport). */
+const DATAGRAM = Symbol.for('react-websocket.datagram');
+
 /** @internal Method key for what `react-websocket/devtools` shows that the snapshot doesn't. */
 const INSPECT = Symbol.for('react-websocket.inspect');
 
@@ -597,7 +600,11 @@ function createClient<In = unknown, Out = unknown>(
         log('dropped message: send buffer above maxBuffered');
         return false;
       }
-      ws.send(data);
+      const datagram = sendOptions.volatile
+        ? (ws as unknown as Record<symbol, ((data: SendData) => void) | undefined>)[DATAGRAM]
+        : undefined;
+      if (datagram) datagram.call(ws, data);
+      else ws.send(data);
       return true;
     }
     if (queueLimit === 0 || sendOptions.volatile) {
