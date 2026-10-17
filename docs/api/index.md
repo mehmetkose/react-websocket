@@ -7,7 +7,7 @@ Everything the package exports. All exports are typed, and every type has inline
 | Import | Contents | Notes |
 | --- | --- | --- |
 | `react-websocket` | Hooks, `createWebSocket`, `MessageError`, types | Marked `'use client'` for Server Components frameworks |
-| `react-websocket/core` | `createWebSocket`, `MessageError`, types | No React dependency. Use it in workers, Node, or other frameworks |
+| `react-websocket/core` | `createWebSocket`, the other `create*` functions, `MessageError`, types | No React dependency. Use it in workers, Node, or other frameworks |
 
 Both entry points ship as ESM and CommonJS with type declarations for each.
 
@@ -20,6 +20,7 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`useWebSocketStatus(client)`](./use-websocket-status.md) | Show connection status | Status changes only |
 | [`useWebSocketTopic(topics, topic)`](./use-websocket-topic.md) | Hold topic subscriptions that survive reconnects | Never |
 | [`useWebSocketState(store, selector?, isEqual?)`](./use-websocket-state.md) | Read state reduced from messages | The selected value changes |
+| [`useWebSocketLatency(latency)`](./use-websocket-latency.md) | Show round-trip time | A new measurement, about once per ping |
 
 ## Functions
 
@@ -28,6 +29,8 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`createWebSocket(url, options?)`](./create-websocket.md) | Create a client to share across components or use outside React |
 | [`createWebSocketTopics(client, options)`](./create-websocket-topics.md) | Manage reference-counted topic subscriptions, resent after every reconnect |
 | [`createWebSocketState(client, options)`](./create-websocket-state.md) | Keep state reduced from a client's messages |
+| [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies, with timeouts |
+| [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
 
 ## Classes
 
@@ -50,6 +53,7 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`EventMap`](./types.md#eventmap) | Events and listener signatures |
 | [`UrlSource`](./types.md#urlsource) | A URL string or a function returning one |
 | [`SendData`](./types.md#senddata) | What `WebSocket.send` accepts |
+| [`SendOptions`](./types.md#sendoptions) | `{ volatile?, key? }` for `send()` |
 | [`ReconnectOptions`](./options.md#reconnect) | Backoff settings |
 | [`HeartbeatOptions`](./options.md#heartbeat) | Keep-alive settings |
 | [`QueueOptions`](./options.md#queue) | Send queue limit |
@@ -57,4 +61,10 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`WebSocketTopicsOptions`](./create-websocket-topics.md#parameters) | `{ subscribe, unsubscribe? }` |
 | [`WebSocketState`](./create-websocket-state.md#returns) | The store from `createWebSocketState` |
 | [`WebSocketStateOptions`](./create-websocket-state.md#parameters) | `{ initialState, reduce }` |
+| [`WebSocketRequests`](./create-websocket-requests.md#returns) | The request manager from `createWebSocketRequests` |
+| [`WebSocketRequestsOptions`](./create-websocket-requests.md#parameters) | `{ send, reply, error?, timeout? }` |
+| [`RequestOptions`](./create-websocket-requests.md#request-options) | `{ timeout?, signal?, volatile?, key? }` for `request()` |
+| [`WebSocketLatency`](./create-websocket-latency.md#returns) | The latency tracker from `createWebSocketLatency` |
+| [`WebSocketLatencyOptions`](./create-websocket-latency.md#parameters) | `{ ping, pong, interval?, samples? }` |
+| [`Latency`](./create-websocket-latency.md#latency) | `{ rtt, offset }` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |

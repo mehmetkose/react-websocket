@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `send(message, { volatile: true })` drops a message instead of queueing it while the socket isn't open, so
+  input isn't replayed after a reconnect. `send(message, { key })` keeps only the newest queued message per key.
+  The same options work on the `send` returned by `useWebSocket`.
+- `createWebSocketRequests(client, { send, reply, error, timeout })`: `request(message)` sends a message tagged
+  with a generated id and resolves with the matching reply. Requests reject on timeout (`TimeoutError`),
+  on an error reply, on abort (`signal`), and when the connection they were sent on closes, so they never hang.
+- `createWebSocketLatency(client, { ping, pong, interval, samples })` and `useWebSocketLatency(latency)`:
+  round-trip time (median of recent pings) and the server clock offset, with `serverNow()` for countdowns
+  that agree across players.
+- A [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) guide: input, requests, ping,
+  render loops, rejoining after a reconnect, binary codecs and background tabs.
+
 ## [3.1.0] - 2026-10-17
 
 ### Added
@@ -90,6 +106,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/3.1.0...HEAD
 [3.1.0]: https://github.com/mehmetkose/react-websocket/compare/3.0.0...3.1.0
 [3.0.0]: https://github.com/mehmetkose/react-websocket/compare/2.2.0...3.0.0
 [2.2.0]: https://github.com/mehmetkose/react-websocket/releases/tag/2.2.0

@@ -157,6 +157,8 @@ Buffer `send()` calls made while not connected, and send them in order when the 
 | `{ limit: n }` | Queue at most `n` messages. When full, the oldest is dropped (and logged) |
 | `false` | Don't queue. `send()` while not open drops the message and returns `false` |
 
+To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `send()`: `{ volatile: true }` drops one message, and `{ key }` keeps only the newest queued message per key.
+
 Queued messages are sent right after `open` listeners run, so a handshake sent from `onOpen` goes out first. See [First-message auth](../guide/authentication.md#first-message-auth). The queue is cleared by `close()` and when the client gives up reconnecting.
 
 ```ts

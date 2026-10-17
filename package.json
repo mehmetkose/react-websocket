@@ -132,6 +132,15 @@
         "react"
       ],
       "limit": "1 kB"
+    },
+    {
+      "name": "react-websocket (requests + latency)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketRequests, createWebSocketLatency, useWebSocketLatency }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1.3 kB"
     }
   ],
   "overrides": {

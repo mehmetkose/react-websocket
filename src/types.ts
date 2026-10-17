@@ -107,6 +107,22 @@ export interface HeartbeatOptions {
   timeout?: number;
 }
 
+/** Per-message options for `send()`. */
+export interface SendOptions {
+  /**
+   * Drop the message instead of queueing it when the socket isn't open. For data that
+   * is stale by the time a reconnect finishes, such as player input or cursor positions.
+   * @default false
+   */
+  volatile?: boolean;
+  /**
+   * Keep only the newest queued message with this key. Sending again with the same key
+   * while disconnected replaces the earlier one, which moves to the back of the queue.
+   * For state where only the latest value matters, such as "my position is now (x, y)".
+   */
+  key?: string;
+}
+
 /** Bounds for the send queue. */
 export interface QueueOptions {
   /**
@@ -295,10 +311,17 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
   on<K extends keyof EventMap<In>>(type: K, listener: EventMap<In>[K]): () => void;
   /**
    * Send a message (encoded with `serialize`/`json` if configured). If the socket isn't
-   * open, the message is queued and sent on open (see the `queue` option).
+   * open, the message is queued and sent on open (see the `queue` option), unless
+   * `options.volatile` is set.
    * @returns `true` if it was sent immediately, `false` if it was queued or dropped.
+   *
+   * @example
+   * ```ts
+   * game.send({ type: 'input', dx, dy }, { volatile: true }); // never replayed after a reconnect
+   * game.send({ type: 'position', x, y }, { key: 'position' }); // only the newest is queued
+   * ```
    */
-  send(message: Out): boolean;
+  send(message: Out, options?: SendOptions): boolean;
   /**
    * Start connecting, and keep the connection open even when no hook is using the
    * client, until `close()` is called. Does nothing if already connecting or open.

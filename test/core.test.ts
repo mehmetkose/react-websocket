@@ -107,6 +107,38 @@ describe('sending', () => {
     expect(MockWebSocket.last.sent).toEqual(['b', 'c']);
   });
 
+  it('drops volatile messages while not open, and sends them when open', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    expect(ws.send('input', { volatile: true })).toBe(false);
+    ws.send('chat');
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['chat']);
+    expect(ws.send('input', { volatile: true })).toBe(true);
+    expect(MockWebSocket.last.sent).toEqual(['chat', 'input']);
+  });
+
+  it('keeps only the newest queued message per key, moved to the back', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    ws.send('pos 1', { key: 'pos' });
+    ws.send('chat');
+    ws.send('aim 1', { key: 'aim' });
+    ws.send('pos 2', { key: 'pos' });
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['chat', 'aim 1', 'pos 2']);
+  });
+
+  it('applies queue.limit after replacing a keyed message', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { limit: 2 } });
+    ws.connect();
+    ws.send('a');
+    ws.send('pos 1', { key: 'pos' });
+    ws.send('pos 2', { key: 'pos' });
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['a', 'pos 2']);
+  });
+
   it('serializes with json or a custom serializer', () => {
     const json = createWebSocket<unknown, { n: number }>('ws://x', {
       WebSocket: MockImpl,
