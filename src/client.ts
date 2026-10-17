@@ -125,7 +125,13 @@ function createClient<In = unknown, Out = unknown>(
   let refs = 0;
   // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
   let pinned = false;
-  let pending: { data: SendData; key: string | undefined; onDrop: (() => void) | undefined }[] = [];
+  // Priority messages form the head of the queue, in the order they were sent.
+  let pending: {
+    data: SendData;
+    key: string | undefined;
+    priority: boolean | undefined;
+    onDrop: (() => void) | undefined;
+  }[] = [];
   let ready: Deferred | null = null;
   // Opened at least once since the client was last started. `ready` stays resolved through
   // automatic reconnects so `use(client.ready)` doesn't swap content for a fallback on every blip.
@@ -427,17 +433,23 @@ function createClient<In = unknown, Out = unknown>(
     emit('message', message, event);
   }
 
-  function send(message: Out, sendOptions?: SendOptions): boolean {
+  function send(message: Out, sendOptions: SendOptions = {}): boolean {
     const data = options.serialize
       ? options.serialize(message)
       : options.json
         ? JSON.stringify(message)
         : (message as SendData);
+    const { key, priority, maxBuffered } = sendOptions;
     if (ws && ws.readyState === OPEN) {
+      // A late frame is worse than none: let a congested buffer drain instead of growing it.
+      if (maxBuffered !== undefined && ws.bufferedAmount > maxBuffered) {
+        log('dropped message: send buffer above maxBuffered');
+        return false;
+      }
       ws.send(data);
       return true;
     }
-    if (queueLimit === 0 || sendOptions?.volatile) {
+    if (queueLimit === 0 || sendOptions.volatile) {
       log('dropped message: socket is not open');
       return false;
     }
@@ -446,7 +458,6 @@ function createClient<In = unknown, Out = unknown>(
       log('dropped message: no WebSocket implementation available');
       return false;
     }
-    const key = sendOptions?.key;
     if (key !== undefined) {
       pending = pending.filter(entry => {
         if (entry.key !== key) return true;
@@ -454,9 +465,14 @@ function createClient<In = unknown, Out = unknown>(
         return false;
       });
     }
-    pending.push({ data, key, onDrop: sendOptions?.onDrop });
+    let head = pending.findIndex(entry => !entry.priority);
+    if (head < 0) head = pending.length;
+    const entry = { data, key, priority, onDrop: sendOptions.onDrop };
+    if (priority) pending.splice(head++, 0, entry);
+    else pending.push(entry);
     if (pending.length > queueLimit) {
-      dropped(pending.shift()!);
+      // The oldest ordinary message goes first; priority ones only when nothing else is left.
+      dropped(pending.splice(head < pending.length ? head : 0, 1)[0]!);
       log(`dropped oldest queued message: queue limit (${queueLimit}) reached`);
     }
     return false;

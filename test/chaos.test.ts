@@ -623,6 +623,21 @@ describe('with createWebSocket', () => {
     vi.advanceTimersByTime(100);
     expect(MockWebSocket.last.sent).toEqual(['hello']);
   });
+
+  it('drops sends with maxBuffered while a slow link holds earlier ones', () => {
+    const client = createWebSocket<string, string>('ws://x', {
+      WebSocket: chaos({ latency: 100 })
+    });
+    client.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(100);
+    expect(client.send('x'.repeat(600))).toBe(true);
+    expect(client.send('frame 1', { maxBuffered: 500 })).toBe(false);
+    vi.advanceTimersByTime(100); // the buffer drains
+    expect(client.send('frame 2', { maxBuffered: 500 })).toBe(true);
+    vi.advanceTimersByTime(100);
+    expect(MockWebSocket.last.sent).toEqual(['x'.repeat(600), 'frame 2']);
+  });
 });
 
 it('is typed as a WebSocket class with controls', () => {

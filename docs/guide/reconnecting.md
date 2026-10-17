@@ -197,6 +197,22 @@ chat.send({ type: 'cursor', x, y }, { key: 'cursor' }); // only the newest is qu
 
 `send()` returns `true` only when the message went out immediately. Use it if you need to know whether a message was queued.
 
+### Control messages first
+
+Messages queued while offline go out in order. A control message such as "cancel" or "stop" shouldn't wait behind a backlog of input or audio frames, so pass `priority`:
+
+```ts
+agent.send({ type: 'cancel', runId }, { priority: true });
+```
+
+Priority messages go out ahead of everything queued without `priority`, in the order they were sent. Messages sent from `open` listeners, such as an auth handshake, still go first. With `queue.limit`, ordinary messages are evicted before priority ones.
+
+`priority` only reorders the queue. Once the socket is open, a message goes straight to the browser's send buffer, and nothing can overtake what's already there. To keep that buffer short, send high-rate streams with `maxBuffered`, which drops a message while more than that many bytes are waiting:
+
+```ts
+voice.send(frame, { volatile: true, maxBuffered: 64 * 1024 });
+```
+
 ## Debugging
 
 Pass a `logger` to see attempts, delays, heartbeat timeouts and dropped messages:

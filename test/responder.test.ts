@@ -83,6 +83,15 @@ describe('createWebSocketResponder', () => {
     expect(signals[0]!.aborted).toBe(false); // finishing normally doesn't abort
   });
 
+  it('replies however full the send buffer is', async () => {
+    const { tools } = connected();
+    tools.onRequest('echo', params => params?.text ?? '');
+    MockWebSocket.last.bufferedAmount = 10_000_000;
+    call(1, 'echo', { params: { text: 'hi' } });
+    await flush();
+    expect(sent()).toEqual([{ type: 'result', id: 1, result: 'hi' }]);
+  });
+
   it('sends the error reply when the handler throws or rejects', async () => {
     const { tools } = connected();
     tools.onRequest('sync', () => {

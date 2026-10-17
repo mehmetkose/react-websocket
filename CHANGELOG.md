@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `send(message, { maxBuffered })` drops a message while the socket is open but more than `maxBuffered` bytes are
+  already waiting in the browser's send buffer (`bufferedAmount`), and returns `false`. On a slow link, high-rate
+  streams such as per-tick input or audio frames stay current instead of building up lag. It's set per message, so
+  replies, pings and other control messages are never dropped. A request dropped this way rejects right away.
+- `send(message, { priority: true })` queues a message ahead of everything queued without `priority`, so a cancel,
+  interrupt or token refresh doesn't wait behind a backlog after a reconnect. Messages sent from `open` listeners still
+  go first, and `queue.limit` evicts ordinary messages before priority ones.
+- `createWebSocketState(client, { batch: 'frame' })` notifies subscribers at most once per animation frame instead of
+  once per message, so a fast stream renders once per frame. `getState()` stays current, and `setState` and `reset`
+  still notify right away.
+
 ## [3.4.0] - 2026-10-17
 
 ### Added

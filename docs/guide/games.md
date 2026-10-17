@@ -52,11 +52,21 @@ game.send({ type: 'aim', angle }, { key: 'aim' });
 
 The replacement moves to the back of the queue, after anything you sent before it.
 
+On a slow link, continuous input can also pile up while the socket is open: the browser buffers what it can't send yet, and every message waits behind the ones before it. Add `maxBuffered` to drop a message while more than that many bytes are already waiting, so the buffer drains instead of growing:
+
+```ts
+game.send({ type: 'input', dx, dy }, { volatile: true, maxBuffered: 4096 });
+```
+
+Use it for input sent every tick, where the next message replaces this one anyway. Don't use it for one-shot actions such as fire or jump, which must arrive.
+
 | Message | Use |
 | --- | --- |
 | Chat, purchases, "ready" | Default: queue and send in order |
-| Movement and fire input | `{ volatile: true }` |
+| Fire, jump and other one-shot input | `{ volatile: true }` |
+| Movement input sent every tick | `{ volatile: true, maxBuffered: 4096 }` |
 | Aim, cursor or position snapshots | `{ key: 'aim' }` |
+| "Leave", "pause" and other control messages | `{ priority: true }`, ahead of anything queued |
 
 ## Requests: await the server's answer
 
@@ -192,7 +202,7 @@ function Canvas() {
 }
 ```
 
-With React Three Fiber, do the same in `useFrame(() => { … world.getState() … })`. Keep `useWebSocketState` for the HUD (score, health, the player list), where a selector re-renders only when its value changes.
+With React Three Fiber, do the same in `useFrame(() => { … world.getState() … })`. Keep `useWebSocketState` for the HUD (score, health, the player list), where a selector re-renders only when its value changes. Pass `batch: 'frame'` to the store, so that even a HUD value that changes on every tick renders at most once per frame. `getState()` in the render loop stays current either way.
 
 ## Rejoining after a reconnect
 

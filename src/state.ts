@@ -9,6 +9,17 @@ export interface WebSocketStateOptions<S, In> {
    * change, or the same `state` to ignore the message (subscribers aren't notified).
    */
   reduce: (state: S, message: In) => S;
+  /**
+   * `'frame'`: notify subscribers at most once per animation frame instead of once per
+   * message, so a fast stream (tokens, tickers, game state) renders once per frame.
+   * `getState()` is always current; only notifications wait. `setState` and `reset` still
+   * notify right away.
+   *
+   * Browsers pause animation frames in background tabs: the state keeps up, and subscribers
+   * hear about it when the tab is visible again. Without `requestAnimationFrame` (Node, some
+   * workers), it waits about 16 ms instead.
+   */
+  batch?: 'frame';
 }
 
 /**
@@ -57,19 +68,41 @@ export function createWebSocketState<S, In>(
   // `In` comes from the client only, not from how `reduce` annotates its parameter.
   options: WebSocketStateOptions<S, NoInfer<In>>
 ): WebSocketState<S> {
-  const { initialState, reduce } = options;
+  const { initialState, reduce, batch } = options;
   let state = initialState;
+  // What subscribers were last told about, so a frame that finds nothing new stays quiet.
+  let notified = state;
+  let frame = false;
   const listeners = new Set<() => void>();
 
-  function setState(update: S | ((state: S) => S)) {
-    const next = typeof update === 'function' ? (update as (state: S) => S)(state) : update;
-    if (Object.is(next, state)) return;
-    state = next;
+  function notify() {
+    if (Object.is(state, notified)) return;
+    notified = state;
     for (const listener of [...listeners]) listener();
   }
 
+  function flush() {
+    frame = false;
+    notify();
+  }
+
+  function update(change: S | ((state: S) => S), later?: boolean) {
+    const next = typeof change === 'function' ? (change as (state: S) => S)(state) : change;
+    if (Object.is(next, state)) return;
+    state = next;
+    if (!later) notify();
+    else if (!frame) {
+      frame = true;
+      // Node and some workers have no animation frames: wait about one instead.
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
+      else setTimeout(flush, 16);
+    }
+  }
+
   // A throwing reducer leaves the state unchanged; the client re-throws the error asynchronously.
-  const off = client.on('message', message => setState(current => reduce(current, message)));
+  const off = client.on('message', message =>
+    update(current => reduce(current, message), batch === 'frame')
+  );
 
   return {
     client,
@@ -81,8 +114,8 @@ export function createWebSocketState<S, In>(
         listeners.delete(listener);
       };
     },
-    setState,
-    reset: () => setState(initialState),
+    setState: change => update(change),
+    reset: () => update(initialState),
     dispose: off
   };
 }

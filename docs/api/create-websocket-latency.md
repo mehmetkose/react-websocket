@@ -78,7 +78,7 @@ Both are `undefined` until the first pong. `offset` stays `undefined` if pongs c
 
 ## Behavior
 
-- **Pings while open.** The first ping goes out as soon as the socket opens, before messages queued while disconnected. After that, one goes out every `interval`. Pings pause while not open, and they are sent with `volatile`, so they're never queued.
+- **Pings while open.** The first ping goes out as soon as the socket opens, before messages queued while disconnected. After that, one goes out every `interval`. Pings pause while not open, and they are sent with `volatile`, so they're never queued. They ignore backpressure: on a congested link they wait in the send buffer like everything else, so `rtt` shows the congestion.
 - **Smoothing.** `rtt` is the median of the last `samples` round trips, so one slow ping doesn't make it jump. `offset` comes from the sample with the lowest round trip, the most accurate estimate. It assumes the server read its clock halfway through the round trip.
 - **Reconnects.** Samples from the previous connection are discarded when a new one opens. The last values stay readable until a new pong arrives.
 - **Doesn't connect.** It starts measuring whenever the client is open, but doesn't hold the connection. `useWebSocketLatency` does.

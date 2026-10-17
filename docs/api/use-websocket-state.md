@@ -37,7 +37,7 @@ The selected value.
 
 ## Behavior
 
-- **Renders.** It re-renders when the selected value changes, not on every message or on every change to other parts of the state.
+- **Renders.** It re-renders when the selected value changes, not on every message or on every change to other parts of the state. With a store created with `batch: 'frame'`, that's at most once per animation frame.
 - **Inline selectors.** Inline selectors are fine. If one returns a new object or array, pass an `isEqual` such as a shallow comparison.
 - **Connection.** It holds the store's client connection while mounted, like the other hooks.
 - **Server rendering.** On the server and during hydration, it selects from `initialState`.

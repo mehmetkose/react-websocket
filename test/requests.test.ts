@@ -185,6 +185,30 @@ describe('createWebSocketRequests', () => {
     expect(sent()).toEqual([]);
   });
 
+  it('rejects a request dropped by maxBuffered right away', async () => {
+    const { client, rpc } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.bufferedAmount = 1000;
+    await expect(rpc.request({ type: 'join', room: 'a' }, { maxBuffered: 100 })).rejects.toThrow(
+      'send buffer is full'
+    );
+    expect(rpc.pending()).toBe(0);
+    expect(sent()).toEqual([]);
+  });
+
+  it('sends a queued priority request before earlier ones', () => {
+    const { client, rpc } = setup();
+    client.connect();
+    rpc.request({ type: 'join', room: 'a' });
+    rpc.request({ type: 'join', room: 'b' }, { priority: true });
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([
+      { type: 'join', room: 'b', id: 2 },
+      { type: 'join', room: 'a', id: 1 }
+    ]);
+  });
+
   it('rejects a keyed request replaced in the queue by a newer one', async () => {
     const { client, rpc } = setup();
     client.connect();

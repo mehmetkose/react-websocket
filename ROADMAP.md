@@ -50,30 +50,6 @@ which options win.
 - Look at creating the registry entry outside render, or replacing an entry that no committed hook ever
   acquired.
 
-### Backpressure for volatile sends
-
-`send()` ignores `bufferedAmount`. On a congested link, high-rate streams pile up in the browser's buffer and
-latency grows.
-
-- An option to drop `volatile` sends while `bufferedAmount` is above a threshold. This follows on from the
-  3.2 volatile and keyed sends.
-
-### Priority sends
-
-Messages queued while disconnected go out in order, and only `open` listeners can send ahead of the queue.
-Control messages (cancel, interrupt, auth refresh) can end up behind a backlog of audio frames or input.
-
-- `send(message, { priority: true })` puts a message at the front of the queue. Together with backpressure,
-  this is the transport side of voice interruption (see below).
-
-### Batch state updates per frame
-
-Every message is its own task, so a store updated by a fast stream renders once per message. The performance
-guide shows a hand-written `requestAnimationFrame` buffer for this.
-
-- A `batch: 'frame'` option on `createWebSocketState` that notifies subscribers at most once per animation
-  frame. Token streams, tickers and game state all benefit.
-
 ## Features
 
 These build on what exists already: the `WebSocket` injection option, `latency.serverNow()`, volatile and
@@ -86,8 +62,8 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   one, replay the inputs it hasn't seen yet. Every multiplayer web game rewrites this, and the clock sync it
   needs is already here.
 - **Adaptive send rate.** Lower the input tick rate and coalesce keyed sends based on RTT and
-  `bufferedAmount`, so players on poor connections degrade smoothly instead of building up lag. Depends on
-  the backpressure work above.
+  `bufferedAmount`, so players on poor connections degrade smoothly instead of building up lag. Builds on
+  `send(message, { maxBuffered })`.
 
 ### Live data
 
@@ -116,9 +92,9 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   stops spending). This is sequenced streams (above) applied to runs, so it ships after them.
 - **Voice sessions with interruption.** On interruption the client must stop audio, discard queued frames,
   cancel generation and report how much the user actually heard, or the transcript includes words they never
-  heard. The library's part is the transport: priority sends for control messages, volatile audio frames with
-  backpressure dropping stale ones while open, and a guide showing `truncate { itemId, heardMs }` from
-  playback position. Audio capture and playback stay in the app.
+  heard. The library's part is the transport, which ships: `priority` sends for control messages, and
+  volatile audio frames with `maxBuffered` dropping stale ones while open. What's left is a guide showing
+  `truncate { itemId, heardMs }` from playback position. Audio capture and playback stay in the app.
 - **Dashboards of many runs.** Stream full tokens only for runs on screen and status alone for the rest.
   `useWebSocketTopic` already resubscribes when its topic changes, so this is a guide recipe plus a small
   `IntersectionObserver` helper that picks the topic. The same recipe can show a live cost meter from usage
@@ -154,8 +130,8 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 ## Considered, not planned
 
 - **Incremental markdown rendering for token streams.** Re-parsing only the last open block is real work
-  worth doing, but it belongs to the markdown renderer, not the transport. The frame batching above covers
-  the part that is the library's job.
+  worth doing, but it belongs to the markdown renderer, not the transport. `batch: 'frame'` on
+  `createWebSocketState` covers the part that is the library's job.
 - **Typed partial objects from streamed JSON** (`usePartialObject`). Useful, but it parses text from any
   transport, and AI SDKs already offer partial-object hooks. Worth revisiting as an option on `rpc.stream`
   (final value validated with the existing Standard Schema support) once streaming RPC exists.

@@ -189,6 +189,9 @@ export function createWebSocketRequests<Req, In, const Out>(
           return;
         }
         if (sent) entry.socket = client.socket;
+        // Open but not sent: `maxBuffered` dropped it, and nothing will send it later.
+        else if (client.socket?.readyState === 1)
+          entry.reject(new Error('WebSocket send buffer is full: request dropped'));
         else if (requestOptions.volatile)
           entry.reject(new Error('WebSocket is not open: request dropped'));
       });
