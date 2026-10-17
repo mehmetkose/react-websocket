@@ -1,4 +1,4 @@
-import { Activity, StrictMode, Suspense, use, useState } from 'react';
+import { Activity, StrictMode, Suspense, use, useEffect, useState } from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
@@ -225,6 +225,100 @@ describe('useWebSocket(url)', () => {
     act(() => MockWebSocket.last.open());
     act(() => MockWebSocket.last.receive('x'));
     expect(sends.size).toBe(1);
+  });
+});
+
+describe('shared URL clients', () => {
+  it("doesn't let a render React throws away open the connection or decide its options", () => {
+    const url = uniqueUrl();
+    const never = new Promise<never>(() => {});
+    function Discarded(): null {
+      useWebSocket(url, { WebSocket: MockImpl, json: false });
+      throw never;
+    }
+    function Real() {
+      const { lastMessage } = useWebSocket<{ price: number }>(url, {
+        WebSocket: MockImpl,
+        json: true
+      });
+      return <p>{typeof lastMessage}</p>;
+    }
+    const { rerender, container } = render(
+      <Suspense fallback="loading">
+        <Discarded />
+      </Suspense>
+    );
+    expect(MockWebSocket.instances).toHaveLength(0);
+
+    rerender(<Real />);
+    act(() => MockWebSocket.last.open());
+    act(() => MockWebSocket.last.receive('{"price":42}'));
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(container.textContent).toBe('object');
+  });
+
+  it('gives components that mount together one socket, and delivers what they send on mount', () => {
+    const url = uniqueUrl();
+    function Sender({ text }: { text: string }) {
+      const { send } = useWebSocket<string, string>(url, { WebSocket: MockImpl });
+      useEffect(() => {
+        send(text);
+      }, [send, text]);
+      return null;
+    }
+    render(
+      <StrictMode>
+        <Sender text="a" />
+        <Sender text="b" />
+      </StrictMode>
+    );
+    expect(MockWebSocket.instances).toHaveLength(1);
+    act(() => MockWebSocket.last.open());
+    // StrictMode mounts, unmounts and mounts again, so each sends twice.
+    expect(MockWebSocket.last.sent).toEqual(['a', 'b', 'a', 'b']);
+  });
+
+  it('uses the options of the first component to commit', () => {
+    const url = uniqueUrl();
+    function Reader({ json }: { json: boolean }) {
+      const { lastMessage } = useWebSocket(url, { WebSocket: MockImpl, json });
+      return <p>{typeof lastMessage}</p>;
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const first = render(<Reader json />);
+    const second = render(<Reader json={false} />);
+    act(() => MockWebSocket.last.open());
+    act(() => MockWebSocket.last.receive('{"a":1}'));
+    expect(first.container.textContent).toBe('object');
+    expect(second.container.textContent).toBe('object');
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+
+  it('lets a disabled component follow the shared client, and open its own once it is gone', () => {
+    const url = uniqueUrl();
+    const view = (showOpener: boolean, enabled: boolean) => (
+      <>
+        {showOpener && <Status url={url} />}
+        <Status url={url} enabled={enabled} />
+      </>
+    );
+    const { rerender } = render(view(true, false));
+    act(() => MockWebSocket.last.open());
+    expect(screen.getAllByRole('button').map(button => button.textContent)).toEqual([
+      'open:-',
+      'open:-'
+    ]);
+
+    // The opener leaves: the connection closes, and the disabled one shows its own, idle client.
+    rerender(view(false, false));
+    act(() => vi.runAllTimers());
+    expect(screen.getByRole('button').textContent).toBe('idle:-');
+
+    rerender(view(false, true));
+    expect(MockWebSocket.instances).toHaveLength(2);
+    act(() => MockWebSocket.last.open());
+    expect(screen.getByRole('button').textContent).toBe('open:-');
   });
 });
 

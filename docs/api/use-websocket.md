@@ -34,7 +34,7 @@ function Prices() {
 }
 ```
 
-Every component that passes the same URL (and the same `protocols`) shares one connection. The first component to use a URL creates its client, and **its connection options are used for everyone**. Options passed by later components for the same URL are ignored, except handlers and `enabled`, which are per component. In development, a later component that passes different connection options logs a warning naming them. If two components need different options for the same URL, create separate clients with [`createWebSocket`](./create-websocket.md).
+Every component that passes the same URL (and the same `protocols`) shares one connection. The first component to mount with a URL creates it, and **its connection options are used for everyone**. A render React throws away doesn't count. Options passed by later components for the same URL are ignored, except handlers and `enabled`, which are per component. In development, a later component that passes different connection options logs a warning naming them. If two components need different options for the same URL, create separate clients with [`createWebSocket`](./create-websocket.md).
 
 Changing `url` closes the old connection (once nothing else uses it) and opens the new one.
 

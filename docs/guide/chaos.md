@@ -41,7 +41,7 @@ const chaos = process.env.NODE_ENV === 'development' && typeof window !== 'undef
 export const live = createWebSocket(url, { WebSocket: chaos ? Chaos : undefined });
 ```
 
-With hooks, pass it the same way: `useWebSocket(url, { WebSocket: Chaos })`. Hooks that share a URL share one client, and its [options come from the first one to render](./shared-clients.md#by-url), so give every hook for that URL the same class.
+With hooks, pass it the same way: `useWebSocket(url, { WebSocket: Chaos })`. Hooks that share a URL share one client, and its [options come from the first one to mount](./shared-clients.md#by-url), so give every hook for that URL the same class.
 
 ## Faults
 

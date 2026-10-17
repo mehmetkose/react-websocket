@@ -290,7 +290,7 @@ In development, `logger: console.debug` is often all you need.
 | --- | --- | --- |
 | Setup | Inline in a component | One module-level definition |
 | Sharing | Components using the same URL share one socket | Explicit: everything importing the client shares it |
-| Options | From whichever component created it first | Defined once, with the client |
+| Options | From the first component to mount | Defined once, with the client |
 | URL from props/state | Natural: change the URL to switch | Create one client per URL, or use [topics](./guide/topics.md) for join/leave |
 | Auth token per attempt | Not available (string URLs only) | `url` can be a function |
 | Use outside React | No | Yes: `send`, `on`, `ready` work anywhere |
