@@ -15,6 +15,7 @@ import type { OutboxEntry, WebSocketOutbox } from './outbox';
 // Types only: a value import from anything but `./core` would bundle a second copy into this entry.
 import type { RequestOptions, WebSocketRequests } from './requests';
 import type { IncomingRequest, WebSocketResponder } from './responder';
+import type { AgentRun, WebSocketRuns } from './runs';
 import type { WebSocketState } from './state';
 import type { WebSocketTopics } from './topics';
 import type {
@@ -476,6 +477,40 @@ export function useWebSocketOutbox<M>(
     outbox?.getSnapshot ?? noRequests,
     noRequests
   );
+}
+
+const noRun = () => undefined;
+
+/**
+ * A run from `createWebSocketRuns`, such as an agent's answer: its `value` reduced from the
+ * events so far, and its `status`. Re-renders on every event. A run it doesn't know, such as one
+ * started in another tab, is attached and followed from its first event. `undefined` while the
+ * run is unknown, for a `null` id, and on the server.
+ *
+ * @example
+ * ```tsx
+ * const run = useAgentRun(runs, runId);
+ * return (
+ *   <>
+ *     <Markdown>{run?.value ?? ''}</Markdown>
+ *     {run?.status === 'streaming' && <button onClick={() => runs.abort(runId)}>Stop</button>}
+ *   </>
+ * );
+ * ```
+ */
+export function useAgentRun<T>(
+  runs: WebSocketRuns<any, T> | null | undefined,
+  runId: string | null | undefined
+): AgentRun<T> | undefined {
+  const run = useSyncExternalStore(
+    runs?.subscribe ?? noopSubscribe,
+    () => (runs && runId ? runs.get(runId) : undefined),
+    noRun
+  );
+  useEffect(() => {
+    if (runs && runId) runs.attach(runId);
+  }, [runs, runId]);
+  return run;
 }
 
 /**

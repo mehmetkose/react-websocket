@@ -19,11 +19,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 ### AI agents
 
-- **Resumable agent runs** (`useAgentRun(runId)`). A refresh, a Wi-Fi to cellular switch or a sleeping laptop
-  drops a streaming answer halfway, and the tokens are paid for anyway. Events carry an offset, the run id is
-  kept in `sessionStorage`, and on reconnect or reload the client sends `resume { runId, offset }` and drops
-  duplicates. A per-run disconnect policy chooses `keep` (background agents keep working) or `cancel` (chat
-  stops spending). This is what `createWebSocketFeeds` does for topics, applied to `rpc.stream` runs.
 - **Voice sessions with interruption.** On interruption the client must stop audio, discard queued frames,
   cancel generation and report how much the user actually heard, or the transcript includes words they never
   heard. The library's part is the transport, which ships: `priority` sends for control messages, and
@@ -51,7 +46,8 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 - **AG-UI** (`react-websocket/ag-ui`). AG-UI's standard agent events (run lifecycle, text messages, tool calls,
   state snapshots and JSON Patch deltas) are transport-agnostic and list WebSockets as an option, but its
   standard client ships SSE and an HTTP binary protocol. An adapter would apply state deltas through
-  `createWebSocketState`, falling back to a snapshot when a patch fails, and add resumable runs on top.
+  `createWebSocketState`, falling back to a snapshot when a patch fails, and resume runs with
+  `createWebSocketRuns`.
 - **MCP over WebSocket.** SEP-1288 proposes a WebSocket transport for server-initiated notifications. It is
   still in review, and since browsers can't set headers on a WebSocket, it passes the auth token in the
   subprotocol list. The existing `url` function and `protocols` option already support that flow, so a

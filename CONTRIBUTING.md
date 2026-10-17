@@ -66,6 +66,7 @@ src/
   react.ts     The hooks and the URL-keyed registry of shared clients
   sendrate.ts  createWebSocketSendRate: keyed sends at a rate that adapts to congestion
   feeds.ts     createWebSocketFeeds: topics with numbered messages, deduplicated and resumed
+  runs.ts      createWebSocketRuns: streamed runs that resume after a reconnect or a reload
   index.ts     The main entry (core + hooks), built with a 'use client' banner
   chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
   timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
@@ -80,6 +81,7 @@ test/
   sendrate.test.ts The adaptive send rate, with a settable bufferedAmount and chaos latency
   outbox.test.tsx  The outbox, with memory storage and fake-indexeddb
   feeds.test.tsx   Numbered feeds: duplicates, gaps, snapshots and resuming
+  runs.test.tsx    Resumable runs: reconnects, reloads, policies, and useAgentRun
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `createWebSocketRuns(client, { name, start, resume, event, initial, reduce })` streams runs, such as an AI agent's
+  answer, that survive reconnects and page reloads. `start(request)` returns a run id and folds the run's events
+  into its value. Events carry an offset: on a new connection a streaming run sends `resume(runId, after)`, so the
+  server sends only what was missed, and duplicates are dropped. Streaming runs are remembered in `sessionStorage`,
+  so a reloaded page follows them again from their first event. A run's policy is `keep` (resume) or `cancel`
+  (abort when the connection drops, and send `cancel` first thing on the next one). `abort(runId)`, `attach(runId)`
+  for runs started elsewhere, and `list()`. Built on `createWebSocketFeeds`.
+- `useAgentRun(runs, runId)` renders a run's value and status, attaching to a run it doesn't know yet. See
+  [Resumable runs](https://mehmetkose.github.io/react-websocket/guide/agents#resumable-runs).
+
 ## [4.7.0] - 2026-10-17
 
 ### Added
@@ -330,6 +344,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.7.0...HEAD
 [4.7.0]: https://github.com/mehmetkose/react-websocket/compare/4.6.0...4.7.0
 [4.6.0]: https://github.com/mehmetkose/react-websocket/compare/4.5.0...4.6.0
 [4.5.0]: https://github.com/mehmetkose/react-websocket/compare/4.4.0...4.5.0
