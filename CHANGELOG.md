@@ -16,6 +16,8 @@ All notable changes to this project are documented here. The format is based on
   reply is never sent on a newer connection.
 - An [AI agents](https://mehmetkose.github.io/react-websocket/guide/agents) guide: browser tools, approvals,
   tools that need a click, cancellation and reconnects.
+- A [Next.js demo](https://github.com/mehmetkose/react-websocket/tree/main/examples/nextjs) of every feature, with
+  its own WebSocket server. The Tornado example moved to `examples/tornado`.
 - `send(message, { onDrop })`: called when a queued message is dropped without being sent, because a newer
   message with the same `key` replaced it or `queue.limit` evicted it.
 

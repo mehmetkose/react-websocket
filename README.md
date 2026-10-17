@@ -160,9 +160,10 @@ The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it lo
 
 v2 was a `<Websocket>` class component. v3 replaces it with hooks: `<Websocket url onMessage />` becomes `useWebSocket(url, { onMessage })`, and `ref.sendMessage(msg)` becomes `send(msg)`. See the [migration guide](https://mehmetkose.github.io/react-websocket/migration) for the full mapping.
 
-## Example
+## Examples
 
-[`example/`](example) has a Tornado broadcast server and a Vite + React 19 client.
+- [`examples/nextjs`](examples/nextjs) is a demo of every feature in a Next.js App Router app, with its own WebSocket server. Run `npm run example:nextjs` and open http://localhost:3000.
+- [`examples/tornado`](examples/tornado) is a small broadcast chat: a Tornado server and a Vite + React 19 client.
 
 ## Contributing
 

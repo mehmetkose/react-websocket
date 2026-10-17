@@ -12,7 +12,7 @@ tornado.options.define("port", default=8888, help="port to listen on")
 class Application(tornado.web.Application):
 
     def __init__(self):
-        # The page itself is served by Vite (`npm run example`).
+        # The page itself is served by Vite (`npm run example:tornado`).
         tornado.web.Application.__init__(self, [
             tornado.web.url(r"/live", WebSocketHandler, name="websocket"),
         ], debug=True)
