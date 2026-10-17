@@ -1,3 +1,8 @@
+---
+title: 'AI agents over WebSockets in React'
+description: 'Let an AI agent on your server ask the browser over a WebSocket: approve tool calls from your React UI, or answer with data only the browser has.'
+---
+
 # AI agents
 
 An agent running on your server sometimes needs the browser: to ask the user before it acts, or to use something only the browser has, like the page selection, the user's location or their logged-in session. Over a WebSocket, that's a request from the server that the client answers. This page shows how to answer them in code and from your UI.

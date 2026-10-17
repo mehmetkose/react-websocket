@@ -1,3 +1,8 @@
+---
+title: 'WebSocket auto-reconnect and heartbeats'
+description: 'How react-websocket reconnects a dropped WebSocket: exponential backoff with jitter, retries when the network or tab returns, heartbeats, and the send queue.'
+---
+
 # Reconnecting and heartbeats
 
 Connections drop: networks change, laptops sleep, servers deploy. This page covers how the client recovers, how to tune it, how to show it in your UI, and how messages sent while disconnected are handled.

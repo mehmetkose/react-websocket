@@ -1,3 +1,8 @@
+---
+title: 'Sharing one WebSocket between components'
+description: 'Share one WebSocket connection between many React components, by URL or with createWebSocket, how the connection''s lifetime is managed, and which to pick.'
+---
+
 # Shared clients
 
 A client is one WebSocket connection that any number of components can use. This page covers the two ways to share one, how the connection's lifetime is managed, and when to pick which.

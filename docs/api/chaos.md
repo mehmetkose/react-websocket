@@ -1,3 +1,7 @@
+---
+description: 'createChaosWebSocket creates a WebSocket class that injects network faults, for development. Available only from react-websocket/chaos.'
+---
+
 # createChaosWebSocket
 
 Create a `WebSocket` class that injects network faults, to pass as the [`WebSocket`](./options.md#websocket) option during development.
