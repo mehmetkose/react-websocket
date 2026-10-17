@@ -108,8 +108,8 @@ The hooks are compatible with the [React Compiler](https://react.dev/learn/react
 
 | Entry | Import | Size (min + gzip) |
 | --- | --- | --- |
-| `react-websocket` | `useWebSocket` | ~2.5 kB |
-| `react-websocket/core` | `createWebSocket` | ~2.2 kB |
+| `react-websocket` | `useWebSocket` | ~3 kB |
+| `react-websocket/core` | `createWebSocket` | ~2.6 kB |
 
 Sizes are measured by [size-limit](https://github.com/ai/size-limit) in CI, with budgets that fail the build if they grow. React is a peer dependency and not counted.
 

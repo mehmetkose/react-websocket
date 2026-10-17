@@ -4,7 +4,7 @@ layout: home
 hero:
   name: react-websocket
   text: WebSockets for React, done right
-  tagline: One hook. Shared connections, automatic reconnects, typed messages and Suspense, for React 18 and 19. Zero dependencies, about 2.5 kB min+gzip.
+  tagline: One hook. Shared connections, automatic reconnects, typed messages and Suspense, for React 18 and 19. Zero dependencies, about 3 kB min+gzip.
   actions:
     - theme: brand
       text: Get started

@@ -185,6 +185,57 @@ describe('createWebSocketRequests', () => {
     expect(sent()).toEqual([]);
   });
 
+  it('rejects a keyed request replaced in the queue by a newer one', async () => {
+    const { client, rpc } = setup();
+    client.connect();
+    const first = rpc.request({ type: 'join', room: 'a' }, { key: 'join', timeout: Infinity });
+    const second = rpc.request({ type: 'join', room: 'b' }, { key: 'join', timeout: Infinity });
+    await expect(first).rejects.toThrow('dropped from the send queue');
+    expect(rpc.pending()).toBe(1);
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([{ type: 'join', room: 'b', id: 2 }]);
+    reply({ type: 'reply', id: 2 });
+    await expect(second).resolves.toMatchObject({ id: 2 });
+  });
+
+  it('rejects a request evicted by queue.limit, and still calls its own onDrop', async () => {
+    const client = createWebSocket<In, Out>('ws://requests/limit', {
+      WebSocket: MockImpl,
+      json: true,
+      queue: { limit: 1 }
+    });
+    const rpc = createWebSocketRequests(client, {
+      send: (message: Request, id) => ({ ...message, id }),
+      reply: message => (message.type === 'reply' ? message.id : undefined)
+    });
+    client.connect();
+    const onDrop = vi.fn();
+    const first = rpc.request({ type: 'join', room: 'a' }, { onDrop });
+    const second = rpc.request({ type: 'join', room: 'b' });
+    await expect(first).rejects.toThrow('dropped from the send queue');
+    expect(onDrop).toHaveBeenCalledOnce();
+    client.close();
+    await expect(second).rejects.toThrow('closed');
+  });
+
+  it('gives each request a unique id across managers on one client', async () => {
+    const { client, rpc } = setup();
+    const other = createWebSocketRequests(client, {
+      send: (message: Request, id) => ({ ...message, id }),
+      reply: message => (message.type === 'reply' ? message.id : undefined)
+    });
+    client.connect();
+    MockWebSocket.last.open();
+    const a = rpc.request({ type: 'join', room: 'a' });
+    const b = other.request({ type: 'join', room: 'b' });
+    expect(sent().map(message => message.id)).toEqual([1, 2]);
+    reply({ type: 'reply', id: 1, ok: 'a' });
+    await expect(a).resolves.toMatchObject({ ok: 'a' });
+    expect(other.pending()).toBe(1);
+    reply({ type: 'reply', id: 2, ok: 'b' });
+    await expect(b).resolves.toMatchObject({ ok: 'b' });
+  });
+
   it('rejects when there is no WebSocket implementation', async () => {
     const client = createWebSocket<In, Out>('ws://x', {
       WebSocket: undefined,

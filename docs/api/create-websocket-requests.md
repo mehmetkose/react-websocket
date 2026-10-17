@@ -68,13 +68,15 @@ The guide is [Real-time games](../guide/games.md#requests-await-the-server-s-ans
 | `timeout` | `number` | Overrides the manager's `timeout` for this request |
 | `signal` | `AbortSignal` | Aborting rejects the request with `signal.reason`. An already aborted signal sends nothing |
 | `volatile` | `boolean` | Reject right away if the socket isn't open, instead of queueing the request |
-| `key` | `string` | Passed to `send()`: replaces a queued request with the same key |
+| `key` | `string` | Passed to `send()`: replaces a queued request with the same key, and the replaced request rejects |
+| `onDrop` | `() => void` | Called if the request is dropped from the queue before it's sent. The request rejects either way |
 
 ## Behavior
 
 - **Rejects, never hangs.** A request rejects on timeout (a `DOMException` named `TimeoutError`), when `error` returns a value, when its signal aborts, when the connection it was sent on closes, on `close()`, when the client gives up, and on `dispose()`.
 - **Lost connections.** A reply can only arrive on the connection the request was sent on. When that connection closes, including through `reconnect()`, the request rejects instead of waiting through the reconnect.
-- **Queued while disconnected.** A request made while connecting or reconnecting waits in the client's send queue and goes out when the socket opens. Its timeout runs from the call. With `volatile`, or on a `closed` client, it rejects right away. On a client created with `queue: false`, the request is dropped and only rejects on timeout, so pass `volatile` there.
+- **Queued while disconnected.** A request made while connecting or reconnecting waits in the client's send queue and goes out when the socket opens. Its timeout runs from the call. With `volatile`, or on a `closed` client, it rejects right away. If it's dropped from the queue before it's sent (replaced by a newer request with the same `key`, or evicted by `queue.limit`), it rejects then. On a client created with `queue: false`, the request is dropped and only rejects on timeout, so pass `volatile` there.
+- **Unique ids per client.** Ids count up per client, shared by every manager on it, so two managers on one client never send the same id.
 - **Holds the connection.** A pending request holds the client like a mounted hook, so it works without React. The client is released when the request settles.
 - **Replies are messages.** Replies also reach `onMessage`, `lastMessage`, `useWebSocketEvent` and state stores. A late reply to a request that already timed out is delivered there and ignored here.
 - **Requires TypeScript 5.4+** for the inferred message types (it uses `NoInfer`).

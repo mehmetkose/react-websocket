@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `send(message, { onDrop })`: called when a queued message is dropped without being sent, because a newer
+  message with the same `key` replaced it or `queue.limit` evicted it.
+
+### Fixed
+
+- A connection started by reading `ready` no longer stays open forever when nothing holds it. That happened
+  when the last hook unmounted while connecting, or when a Suspense render read `ready` and was then abandoned.
+  It now closes 5 seconds after opening unless a hook, `acquire()` or `connect()` holds it.
+- With an async `schema`, one error during delivery (for example a throwing `client.subscribe` listener) no
+  longer silently drops every later message. Store listeners that throw are now reported asynchronously, like
+  event listeners, instead of interrupting the client.
+- A request replaced in the queue by a newer one with the same `key`, or evicted by `queue.limit`, now rejects
+  instead of waiting for its timeout (or forever with `timeout: Infinity`).
+- Two request managers on one client no longer send the same ids and resolve each other's requests with one
+  reply. Ids are now counted per client.
+- Bundle size claims now match the measurement: about 3 kB min+gzip for `useWebSocket`, not 2.5 kB. size-limit
+  now measures gzip, as the docs state.
+
 ## [3.2.0] - 2026-10-17
 
 ### Added
@@ -106,6 +128,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/3.2.0...HEAD
 [3.2.0]: https://github.com/mehmetkose/react-websocket/compare/3.1.0...3.2.0
 [3.1.0]: https://github.com/mehmetkose/react-websocket/compare/3.0.0...3.1.0
 [3.0.0]: https://github.com/mehmetkose/react-websocket/compare/2.2.0...3.0.0

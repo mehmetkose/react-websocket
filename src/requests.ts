@@ -42,7 +42,8 @@ export interface WebSocketRequests<Req, In> {
    * Rejects with a `TimeoutError` `DOMException` after `timeout`, with `signal.reason` when
    * aborted, and with an `Error` when the connection it was sent on closes (the reply can
    * no longer arrive) or the client stops. A request made while disconnected is queued like
-   * any other message and waits for the connection.
+   * any other message and waits for the connection; it rejects if it is dropped from the
+   * queue (replaced by a newer request with the same `key`, or evicted by `queue.limit`).
    */
   request(message: Req, options?: RequestOptions): Promise<In>;
   /** Number of requests waiting for a reply. */
@@ -50,6 +51,10 @@ export interface WebSocketRequests<Req, In> {
   /** Reject every pending request and stop listening. Only needed for managers created dynamically. */
   dispose(): void;
 }
+
+// Last id sent per client, shared by its managers so two of them never send the same id
+// and resolve each other's requests with one reply.
+const lastIds = new WeakMap<WebSocketClient<any, any>, number>();
 
 interface Pending<In> {
   resolve(reply: In): void;
@@ -83,7 +88,6 @@ export function createWebSocketRequests<Req, In, const Out>(
   options: WebSocketRequestsOptions<Req, NoInfer<In>, NoInfer<Out>>
 ): WebSocketRequests<Req, In> {
   const waiting = new Map<string, Pending<In>>();
-  let nextId = 0;
 
   function rejectWhere(test: (entry: Pending<In>) => boolean, reason: () => unknown) {
     for (const entry of [...waiting.values()]) if (test(entry)) entry.reject(reason());
@@ -125,7 +129,8 @@ export function createWebSocketRequests<Req, In, const Out>(
       const { signal } = requestOptions;
       if (signal?.aborted) return Promise.reject(signal.reason);
 
-      const id = ++nextId;
+      const id = (lastIds.get(client) ?? 0) + 1;
+      lastIds.set(client, id);
       const key = String(id);
       const timeout = requestOptions.timeout ?? options.timeout ?? 10_000;
 
@@ -172,7 +177,13 @@ export function createWebSocketRequests<Req, In, const Out>(
         }
         let sent: boolean;
         try {
-          sent = client.send(options.send(message, id), requestOptions);
+          sent = client.send(options.send(message, id), {
+            ...requestOptions,
+            onDrop() {
+              entry.reject(new Error('Request was dropped from the send queue before it was sent'));
+              requestOptions.onDrop?.();
+            }
+          });
         } catch (error) {
           entry.reject(error);
           return;

@@ -27,7 +27,7 @@ export function ChatPage() {
 }
 ```
 
-Reading `chat.ready` starts an idle client, so `Room` doesn't need another hook to trigger the connection. While anyone is waiting on `ready`, the client won't close the attempt, even if no hook holds it yet.
+Reading `chat.ready` starts an idle client, so `Room` doesn't need another hook to trigger the connection. While anyone is waiting on `ready`, the client won't close the attempt, even if no hook holds it yet. Once it opens, it waits a few seconds for a hook (such as `useWebSocket` in the retried render) to hold it, and closes if none does. So a render that reads `ready` and is then abandoned doesn't leave a socket open.
 
 `use()` needs React 19. On React 18, show a loading state from `status` instead.
 
@@ -122,7 +122,7 @@ await chat.ready; // starts the connection if idle
 console.log('connected');
 ```
 
-Reading `ready` starts the connection but doesn't hold it like a hook does. Call `chat.connect()` if the connection should stay open independently of components. See [Shared clients](./shared-clients.md#keeping-a-connection-open-with-connect).
+Reading `ready` starts the connection but doesn't hold it like a hook does: if nothing holds it, it closes a few seconds after opening. Call `chat.connect()` if the connection should stay open independently of components. See [Shared clients](./shared-clients.md#keeping-a-connection-open-with-connect).
 
 You don't need to `await ready` before calling `send()`. Messages sent earlier are queued and sent on open.
 
