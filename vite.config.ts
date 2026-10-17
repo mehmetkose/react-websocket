@@ -1,6 +1,44 @@
-import { defineConfig } from 'vite-plus';
+import { defineConfig, type Plugin } from 'vite-plus';
+import type { PackUserConfig } from 'vite-plus/pack';
+
+const shared = {
+  dts: true,
+  sourcemap: true,
+  target: 'es2022',
+  platform: 'neutral',
+  // `.js`/`.cjs` (and `.d.ts`/`.d.cts`), matching the `exports` map in package.json.
+  fixedExtension: false,
+  // Both configs write to dist/; `npm run build` empties it first.
+  clean: false,
+  deps: { neverBundle: ['react'] }
+} satisfies PackUserConfig;
+
+// The hooks entry imports the client from the built `core` entry instead of bundling a second
+// copy, so an app using both entries ships the client once and `instanceof MessageError` holds.
+function coreAsExternal(target: string): Plugin {
+  return {
+    name: 'core-as-external',
+    resolveId(source) {
+      if (source === './core') return { id: target, external: true };
+    }
+  };
+}
 
 export default defineConfig({
+  pack: [
+    // `react-websocket/core` has no React dependency and no client directive.
+    { ...shared, entry: { core: 'src/core.ts' }, format: ['esm', 'cjs'] },
+    // The hooks are client-only; mark them so Server Components frameworks bundle them correctly.
+    {
+      ...shared,
+      entry: { index: 'src/index.ts' },
+      banner: { js: "'use client';" },
+      format: {
+        esm: { plugins: [coreAsExternal('./core.js')] },
+        cjs: { plugins: [coreAsExternal('./core.cjs')] }
+      }
+    }
+  ],
   fmt: {
     singleQuote: true,
     trailingComma: 'none',
