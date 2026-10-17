@@ -35,7 +35,7 @@ live.send({ type: 'subscribe', symbol: 'ACME' });
 const off = live.on('message', message => console.log(message.price));
 ```
 
-::: warning Don't create clients during render
+:::warning Don't create clients during render
 `createWebSocket` inside a component body creates a new client on every render. Create it at module level, or use `useWebSocket(url)` for per-component connections.
 :::
 

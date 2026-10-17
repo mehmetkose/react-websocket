@@ -78,7 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 The server sends the bell with `0` items and `data-status="idle"`. After hydration it connects and updates.
 
-::: tip Environment-specific URLs
+:::tip Environment-specific URLs
 In Next.js, only `NEXT_PUBLIC_*` environment variables reach the browser. Use something like `process.env.NEXT_PUBLIC_WS_URL` for the URL, or pass a [`url` function](./authentication.md) that builds it at connection time.
 :::
 

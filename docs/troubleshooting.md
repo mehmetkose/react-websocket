@@ -2,7 +2,7 @@
 
 Answers to the questions that come up most. If yours isn't here, [open a discussion](https://github.com/mehmetkose/react-websocket/discussions) or [file an issue](https://github.com/mehmetkose/react-websocket/issues).
 
-::: tip Turn on logging first
+:::tip Turn on logging first
 `logger: console.debug` makes the client explain itself: every connection attempt, close, retry delay, heartbeat timeout and dropped message.
 
 ```ts

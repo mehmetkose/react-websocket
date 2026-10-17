@@ -1,0 +1,10 @@
+{
+  // The docs theme and demos. Same settings as the library, except that the canvas code indexes
+  // arrays in tight loops, where `noUncheckedIndexedAccess` would only add `!` everywhere.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": false,
+    "types": []
+  },
+  "include": ["theme"]
+}

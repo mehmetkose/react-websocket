@@ -107,7 +107,7 @@ export function ChatPage() {
 
 `ready` rejects with an `Error` describing the last close, for example `WebSocket closed (code 1006)`, or `WebSocket was closed` after `close()`. If a [`url` function](./authentication.md) failed on the last attempt, it rejects with that error.
 
-::: tip Bound the retries
+:::tip Bound the retries
 With the default `maxAttempts: Infinity`, the client keeps retrying a server that is down, so the error boundary shows only after `close()`, a `false` from `shouldReconnect`, or a constructor error. Set `reconnect: { maxAttempts: n }` if you want the error state to appear after a while.
 :::
 

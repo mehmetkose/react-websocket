@@ -1,0 +1,480 @@
+/*
+ * Monochrome theme: black on white in light mode, white on black in dark mode.
+ * One typeface (Geist Mono) throughout, tuned for reading long-form docs.
+ */
+
+/* ---------- Typeface ---------- */
+
+:root {
+  --rp-font-family-base:
+    'Geist Mono Variable', ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas', monospace;
+  --rp-font-family-mono: var(--rp-font-family-base);
+}
+
+/* ---------- Light: black ink on white ---------- */
+
+:root {
+  --rp-c-bg: #ffffff;
+  --rp-c-bg-soft: #f4f4f4;
+  --rp-c-bg-mute: #ededed;
+  --rp-c-bg-alt: #fafafa;
+
+  --rp-c-text-0: #000000;
+  --rp-c-text-1: #0a0a0a;
+  --rp-c-text-2: #4a4a4a;
+  --rp-c-text-3: #8a8a8a;
+  --rp-c-text-4: #bdbdbd;
+
+  --rp-c-divider: #d4d4d4;
+  --rp-c-divider-light: #e8e8e8;
+
+  --rp-c-gray-light-3: #d4d4d4;
+  --rp-c-gray-soft: rgba(0, 0, 0, 0.05);
+
+  --rp-c-brand: #000000;
+  --rp-c-brand-light: #333333;
+  --rp-c-brand-lighter: #e5e5e5;
+  --rp-c-brand-dark: #000000;
+  --rp-c-brand-darker: #000000;
+  --rp-c-brand-tint: rgba(0, 0, 0, 0.06);
+
+  --rp-c-selection-bg: #000000;
+  --rp-c-selection-text: #ffffff;
+}
+
+/* ---------- Dark: white ink on black ---------- */
+
+html.dark {
+  --rp-c-bg: #000000;
+  --rp-c-bg-soft: #111111;
+  --rp-c-bg-mute: #1c1c1c;
+  --rp-c-bg-alt: #050505;
+
+  --rp-c-text-0: #ffffff;
+  --rp-c-text-1: #f5f5f5;
+  --rp-c-text-2: #a8a8a8;
+  --rp-c-text-3: #6e6e6e;
+  --rp-c-text-4: #3a3a3a;
+
+  --rp-c-divider: #333333;
+  --rp-c-divider-light: #1f1f1f;
+
+  --rp-c-gray-light-3: #333333;
+  --rp-c-gray-soft: rgba(255, 255, 255, 0.07);
+
+  --rp-c-brand: #ffffff;
+  --rp-c-brand-light: #d4d4d4;
+  --rp-c-brand-lighter: #2a2a2a;
+  --rp-c-brand-dark: #ffffff;
+  --rp-c-brand-darker: #ffffff;
+  --rp-c-brand-tint: rgba(255, 255, 255, 0.08);
+
+  --rp-c-selection-bg: #ffffff;
+  --rp-c-selection-text: #000000;
+}
+
+/* ---------- Shared tokens, defined in terms of the ink above ---------- */
+
+:root,
+html.dark {
+  --rp-c-link: var(--rp-c-text-1);
+  --rp-c-text-code: var(--rp-c-text-1);
+  --rp-c-text-code-bg: var(--rp-c-gray-soft);
+  --rp-c-text-code-border: transparent;
+
+  --rp-radius: 6px;
+  --rp-radius-small: 3px;
+  --rp-radius-large: 6px;
+
+  --rp-code-font-size: 13px;
+  --rp-code-title-bg: var(--rp-c-bg-alt);
+  --rp-code-block-color: var(--rp-c-text-1);
+  --rp-code-block-bg: var(--rp-c-bg-alt);
+  --rp-code-block-border: 1px solid var(--rp-c-divider-light);
+  --rp-code-block-shadow: none;
+
+  --rp-home-background-bg: var(--rp-c-bg);
+  --rp-home-feature-bg: transparent;
+  --rp-home-hero-title-bg: none;
+  --rp-home-hero-title-color: var(--rp-c-text-3);
+
+  /* Callouts: monochrome, told apart by weight not hue. */
+  --rp-container-note-border: transparent;
+  --rp-container-note-text: var(--rp-c-text-1);
+  --rp-container-note-bg: var(--rp-c-bg-soft);
+  --rp-container-note-code-bg: var(--rp-c-gray-soft);
+  --rp-container-tip-border: transparent;
+  --rp-container-tip-text: var(--rp-c-text-1);
+  --rp-container-tip-bg: var(--rp-c-bg-soft);
+  --rp-container-tip-code-bg: var(--rp-c-gray-soft);
+  --rp-container-info-border: transparent;
+  --rp-container-info-text: var(--rp-c-text-1);
+  --rp-container-info-bg: var(--rp-c-bg-soft);
+  --rp-container-info-code-bg: var(--rp-c-gray-soft);
+  --rp-container-important-border: transparent;
+  --rp-container-important-text: var(--rp-c-text-1);
+  --rp-container-important-bg: var(--rp-c-bg-soft);
+  --rp-container-important-code-bg: var(--rp-c-gray-soft);
+  --rp-container-warning-border: transparent;
+  --rp-container-warning-text: var(--rp-c-text-1);
+  --rp-container-warning-bg: var(--rp-c-bg-soft);
+  --rp-container-warning-code-bg: var(--rp-c-gray-soft);
+  --rp-container-danger-border: transparent;
+  --rp-container-danger-text: var(--rp-c-text-1);
+  --rp-container-danger-bg: var(--rp-c-bg-soft);
+  --rp-container-danger-code-bg: var(--rp-c-gray-soft);
+  --rp-container-details-border: transparent;
+  --rp-container-details-text: var(--rp-c-text-1);
+  --rp-container-details-bg: var(--rp-c-bg-soft);
+  --rp-container-details-code-bg: var(--rp-c-gray-soft);
+}
+
+::selection {
+  background: var(--rp-c-selection-bg);
+  color: var(--rp-c-selection-text);
+}
+
+/* ---------- Typography ---------- */
+
+body {
+  font-feature-settings:
+    'zero' 0,
+    'calt' 1;
+  font-optical-sizing: auto;
+}
+
+/* Monospace sets wide; a slightly smaller size and generous leading keep a comfortable measure. */
+.rp-doc {
+  font-size: 14.5px;
+  line-height: 1.75;
+  letter-spacing: -0.005em;
+}
+
+.rp-doc p,
+.rp-doc li {
+  line-height: 1.75;
+}
+
+.rp-doc > p,
+.rp-doc > ul,
+.rp-doc > ol {
+  max-width: 76ch;
+}
+
+.rp-doc h1,
+.rp-doc h2,
+.rp-doc h3,
+.rp-doc h4 {
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: var(--rp-c-text-1);
+}
+
+.rp-doc h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+
+.rp-doc h2 {
+  font-size: 21px;
+  line-height: 1.35;
+  margin-top: 56px;
+  padding-top: 28px;
+  border-top: 1px solid var(--rp-c-divider-light);
+}
+
+/* Every h2 carries its own rule, so drop the extra one Rspress draws above the first. */
+.rp-doc h2:first-of-type::before {
+  display: none;
+}
+
+.rp-doc h3 {
+  font-size: 16px;
+  margin-top: 36px;
+}
+
+.rp-doc strong {
+  font-weight: 650;
+  color: var(--rp-c-text-1);
+}
+
+/* Links are told apart by underline, not color. */
+.rp-doc a.rp-link:not(.rp-header-anchor) {
+  color: var(--rp-c-text-1);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--rp-c-text-3);
+  transition:
+    text-decoration-color 0.2s,
+    text-decoration-thickness 0.2s;
+}
+
+.rp-doc a.rp-link:not(.rp-header-anchor):hover {
+  text-decoration-color: var(--rp-c-text-1);
+  text-decoration-thickness: 2px;
+}
+
+.rp-doc .rp-header-anchor {
+  color: var(--rp-c-text-3);
+}
+
+.rp-doc .rp-header-anchor:hover {
+  border-bottom-color: transparent;
+}
+
+/* Inline code: the body is already monospace, so mark code with a tint and weight. */
+.rp-doc :not(pre) > code {
+  font-size: 0.92em;
+  font-weight: 500;
+  padding: 2px 5px;
+  border: none;
+  border-radius: 3px;
+}
+
+.rp-doc a > code {
+  color: inherit;
+}
+
+/* Code blocks */
+.rp-codeblock__content code {
+  line-height: 1.7;
+  font-variant-ligatures: none;
+}
+
+/* The grayscale code themes mark syntax with weight and slant; apply them per mode. */
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+  font-weight: var(--shiki-light-font-weight, inherit);
+  font-style: var(--shiki-light-font-style, inherit);
+}
+
+html.dark .shiki,
+html.dark .shiki span {
+  color: var(--shiki-dark);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  font-style: var(--shiki-dark-font-style, inherit);
+}
+
+/* Code highlighted in the browser (package manager tabs) uses Rspress's token variables instead. */
+:root {
+  --shiki-token-constant: #5c5c5c;
+  --shiki-token-string: #5c5c5c;
+  --shiki-token-comment: #8f8f8f;
+  --shiki-token-keyword: #000000;
+  --shiki-token-parameter: #0a0a0a;
+  --shiki-token-function: #000000;
+  --shiki-token-string-expression: #5c5c5c;
+  --shiki-token-punctuation: #5c5c5c;
+  --shiki-token-link: #0a0a0a;
+}
+
+html.dark {
+  --shiki-token-constant: #a3a3a3;
+  --shiki-token-string: #a3a3a3;
+  --shiki-token-comment: #6e6e6e;
+  --shiki-token-keyword: #ffffff;
+  --shiki-token-parameter: #ededed;
+  --shiki-token-function: #ffffff;
+  --shiki-token-string-expression: #a3a3a3;
+  --shiki-token-punctuation: #a3a3a3;
+  --shiki-token-link: #ededed;
+}
+
+.rp-tabs__label__item svg,
+.rp-tabs__label__item img {
+  filter: grayscale(1);
+}
+
+/* Tables: hairline rules, no box, no zebra stripes, tabular figures. */
+.rp-doc table {
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  border: none;
+  border-radius: 0;
+}
+
+.rp-doc thead,
+.rp-doc tbody,
+.rp-doc tbody tr:hover {
+  background: transparent;
+}
+
+.rp-doc th,
+.rp-doc td {
+  font-size: inherit;
+  border-bottom: 1px solid var(--rp-c-divider-light);
+  padding: 10px 16px 10px 0;
+}
+
+.rp-doc tr:last-child td {
+  border-bottom: 1px solid var(--rp-c-divider-light);
+}
+
+.rp-doc th {
+  font-weight: 600;
+  color: var(--rp-c-text-2);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Callouts: a plain panel with a solid rule on the left. */
+.rp-callout {
+  border: none;
+  border-left: 3px solid var(--rp-c-text-1);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.rp-callout--tip,
+.rp-callout--info,
+.rp-callout--note,
+.rp-callout--details {
+  border-left-color: var(--rp-c-text-3);
+}
+
+.rp-callout__title {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.rp-callout__title::before {
+  display: none;
+}
+
+.rp-doc blockquote {
+  border-left: 2px solid var(--rp-c-text-1);
+  color: var(--rp-c-text-2);
+}
+
+/* ---------- Navigation and chrome ---------- */
+
+.rp-nav__title,
+.rspress-logo {
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.rp-sidebar-item {
+  font-size: 13.5px;
+}
+
+.rp-sidebar-item--active {
+  font-weight: 650;
+  color: var(--rp-c-text-1);
+}
+
+.rp-toc-item--active .rp-toc-item__text {
+  color: var(--rp-c-text-1);
+  font-weight: 600;
+}
+
+/* ---------- Home ---------- */
+
+/* The package name in gray, the headline in full ink. */
+.rp-home-hero__title,
+.rp-home-hero__subtitle {
+  letter-spacing: -0.06em;
+  font-weight: 700;
+}
+
+.rp-home-hero__title-brand {
+  -webkit-text-fill-color: currentColor;
+}
+
+.rp-home-hero__tagline {
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 60ch;
+  color: var(--rp-c-text-2);
+}
+
+/* The animation sizes itself to its container, which needs a width of its own when stacked. */
+.rp-home-hero__image {
+  width: 100%;
+  max-width: none;
+}
+
+@media (width <= 1000px) {
+  .rp-home-hero__image {
+    max-width: 480px;
+  }
+}
+
+/* Line the features and the page body up with the hero text. */
+.rp-home-feature {
+  padding: 10px 40px;
+}
+
+.rws-home-content {
+  max-width: 72rem;
+  margin: 0 auto 4rem;
+  padding: 0 40px;
+}
+
+@media (width <= 600px) {
+  .rp-home-feature,
+  .rws-home-content {
+    padding: 10px 16px;
+  }
+}
+
+.rp-home-feature__card {
+  border: 1px solid var(--rp-c-divider-light);
+  border-radius: 6px;
+  backdrop-filter: none;
+}
+
+.rp-home-feature__card:hover {
+  border-color: var(--rp-c-text-1);
+  color: inherit;
+}
+
+.rp-home-feature__title {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.rp-home-feature__detail {
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.rp-button {
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rp-button--big {
+  padding: 0 20px;
+}
+
+.rp-button--brand {
+  background: var(--rp-c-text-1);
+  color: var(--rp-c-bg);
+}
+
+.rp-button--alt,
+html.dark .rp-button--alt {
+  background: transparent;
+  color: var(--rp-c-text-1);
+  border: 1px solid var(--rp-c-divider);
+}
+
+.rp-button--brand:hover {
+  opacity: 1;
+  background: var(--rp-c-text-2);
+}
+
+.rp-button--alt:hover,
+html.dark .rp-button--alt:hover {
+  opacity: 1;
+  background: transparent;
+  border-color: var(--rp-c-text-1);
+}

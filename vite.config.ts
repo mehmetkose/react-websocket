@@ -53,18 +53,17 @@ export default defineConfig({
       'dist',
       'coverage',
       'package-lock.json',
-      'docs/.vitepress/cache',
-      'docs/.vitepress/dist',
+      'doc_build',
       // Prose is hand-wrapped; tables and examples are formatted by hand.
-      '*.md'
+      '*.md',
+      '*.mdx'
     ]
   },
   lint: {
     ignorePatterns: [
       'dist',
       'coverage',
-      'docs/.vitepress/cache',
-      'docs/.vitepress/dist',
+      'doc_build',
       // Type-aware linting needs the examples' own dependencies, which `npm ci` here doesn't
       // install. They have their own `typecheck` and `build` scripts.
       'examples/nextjs',

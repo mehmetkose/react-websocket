@@ -100,7 +100,7 @@ Clients are reference-counted. You rarely need to open or close them yourself.
 
 A hook with `enabled: false`, or `useWebSocket(null)`, doesn't hold the connection.
 
-::: tip URL clients are forgotten when unused
+:::tip URL clients are forgotten when unused
 When the last hook for a URL releases it, that URL's client is discarded. The next hook for that URL starts a fresh client, so `lastMessage` starts out `undefined` again. A module-level client is never discarded and keeps its `lastMessage`.
 :::
 

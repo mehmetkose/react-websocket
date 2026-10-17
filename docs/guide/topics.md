@@ -79,7 +79,7 @@ Subscriptions are never put in the send queue. On open, they're sent **before** 
 
 The one-tick delay before `unsubscribe` is the same trick the client uses for connections. StrictMode's mount → unmount → mount, `<Activity>` toggles and route transitions don't send `unsubscribe` + `subscribe` pairs.
 
-::: tip Authentication first
+:::tip Authentication first
 `open` listeners run in the order they were added, and topics subscribe from one. If your server needs an auth message before anything else, add your auth listener (`live.on('open', …)`) **before** calling `createWebSocketTopics`. See [First-message auth](./authentication.md#first-message-auth).
 :::
 

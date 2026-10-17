@@ -33,7 +33,7 @@ If the function throws or its promise rejects (for example the token refresh fai
 
 While the function is pending, the status is `connecting` (or `reconnecting`), and `send()` calls are queued as usual.
 
-::: warning Tokens in URLs are logged
+:::warning Tokens in URLs are logged
 URLs often end up in server and proxy access logs. Prefer short-lived, single-purpose tokens over long-lived session tokens. See [SECURITY.md](https://github.com/mehmetkose/react-websocket/blob/main/SECURITY.md).
 :::
 
@@ -83,7 +83,7 @@ export const live = createWebSocket<unknown, Out>(
 live.on('open', () => live.send({ type: 'auth', token }));
 ```
 
-::: warning Don't `await` inside the open listener
+:::warning Don't `await` inside the open listener
 If the listener awaits something before sending, the queue is flushed while it waits, and queued messages reach the server before `auth`. Get what you need beforehand, as above, or set `queue: false` so nothing is queued while disconnected.
 :::
 
@@ -115,7 +115,7 @@ live.on('close', close => {
 
 When `shouldReconnect` returns `false`, the status becomes `closed` and [`ready`](./suspense.md) rejects, which a Suspense error boundary can catch.
 
-::: tip
+:::tip
 Code `4000` is used by this library for a [heartbeat timeout](./reconnecting.md). Pick other codes for your own meanings.
 :::
 

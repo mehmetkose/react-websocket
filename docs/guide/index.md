@@ -56,4 +56,4 @@ You get clients in two ways:
 | TypeScript | Optional. Types ship with the package; TypeScript 5.4+ is recommended. |
 | Server rendering | Supported. See [Server rendering and Next.js](./ssr.md). |
 
-Ready? [Get started](./getting-started.md).
+Ready? [Get started](./getting-started.mdx).
