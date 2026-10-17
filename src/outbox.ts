@@ -81,7 +81,10 @@ export interface WebSocketOutbox<M> {
   add(message: M, id?: string): Promise<string>;
   /** Remove an entry without sending it again, e.g. when the user cancels it. */
   remove(id: string): Promise<void>;
-  /** Remove every entry, e.g. on logout. */
+  /**
+   * Remove every entry at once, including ones other tabs stored, e.g. on logout. Resolves once
+   * they're deleted from storage.
+   */
   clear(): Promise<void>;
   /** The waiting entries, oldest first. A new array on every change. */
   getSnapshot(): readonly OutboxEntry<M>[];
@@ -183,6 +186,8 @@ export function createWebSocketOutbox<M, In, const Out>(
   let loaded = false;
   // Removed (or acknowledged) before the stored entries were loaded: don't restore them.
   const removed = new Set<string>();
+  // Cleared before the stored entries were loaded: restore none of them.
+  let cleared = false;
   let disposed = false;
   let release: (() => void) | undefined;
   // A strictly increasing `createdAt`, so entries added in the same ms keep their order.
@@ -233,7 +238,9 @@ export function createWebSocketOutbox<M, In, const Out>(
       // Entries added meanwhile are newer than the stored ones, unless one has the same id.
       entries = new Map(
         [
-          ...records.filter(record => !entries.has(record.id) && !removed.has(record.id)),
+          ...records.filter(
+            record => !cleared && !entries.has(record.id) && !removed.has(record.id)
+          ),
           ...entries.values()
         ]
           .sort((a, b) => a.createdAt - b.createdAt)
@@ -291,12 +298,23 @@ export function createWebSocketOutbox<M, In, const Out>(
       return storage.put(record).then(() => id);
     },
     remove: forget,
-    async clear() {
-      await ready.catch(noop);
+    clear() {
+      // At once, like `remove()`: waiting for the stored entries would send them first.
+      if (!loaded) cleared = true;
+      const before = (lastCreated = Math.max(Date.now(), lastCreated + 1));
       entries.clear();
       changed();
-      // Including what other tabs stored since this one loaded.
-      await Promise.all((await storage.load()).map(record => storage.delete(record.id)));
+      // Including what other tabs stored, but not what's added from now on.
+      return storage
+        .load()
+        .then(records =>
+          Promise.all(
+            records
+              .filter(record => record.createdAt < before)
+              .map(record => storage.delete(record.id))
+          )
+        )
+        .then(noop);
     },
     getSnapshot: () => snapshot,
     subscribe(listener) {

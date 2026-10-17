@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `outbox.clear()` empties the outbox at once, as `remove()` does, instead of after the stored entries are loaded.
+  Called while they were still loading, with the socket open, it used to let them be sent before clearing them.
+- `WebSocketDevtools` says "1 peer", not "1 peers".
+
 ## [4.16.0] - 2026-10-17
 
 ### Added
@@ -440,6 +448,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.16.0...HEAD
 [4.16.0]: https://github.com/mehmetkose/react-websocket/compare/4.15.0...4.16.0
 [4.15.0]: https://github.com/mehmetkose/react-websocket/compare/4.14.0...4.15.0
 [4.14.0]: https://github.com/mehmetkose/react-websocket/compare/4.13.0...4.14.0

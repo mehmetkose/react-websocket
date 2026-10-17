@@ -177,6 +177,35 @@ describe('createWebSocketOutbox', () => {
     expect(await storage.load()).toEqual([]);
   });
 
+  it('clear() empties at once, and stored messages not loaded yet are never sent', async () => {
+    const storage = memoryStorage();
+    await storage.put({ id: 'stored', message: { table: 0 }, createdAt: 1 });
+    const client = createWebSocket<In, Out>('ws://outbox/clear', {
+      WebSocket: MockImpl,
+      json: true
+    });
+    client.connect();
+    MockWebSocket.last.open();
+    const outbox = createWebSocketOutbox(client, {
+      name: 'orders',
+      storage,
+      send: (order: Order, id) => ({ type: 'order', id, order }),
+      ack: message => (message.type === 'ack' ? message.id : null)
+    });
+    outbox.add({ table: 1 }, 'a');
+    const cleared = outbox.clear();
+    expect(outbox.getSnapshot()).toEqual([]);
+    // Added after clear(): kept, and sent once the stored messages are loaded.
+    outbox.add({ table: 2 }, 'b');
+    await cleared;
+    await settle();
+    expect(ids(outbox)).toEqual(['b']);
+    expect(sent().map(message => message.id)).toEqual(['b']);
+    expect((await storage.load()).map(record => record.id)).toEqual(['b']);
+    outbox.dispose();
+    client.close();
+  });
+
   it('moves a re-added id to the end', async () => {
     const { outbox } = setup();
     await outbox.ready;

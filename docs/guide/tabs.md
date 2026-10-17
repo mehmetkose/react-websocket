@@ -50,6 +50,8 @@ WebSocket: createTabsWebSocket({
 
 `json: true` hands the functions parsed messages. Recognize every message your app subscribes with: a message on a topic no tab holds is dropped.
 
+Subscribes are always forwarded, so a tab that joins a topic gets what the server sends a new subscriber, such as a snapshot. The tabs that already hold the topic get it too, since it comes on the same connection. A [state](./state.md) that replaces itself with a snapshot handles that without doing anything, and [numbered feeds](./topics.md#numbered-feeds) drop events they've already delivered.
+
 In Chrome, with tabs 1 and 2 showing `prices` and tab 3 showing `news`, prices reached tabs 1 and 2 and news only tab 3. When tab 1 let go of `prices`, the server never saw an unsubscribe, and tab 2 went on receiving prices.
 
 ## Things to know
