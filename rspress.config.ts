@@ -1,4 +1,5 @@
 import { defineConfig } from '@rspress/core';
+import { rehypeAccessibility } from './docs/plugins/accessibility';
 import { pluginSeo } from './docs/plugins/seo';
 import { monochromeDark, monochromeLight } from './docs/theme/monochrome';
 
@@ -32,7 +33,8 @@ export default defineConfig({
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
   plugins: [pluginSeo({ siteUrl })],
-  // llms.txt, llms-full.txt and a Markdown copy of every page, for AI assistants and agents.
+  // llms.txt, llms-full.txt and a Markdown copy of every page, for AI assistants and agents. The
+  // "Copy Markdown" buttons this would add under each title are turned off in themeConfig.
   llms: true,
   route: {
     // Only Markdown files are pages, so the theme and demo components can live under docs/.
@@ -41,6 +43,7 @@ export default defineConfig({
     cleanUrls: true
   },
   markdown: {
+    rehypePlugins: [rehypeAccessibility],
     // Grayscale highlighting to match the black/white theme. Both themes are emitted as CSS
     // variables and picked per mode in index.css.
     shiki: {
@@ -59,6 +62,7 @@ export default defineConfig({
     }
   },
   themeConfig: {
+    llmsUI: false,
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
