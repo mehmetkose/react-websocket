@@ -37,6 +37,16 @@
         "default": "./dist/chaos.cjs"
       }
     },
+    "./webtransport": {
+      "import": {
+        "types": "./dist/webtransport.d.ts",
+        "default": "./dist/webtransport.js"
+      },
+      "require": {
+        "types": "./dist/webtransport.d.cts",
+        "default": "./dist/webtransport.cjs"
+      }
+    },
     "./devtools": {
       "import": {
         "types": "./dist/devtools.d.ts",
@@ -195,7 +205,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "3.3 kB",
+      "limit": "3.4 kB",
       "gzip": true
     },
     {
@@ -283,6 +293,13 @@
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",
       "limit": "2.1 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/webtransport (createWebTransportSocket)",
+      "path": "dist/webtransport.js",
+      "import": "{ createWebTransportSocket }",
+      "limit": "1.7 kB",
       "gzip": true
     },
     {

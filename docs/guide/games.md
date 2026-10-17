@@ -74,6 +74,10 @@ Movement you want to show right away goes through [the timeline](#responsive-con
 | "Leave", "pause" and other control messages | `{ priority: true }`, ahead of anything queued |
 | Movement you predict | `timeline.input()` |
 
+:::tip Over WebTransport
+With [`react-websocket/webtransport`](./webtransport.md), `volatile` messages go as datagrams: they skip the queue on the network too, so a lost one never holds up the next. They can also be lost while connected, so keep fire and jump on ordinary sends there, or pass `datagrams: false`.
+:::
+
 ## Requests: await the server's answer
 
 "Join a room and wait for the answer" needs a request id, a map of pending promises, a timeout, and cleanup on disconnect. `createWebSocketRequests` does that bookkeeping. You tell it where the id goes and how to recognize a reply:

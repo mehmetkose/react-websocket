@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `react-websocket/webtransport`, a new entry point. `createWebTransportSocket(options?)` returns a `WebSocket` class
+  that connects over WebTransport behind the same API: messages go framed on one reliable stream, and `volatile`
+  sends go as datagrams, which are never queued or retransmitted (`datagrams: false` keeps them on the stream). Where
+  WebTransport isn't available, or a session can't be established within `timeout`, it falls back to a WebSocket to
+  the client's own URL, and keeps doing so. About 1.7 kB min+gzip, with no imports. The client hands `volatile` sends
+  to a socket's datagram method where it has one. See
+  [WebTransport](https://mehmetkose.github.io/react-websocket/guide/webtransport), with the wire format for servers.
+
 ## [4.15.0] - 2026-10-17
 
 ### Added
@@ -428,6 +440,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.15.0...HEAD
 [4.15.0]: https://github.com/mehmetkose/react-websocket/compare/4.14.0...4.15.0
 [4.14.0]: https://github.com/mehmetkose/react-websocket/compare/4.13.0...4.14.0
 [4.13.0]: https://github.com/mehmetkose/react-websocket/compare/4.12.0...4.13.0

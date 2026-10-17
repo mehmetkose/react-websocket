@@ -31,7 +31,12 @@ export default defineConfig({
     // Tools with no imports, built on their own so they share no chunks with `core`.
     {
       ...shared,
-      entry: { chaos: 'src/chaos.ts', tabs: 'src/tabs.ts', replay: 'src/replay.ts' },
+      entry: {
+        chaos: 'src/chaos.ts',
+        tabs: 'src/tabs.ts',
+        replay: 'src/replay.ts',
+        webtransport: 'src/webtransport.ts'
+      },
       format: ['esm', 'cjs']
     },
     // Imports only types from `core`, so they ship no imports and need no client directive.

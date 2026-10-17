@@ -26,6 +26,7 @@
 - **Voice.** Microphone frames that never replay stale or build up lag, control messages that jump the queue, and a [guide](https://mehmetkose.github.io/react-websocket/guide/voice) to interruptions that truncate the transcript to what the user heard.
 - **AG-UI.** Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket with `react-websocket/ag-ui`: messages, tool calls and JSON Patch shared state, with a snapshot when a patch fails, and runs that resume after a reconnect or a reload.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
+- **WebTransport.** `react-websocket/webtransport` connects over WebTransport behind the same API, with `volatile` sends as datagrams and a WebSocket fallback where it can't connect.
 - **One connection across tabs.** `react-websocket/tabs` lets every tab of an app share one connection, with a leader tab elected over the Web Locks API, and topics that one tab can't unsubscribe from under another.
 - **Recording and replay.** Record a session to a file and replay it without a server, for bug reports, offline demos, and UI tests that don't call an AI model on every run. Add faults on top with `react-websocket/chaos`.
 - **Devtools.** A development panel, `react-websocket/devtools`, with each client's status, queue, send buffer, messages, round-trip time and topics.
@@ -147,6 +148,7 @@ function Room() {
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
 | `createWebSocketOutbox(client, { name, send, ack })` | From `react-websocket/outbox`: `add(message)` keeps a message in IndexedDB and sends it until the server acknowledges it, across reconnects and reloads |
 | `createAgUiAgent(client, options?)` | From `react-websocket/ag-ui`: `run({ messages })` an AG-UI agent over a WebSocket; also `applyAgUiEvent` and `applyPatch` |
+| `createWebTransportSocket(options?)` | From `react-websocket/webtransport`: a `WebSocket` class over WebTransport, with datagrams for `volatile` sends and a WebSocket fallback |
 | `createTabsWebSocket(options?)` | From `react-websocket/tabs`: a `WebSocket` class that shares one connection between all the tabs of an app |
 | `createRecordingWebSocket()` / `createReplayWebSocket(recording)` | From `react-websocket/replay`: record sessions to JSON, and replay them without a server, at any speed |
 | `<WebSocketDevtools sources={…} />` | From `react-websocket/devtools`: a development panel showing every client's status, queue, buffer, messages, RTT and topics |
