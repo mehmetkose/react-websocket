@@ -7,6 +7,7 @@ export {
   useWebSocketEvent,
   useWebSocketLatency,
   useWebSocketOutbox,
+  useWebSocketPresence,
   useWebSocketState,
   useWebSocketStatus,
   useWebSocketStream,

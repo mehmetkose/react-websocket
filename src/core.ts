@@ -3,6 +3,8 @@ export { createWebSocketFeeds } from './feeds';
 export type { FeedPosition, WebSocketFeeds, WebSocketFeedsOptions } from './feeds';
 export { createWebSocketLatency } from './latency';
 export type { Latency, WebSocketLatency, WebSocketLatencyOptions } from './latency';
+export { createWebSocketPresence } from './presence';
+export type { PresencePeer, WebSocketPresence, WebSocketPresenceOptions } from './presence';
 export { createWebSocketRequests } from './requests';
 export type { RequestOptions, WebSocketRequests, WebSocketRequestsOptions } from './requests';
 export { createWebSocketResponder } from './responder';

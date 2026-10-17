@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `createWebSocketPresence(client, { send, receive, leave })` shares per-peer state that expires, for presence, live
+  cursors and selections. `set(state)` sends this client's state at most `maxRate` times per second (20 by default),
+  newest last, again every `refresh` while it doesn't change, and on every new connection, but never from the queue.
+  Other peers' states come from `receive`, and a peer is forgotten when it leaves or nothing has arrived from it for
+  `timeout` (30 s by default), so a peer whose connection died silently doesn't leave a frozen cursor behind.
+  `leave()` stops sharing. See
+  [Presence and live cursors](https://mehmetkose.github.io/react-websocket/guide/presence).
+- `useWebSocketPresence(presence)` renders the other peers and holds the connection.
+
 ## [4.9.0] - 2026-10-17
 
 ### Added
@@ -360,6 +373,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.9.0...HEAD
 [4.9.0]: https://github.com/mehmetkose/react-websocket/compare/4.8.0...4.9.0
 [4.8.0]: https://github.com/mehmetkose/react-websocket/compare/4.7.0...4.8.0
 [4.7.0]: https://github.com/mehmetkose/react-websocket/compare/4.6.0...4.7.0

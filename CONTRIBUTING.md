@@ -67,6 +67,7 @@ src/
   sendrate.ts  createWebSocketSendRate: keyed sends at a rate that adapts to congestion
   feeds.ts     createWebSocketFeeds: topics with numbered messages, deduplicated and resumed
   runs.ts      createWebSocketRuns: streamed runs that resume after a reconnect or a reload
+  presence.ts  createWebSocketPresence: per-peer state, throttled, refreshed and expired
   index.ts     The main entry (core + hooks), built with a 'use client' banner
   chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
   timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
@@ -84,6 +85,7 @@ test/
   feeds.test.tsx   Numbered feeds: duplicates, gaps, snapshots and resuming
   runs.test.tsx    Resumable runs: reconnects, reloads, policies, and useAgentRun
   ag-ui.test.tsx   JSON Patch, the AG-UI reducer, and agents over the mock socket
+  presence.test.tsx  Presence: throttling, refresh, expiry and the hook
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

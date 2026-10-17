@@ -28,11 +28,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   `useWebSocketTopic` already resubscribes when its topic changes, so this is a guide recipe plus a small
   `IntersectionObserver` helper that picks the topic. The same recipe can show a live cost meter from usage
   events and cancel a run that crosses a client-side budget.
-### Business
-
-- **Presence and live cursors** (`createWebSocketPresence`). Per-peer temporary state that expires, throttled
-  through keyed sends.
-
 ### Tooling
 
 - **Devtools overlay.** Shows sockets, topics, the queue and RTT.
