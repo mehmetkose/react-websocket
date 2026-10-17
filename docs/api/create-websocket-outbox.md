@@ -63,7 +63,7 @@ A `WebSocketOutbox<M>`:
 | --- | --- |
 | `add(message, id?)` | Add a message and send it as soon as the socket is open. Resolves with its id once it's stored, and rejects if storing failed (it's still sent from memory then, but won't survive a reload). Pass `id` to use your own idempotency key, such as an order number. Adding an id again replaces that entry and moves it to the end |
 | `remove(id)` | Remove an entry without sending it again, e.g. when the user cancels it. Also works before stored entries are loaded |
-| `clear()` | Remove every entry, including ones other tabs stored, e.g. on logout |
+| `clear()` | Remove every entry at once, including ones other tabs stored, e.g. on logout. Stored entries that weren't loaded yet are never sent. Resolves once they're deleted from storage |
 | `getSnapshot()` | The waiting entries, oldest first: [`OutboxEntry<M>[]`](#outboxentry). A new array on every change |
 | `subscribe(listener)` | Get notified when the entries change. Compatible with `useSyncExternalStore` |
 | `ready` | Resolves once entries stored by an earlier page load are back, and rejects if they couldn't be loaded. Nothing is sent before it settles |

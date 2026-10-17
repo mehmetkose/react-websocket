@@ -91,12 +91,14 @@ describe('WebSocketDevtools', () => {
       MockWebSocket.instances[0]!.open();
       MockWebSocket.instances[0]!.receive(JSON.stringify({ type: 'hello' }));
       MockWebSocket.instances[0]!.receive(JSON.stringify({ type: 'pong', id: 1 }));
+      MockWebSocket.instances[0]!.receive(JSON.stringify({ type: 'here', peer: 'p1', state: 1 }));
     });
     act(() => vi.advanceTimersByTime(500));
     expect(fact('status')).toBe('open');
     expect(fact('queued')).toBe('0');
-    expect(fact('received')).toBe('2');
+    expect(fact('received')).toBe('3');
     expect(fact('rtt')).toMatch(/^\d+ ms$/);
+    expect(fact('presence')).toBe('1 peer');
 
     fireEvent.click(toggle);
     expect(screen.queryByRole('region')).toBeNull();

@@ -121,7 +121,9 @@ function Client({ row, received }: { row: Row; received: number }) {
     facts.push(['rtt', rtt === undefined ? '–' : `${Math.round(rtt)} ms`]);
   }
   if (row.waiting !== undefined) facts.push(['outbox', `${row.waiting} waiting`]);
-  if (row.peers !== undefined) facts.push(['presence', `${row.peers} peers`]);
+  if (row.peers !== undefined) {
+    facts.push(['presence', `${row.peers} peer${row.peers === 1 ? '' : 's'}`]);
+  }
   if (row.runs) facts.push(['runs', row.runs]);
   if (row.topics.length) facts.push(['topics', row.topics.join(', ')]);
   if (row.feeds.length) facts.push(['feeds', row.feeds.join(', ')]);
