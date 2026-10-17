@@ -156,6 +156,90 @@ describe('sending', () => {
     expect(dropped).toEqual(['pos 1', 'pos 2']);
   });
 
+  it('drops a send with maxBuffered while the send buffer is above it', () => {
+    const logger = vi.fn();
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, logger });
+    ws.connect();
+    MockWebSocket.last.open();
+    const onDrop = vi.fn();
+    MockWebSocket.last.bufferedAmount = 1000;
+    expect(ws.send('frame 1', { maxBuffered: 999, onDrop })).toBe(false);
+    expect(logger).toHaveBeenCalledWith(expect.stringContaining('maxBuffered'));
+    expect(ws.send('frame 2', { maxBuffered: 1000 })).toBe(true);
+    expect(ws.send('chat')).toBe(true);
+    expect(MockWebSocket.last.sent).toEqual(['frame 2', 'chat']);
+    // The message was never queued, so `send()` returning false is the only report.
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+
+  it('ignores maxBuffered while not open', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    MockWebSocket.last.bufferedAmount = 1000;
+    expect(ws.send('queued', { maxBuffered: 0 })).toBe(false);
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['queued']);
+  });
+
+  it('queues priority messages ahead of the others, after open listeners', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.on('open', () => ws.send('auth'));
+    ws.connect();
+    ws.send('a');
+    ws.send('p1', { priority: true });
+    ws.send('b');
+    ws.send('p2', { priority: true });
+    ws.send('c');
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['auth', 'p1', 'p2', 'a', 'b', 'c']);
+  });
+
+  it('replaces a keyed message within its block', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    ws.send('p1', { priority: true });
+    ws.send('token 1', { key: 'token', priority: true });
+    ws.send('p2', { priority: true });
+    ws.send('a');
+    ws.send('token 2', { key: 'token', priority: true });
+    // An ordinary message replacing a priority one joins the ordinary block.
+    ws.send('cancel 1', { key: 'cancel', priority: true });
+    ws.send('cancel 2', { key: 'cancel' });
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['p1', 'p2', 'token 2', 'a', 'cancel 2']);
+  });
+
+  it('evicts ordinary messages before priority ones beyond queue.limit', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { limit: 2 } });
+    ws.connect();
+    const dropped: string[] = [];
+    const send = (data: string, priority?: boolean) =>
+      ws.send(data, { priority, onDrop: () => dropped.push(data) });
+    send('a');
+    send('p1', true);
+    send('p2', true);
+    expect(dropped).toEqual(['a']);
+    // Nothing ordinary is left to evict but the message just sent.
+    send('b');
+    expect(dropped).toEqual(['a', 'b']);
+    // Only priority messages are queued: the oldest of them goes.
+    send('p3', true);
+    expect(dropped).toEqual(['a', 'b', 'p1']);
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['p2', 'p3']);
+  });
+
+  it('ignores priority for volatile messages and while open', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    ws.send('a');
+    expect(ws.send('input', { priority: true, volatile: true })).toBe(false);
+    MockWebSocket.last.open();
+    ws.send('b');
+    expect(ws.send('p', { priority: true })).toBe(true);
+    expect(MockWebSocket.last.sent).toEqual(['a', 'b', 'p']);
+  });
+
   it('serializes with json or a custom serializer', () => {
     const json = createWebSocket<unknown, { n: number }>('ws://x', {
       WebSocket: MockImpl,

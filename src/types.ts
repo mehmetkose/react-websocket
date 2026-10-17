@@ -117,14 +117,42 @@ export interface SendOptions {
   volatile?: boolean;
   /**
    * Keep only the newest queued message with this key. Sending again with the same key
-   * while disconnected replaces the earlier one, which moves to the back of the queue.
+   * while disconnected replaces the earlier one, which moves to the back of the queue
+   * (or of the `priority` messages, for a priority one).
    * For state where only the latest value matters, such as "my position is now (x, y)".
    */
   key?: string;
   /**
+   * Queue this message ahead of every message queued without `priority`, after earlier
+   * priority messages. For control messages that must not wait behind a backlog, such as
+   * cancel, interrupt or a token refresh. Messages sent from `open` listeners still go first.
+   *
+   * It only matters while the socket isn't open: once a message is handed to the browser,
+   * nothing can overtake it. To keep that buffer short, send bulky streams with `maxBuffered`.
+   * @default false
+   */
+  priority?: boolean;
+  /**
+   * Drop the message instead of sending it while more than this many bytes are already
+   * waiting in the browser's send buffer (`socket.bufferedAmount`). For high-rate streams on
+   * a slow link, such as audio frames or per-tick input, where a late message is worse than
+   * none. `send()` returns `false`, and `onDrop` isn't called.
+   *
+   * Only checked while the socket is open: a message queued while disconnected is sent on
+   * open regardless. `bufferedAmount` includes what you sent earlier in the same task, so set
+   * it well above one burst of messages.
+   *
+   * @example
+   * ```ts
+   * voice.send(frame, { volatile: true, maxBuffered: 64 * 1024 });
+   * ```
+   */
+  maxBuffered?: number;
+  /**
    * Called if the message is dropped from the queue without being sent: replaced by a
    * newer message with the same `key`, or evicted by `queue.limit`. Not called when the
-   * queue is cleared because the client closed or gave up.
+   * queue is cleared because the client closed or gave up, or when `send()` drops the
+   * message right away (`volatile` while not open, or `maxBuffered`) and returns `false`.
    */
   onDrop?: () => void;
 }
@@ -133,7 +161,7 @@ export interface SendOptions {
 export interface QueueOptions {
   /**
    * Maximum number of messages held while not connected. When full, the oldest
-   * message is dropped.
+   * message is dropped, skipping `priority` messages unless nothing else is queued.
    * @default Infinity
    */
   limit?: number;
@@ -319,12 +347,14 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
    * Send a message (encoded with `serialize`/`json` if configured). If the socket isn't
    * open, the message is queued and sent on open (see the `queue` option), unless
    * `options.volatile` is set.
-   * @returns `true` if it was sent immediately, `false` if it was queued or dropped.
+   * @returns `true` if it was sent immediately, `false` if it was queued or dropped
+   *   (`volatile` while not open, or `maxBuffered` while open).
    *
    * @example
    * ```ts
    * game.send({ type: 'input', dx, dy }, { volatile: true }); // never replayed after a reconnect
    * game.send({ type: 'position', x, y }, { key: 'position' }); // only the newest is queued
+   * game.send({ type: 'leave' }, { priority: true }); // ahead of everything already queued
    * ```
    */
   send(message: Out, options?: SendOptions): boolean;

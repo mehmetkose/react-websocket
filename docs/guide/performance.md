@@ -24,54 +24,40 @@ This page explains when components re-render, how to handle high-frequency strea
 
 ## Batching a fast stream
 
-This component receives every tick but renders at most once per animation frame:
+React already batches state updates made in the same task, but each WebSocket message is its own task, so every message is a render. Reduce the stream into a store with `batch: 'frame'`, and its readers render at most once per animation frame:
 
 ```tsx
-import { useEffect, useRef, useState } from 'react';
-import { createWebSocket, useWebSocketEvent, useWebSocketStatus } from 'react-websocket';
+import { createWebSocket, createWebSocketState, useWebSocketState } from 'react-websocket';
 
 type Tick = { symbol: string; price: number };
 
 const ticks = createWebSocket<Tick>('wss://api.example.com/ticks', { json: true });
 
+const prices = createWebSocketState(ticks, {
+  initialState: {} as Record<string, number>,
+  reduce: (state, tick) => ({ ...state, [tick.symbol]: tick.price }),
+  batch: 'frame'
+});
+
 export function Prices() {
-  const status = useWebSocketStatus(ticks);
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const buffer = useRef<Record<string, number>>({});
-  const frame = useRef(0);
-
-  useWebSocketEvent(ticks, 'message', tick => {
-    buffer.current[tick.symbol] = tick.price;
-    if (frame.current) return;
-    frame.current = requestAnimationFrame(() => {
-      frame.current = 0;
-      const batch = buffer.current;
-      buffer.current = {};
-      setPrices(previous => ({ ...previous, ...batch }));
-    });
-  });
-
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
-
+  const all = useWebSocketState(prices);
   return (
-    <section>
-      <p>Feed: {status}</p>
-      <ul>
-        {Object.entries(prices).map(([symbol, price]) => (
-          <li key={symbol}>
-            {symbol}: {price}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <ul>
+      {Object.entries(all).map(([symbol, price]) => (
+        <li key={symbol}>
+          {symbol}: {price}
+        </li>
+      ))}
+    </ul>
   );
 }
 ```
 
 A few things to note:
 
-- React already batches state updates made in the same task, but each WebSocket message is its own task, so without a buffer every message is a render.
-- You can swap `requestAnimationFrame` for `setTimeout(…, 250)` to throttle further.
+- Messages are still reduced as they arrive, so `prices.getState()` is always current. Only the renders wait for the frame.
+- Browsers pause animation frames in background tabs. The store keeps up, and the list renders the latest prices when the tab is visible again.
+- To throttle further, say to four renders a second, buffer in a [`useWebSocketEvent`](../api/use-websocket-event.md) listener and flush with `setTimeout(…, 250)`.
 - If you only need the latest value and never render it (say, to send it with the next order), keep it in a ref and skip state entirely.
 
 ## Expensive derived UI
@@ -113,8 +99,8 @@ The hooks are compatible with the [React Compiler](https://react.dev/learn/react
 
 | Entry | Import | Size (min + gzip) |
 | --- | --- | --- |
-| `react-websocket` | `useWebSocket` | ~3 kB |
-| `react-websocket/core` | `createWebSocket` | ~2.6 kB |
+| `react-websocket` | `useWebSocket` | ~3.1 kB |
+| `react-websocket/core` | `createWebSocket` | ~2.7 kB |
 
 Sizes are measured by [size-limit](https://github.com/ai/size-limit) in CI, with budgets that fail the build if they grow. React is a peer dependency and not counted.
 

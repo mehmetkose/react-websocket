@@ -9,14 +9,22 @@ type Prices = Record<string, number>;
 let n = 0;
 const uniqueUrl = () => `ws://state/${++n}`;
 
-function setup() {
+function setup(batch?: 'frame') {
   const client = createWebSocket<Tick>(uniqueUrl(), { WebSocket: MockImpl, json: true });
   const store = createWebSocketState(client, {
     initialState: {} as Prices,
     reduce: (state, tick) =>
-      state[tick.symbol] === tick.price ? state : { ...state, [tick.symbol]: tick.price }
+      state[tick.symbol] === tick.price ? state : { ...state, [tick.symbol]: tick.price },
+    batch
   });
   return { client, store };
+}
+
+function connected(batch?: 'frame') {
+  const result = setup(batch);
+  result.client.connect();
+  MockWebSocket.last.open();
+  return result;
 }
 
 const tick = (symbol: string, price: number) =>
@@ -71,6 +79,80 @@ describe('createWebSocketState', () => {
   it('does not open the connection by itself', () => {
     setup();
     expect(MockWebSocket.instances).toHaveLength(0);
+  });
+});
+
+describe("batch: 'frame'", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the state current and notifies once per animation frame', () => {
+    const { store } = connected('frame');
+    const listener = vi.fn();
+    store.subscribe(listener);
+    tick('ACME', 1);
+    tick('ACME', 2);
+    tick('INIT', 3);
+    expect(store.getState()).toEqual({ ACME: 2, INIT: 3 });
+    expect(listener).not.toHaveBeenCalled();
+    vi.advanceTimersToNextFrame();
+    expect(listener).toHaveBeenCalledTimes(1);
+    vi.advanceTimersToNextFrame();
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays quiet when the state is back where it was by the frame', () => {
+    const { store } = connected('frame');
+    const listener = vi.fn();
+    tick('ACME', 1);
+    vi.advanceTimersToNextFrame();
+    store.subscribe(listener);
+    const before = store.getState();
+    tick('ACME', 2);
+    store.setState(before); // undoes the tick before anyone heard of it
+    vi.advanceTimersToNextFrame();
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('notifies setState and reset right away, with any changes waiting for the frame', () => {
+    const { store } = connected('frame');
+    const listener = vi.fn();
+    store.subscribe(listener);
+    tick('ACME', 1);
+    store.setState(state => ({ ...state, LOCAL: 9 }));
+    expect(listener).toHaveBeenCalledTimes(1);
+    vi.advanceTimersToNextFrame();
+    expect(listener).toHaveBeenCalledTimes(1); // nothing new by the frame
+
+    store.reset();
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(store.getState()).toBe(store.initialState);
+  });
+
+  it('waits about 16 ms where there are no animation frames', () => {
+    vi.stubGlobal('requestAnimationFrame', undefined);
+    const { store } = connected('frame');
+    const listener = vi.fn();
+    store.subscribe(listener);
+    tick('ACME', 1);
+    tick('ACME', 2);
+    vi.advanceTimersByTime(15);
+    expect(listener).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops reducing on dispose(), delivering what came before', () => {
+    const { store } = connected('frame');
+    const listener = vi.fn();
+    store.subscribe(listener);
+    tick('ACME', 1);
+    store.dispose();
+    tick('ACME', 2);
+    vi.advanceTimersToNextFrame();
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(store.getState()).toEqual({ ACME: 1 });
   });
 });
 
@@ -151,5 +233,25 @@ describe('useWebSocketState', () => {
     expect(screen.getByRole('paragraph').textContent).toBe('1');
     rerender(<Price symbol="INIT" />);
     expect(screen.getByRole('paragraph').textContent).toBe('2');
+  });
+
+  it("renders once per frame with batch: 'frame'", () => {
+    const { store } = setup('frame');
+    let renders = 0;
+    function Acme() {
+      renders++;
+      return <p>{useWebSocketState(store, state => state.ACME) ?? '-'}</p>;
+    }
+    render(<Acme />);
+    act(() => MockWebSocket.last.open());
+    const before = renders;
+    // Each message is its own task, as in a browser.
+    act(() => tick('ACME', 1));
+    act(() => tick('ACME', 2));
+    act(() => tick('ACME', 3));
+    expect(renders).toBe(before);
+    act(() => vi.advanceTimersToNextFrame());
+    expect(renders).toBe(before + 1);
+    expect(screen.getByRole('paragraph').textContent).toBe('3');
   });
 });

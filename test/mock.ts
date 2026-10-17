@@ -16,6 +16,8 @@ export class MockWebSocket {
 
   readyState = 0;
   binaryType = 'blob';
+  /** Set it to simulate a congested link. */
+  bufferedAmount = 0;
   sent: unknown[] = [];
   closedWith: { code?: number; reason?: string } | undefined;
   onopen: Handler = null;

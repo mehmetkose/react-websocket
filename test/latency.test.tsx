@@ -126,6 +126,18 @@ describe('createWebSocketLatency', () => {
     expect(latency.getSnapshot().rtt).toBe(10); // the 80 ms sample from the old socket is gone
   });
 
+  it('pings however full the send buffer is, so congestion shows in rtt', () => {
+    const { client } = setup({ interval: 1000 });
+    client.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.bufferedAmount = 10_000_000;
+    vi.advanceTimersByTime(1000);
+    expect(sent()).toEqual([
+      { type: 'ping', id: 1 },
+      { type: 'ping', id: 2 }
+    ]);
+  });
+
   it('never queues pings', () => {
     const { client, latency } = setup();
     client.connect();

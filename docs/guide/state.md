@@ -72,6 +72,22 @@ Without `isEqual`, `Object.is` is used. That's right for selectors returning pri
 
 - **Server rendering.** On the server and during hydration, `useWebSocketState` reads `initialState`, so the HTML and the first client render match.
 
+## Fast streams: one render per frame
+
+Each WebSocket message is its own task, so React can't batch the renders it causes. A store fed by a token stream, a ticker or game state can re-render its readers hundreds of times a second. Pass `batch: 'frame'` to notify them at most once per animation frame:
+
+```ts
+export const priceState = createWebSocketState(prices, {
+  initialState: {} as Record<string, number>,
+  reduce: (state, tick) => ({ ...state, [tick.symbol]: tick.price }),
+  batch: 'frame'
+});
+```
+
+- **Reducing doesn't wait.** Every message is still reduced as it arrives, so `getState()` is always current. A render loop reading it in `requestAnimationFrame` sees the latest state.
+- **Local writes don't wait.** `setState` and `reset` notify right away, and bring along any changes still waiting for the frame.
+- **Background tabs.** Browsers pause animation frames in hidden tabs. The store keeps up, and components render the latest state when the tab is visible again. If something must update while hidden, use an unbatched store or a `message` listener for it.
+
 ## Writing to it
 
 `setState` updates the state directly, for example for optimistic UI:

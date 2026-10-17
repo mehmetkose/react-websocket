@@ -62,17 +62,17 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`EventMap`](./types.md#eventmap) | Events and listener signatures |
 | [`UrlSource`](./types.md#urlsource) | A URL string or a function returning one |
 | [`SendData`](./types.md#senddata) | What `WebSocket.send` accepts |
-| [`SendOptions`](./types.md#sendoptions) | `{ volatile?, key?, onDrop? }` for `send()` |
+| [`SendOptions`](./types.md#sendoptions) | `{ volatile?, key?, priority?, maxBuffered?, onDrop? }` for `send()` |
 | [`ReconnectOptions`](./options.md#reconnect) | Backoff settings |
 | [`HeartbeatOptions`](./options.md#heartbeat) | Keep-alive settings |
 | [`QueueOptions`](./options.md#queue) | Send queue limit |
 | [`WebSocketTopics`](./create-websocket-topics.md#returns) | The topic manager from `createWebSocketTopics` |
 | [`WebSocketTopicsOptions`](./create-websocket-topics.md#parameters) | `{ subscribe, unsubscribe? }` |
 | [`WebSocketState`](./create-websocket-state.md#returns) | The store from `createWebSocketState` |
-| [`WebSocketStateOptions`](./create-websocket-state.md#parameters) | `{ initialState, reduce }` |
+| [`WebSocketStateOptions`](./create-websocket-state.md#parameters) | `{ initialState, reduce, batch? }` |
 | [`WebSocketRequests`](./create-websocket-requests.md#returns) | The request manager from `createWebSocketRequests` |
 | [`WebSocketRequestsOptions`](./create-websocket-requests.md#parameters) | `{ send, reply, error?, timeout? }` |
-| [`RequestOptions`](./create-websocket-requests.md#request-options) | `{ timeout?, signal?, volatile?, key? }` for `request()` |
+| [`RequestOptions`](./create-websocket-requests.md#request-options) | `{ timeout?, signal?, volatile?, key?, priority?, maxBuffered? }` for `request()` |
 | [`WebSocketLatency`](./create-websocket-latency.md#returns) | The latency tracker from `createWebSocketLatency` |
 | [`WebSocketLatencyOptions`](./create-websocket-latency.md#parameters) | `{ ping, pong, interval?, samples? }` |
 | [`Latency`](./create-websocket-latency.md#latency) | `{ rtt, offset }` |

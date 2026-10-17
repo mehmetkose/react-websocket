@@ -13,11 +13,11 @@
 
 - **Shared connections.** Components using the same URL share one socket. StrictMode, `<Activity>` and route transitions never open duplicates.
 - **Auto-reconnect.** Exponential backoff with jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. Optional heartbeats detect dead links.
-- **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent.
+- **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent. Put control messages first with `priority`, and drop stream data on a slow link with `maxBuffered`.
 - **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
 - **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
 - **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
-- **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes.
+- **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
 - **Requests and latency.** Await replies with timeouts and cancellation, and measure round-trip time and the server's clock for ping displays and synchronized countdowns.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
