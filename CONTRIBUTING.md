@@ -35,13 +35,14 @@ npm test
 | `npm run check` | Format check, lint and type-check in one pass (`vp check`) |
 | `npm run lint` | Oxlint, including the React hooks and React Compiler rules |
 | `npm run format` / `format:check` | Format with Oxfmt / check formatting |
-| `npm run typecheck` | Type-check `src`, `test` and `example` |
+| `npm run typecheck` | Type-check `src`, `test` and `examples/tornado` |
 | `npm run build` | Build `dist/` (ESM, CJS and type definitions) with `vp pack` |
 | `npm run check:package` | Build, then validate the package with publint and Are the Types Wrong |
 | `npm run size` | Build, then check bundle sizes against the size-limit budgets |
 | `npm run docs:dev` | Run the documentation site locally |
-| `npm run example:server` | Start the example's Tornado WebSocket server (`pip install -r example/requirements.txt` first) |
-| `npm run example` | Start the example's Vite app against that server |
+| `npm run example:tornado:server` | Start the Tornado example's WebSocket server (`pip install -r examples/tornado/requirements.txt` first) |
+| `npm run example:tornado` | Start the Tornado example's Vite app against that server |
+| `npm run example:nextjs` | Build the library, install it into the Next.js example, and start the demo on http://localhost:3000 |
 
 Before opening a pull request, run:
 
@@ -66,7 +67,9 @@ test/
   react.test.tsx   The hooks (jsdom)
   ssr.test.tsx     Server rendering (Node environment)
 docs/          The VitePress documentation site
-example/       Vite + React example app and Tornado server
+examples/
+  tornado/     Vite + React chat against a Tornado server, using src/ directly
+  nextjs/      Next.js demo of every feature, with its own WebSocket server and the built package
 ```
 
 ## Writing tests

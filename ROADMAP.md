@@ -114,11 +114,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   kept in `sessionStorage`, and on reconnect or reload the client sends `resume { runId, offset }` and drops
   duplicates. A per-run disconnect policy chooses `keep` (background agents keep working) or `cancel` (chat
   stops spending). This is sequenced streams (above) applied to runs, so it ships after them.
-- **Server-to-client requests.** The reverse of `createWebSocketRequests`: the client registers handlers with
-  `onRequest('approve_tool', handler)`, the server sends a request with an id, and the client replies or
-  rejects, with timeouts. It covers human approval ("approve this refund?") and tools that only exist in the
-  browser (selection, local files, geolocation, clipboard). A `useAgentApproval()` hook renders the pending
-  approval as UI. Small, because it reuses the request id and timeout machinery.
 - **Voice sessions with interruption.** On interruption the client must stop audio, discard queued frames,
   cancel generation and report how much the user actually heard, or the transcript includes words they never
   heard. The library's part is the transport: priority sends for control messages, volatile audio frames with

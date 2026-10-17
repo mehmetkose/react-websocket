@@ -1,14 +1,14 @@
-# react-websocket example
+# react-websocket Tornado example
 
 A small broadcast chat: a [Tornado](https://www.tornadoweb.org/) WebSocket server plus a Vite + React 19 client.
 
 ```sh
 # 1. WebSocket server on ws://localhost:8888/live
-pip install -r example/requirements.txt
-npm run example:server
+pip install -r examples/tornado/requirements.txt
+npm run example:tornado:server
 
 # 2. Client on http://localhost:5173
-npm run example
+npm run example:tornado
 ```
 
 Open it in two tabs and send messages. Stop the server to watch the client go to

@@ -2,7 +2,9 @@
 import { renderToString } from 'react-dom/server';
 import {
   createWebSocket,
+  createWebSocketResponder,
   createWebSocketState,
+  useAgentApproval,
   useWebSocket,
   useWebSocketState,
   useWebSocketStatus
@@ -45,4 +47,17 @@ it('renders useWebSocketState from initialState on the server', () => {
     return <p>{useWebSocketState(store, state => state.price)}</p>;
   }
   expect(renderToString(<Price />)).toBe('<p>0</p>');
+});
+
+it('renders no approvals on the server', () => {
+  const agent = createWebSocket<{ id: number; method: string }, unknown>('ws://example.test/agent');
+  const tools = createWebSocketResponder(agent, {
+    request: message => message,
+    respond: (id, result) => ({ id, result }),
+    error: (id, error) => ({ id, error: String(error) })
+  });
+  function Approvals() {
+    return <p>{useAgentApproval(tools, 'approve').length}</p>;
+  }
+  expect(renderToString(<Approvals />)).toBe('<p>0</p>');
 });

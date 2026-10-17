@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["vite-plus/test/globals"]
   },
-  "include": ["src", "test", "example"]
+  "include": ["src", "test", "examples/tornado"]
 }

@@ -19,6 +19,7 @@
 - **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes.
 - **Requests and latency.** Await replies with timeouts and cancellation, and measure round-trip time and the server's clock for ping displays and synchronized countdowns.
+- **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
 
@@ -114,11 +115,13 @@ function Room() {
 | `useWebSocketTopic(topics, topic)` | Hold topic subscriptions that survive reconnects |
 | `useWebSocketState(store, selector?)` | Read state reduced from messages; re-renders only when the selection changes |
 | `useWebSocketLatency(latency)` | Round-trip time and server clock offset |
+| `useAgentApproval(responder, method)` | Requests from the server waiting for a person to answer |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
 | `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
 | `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, with timeouts |
 | `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
+| `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 
 | Option | Default | |
@@ -140,7 +143,7 @@ function Room() {
 
 - [Shared clients](https://mehmetkose.github.io/react-websocket/guide/shared-clients) · [Messages and types](https://mehmetkose.github.io/react-websocket/guide/messages) · [Reconnecting and heartbeats](https://mehmetkose.github.io/react-websocket/guide/reconnecting)
 - [Suspense](https://mehmetkose.github.io/react-websocket/guide/suspense) · [Server rendering and Next.js](https://mehmetkose.github.io/react-websocket/guide/ssr) · [StrictMode, Activity and lifecycle](https://mehmetkose.github.io/react-websocket/guide/lifecycle)
-- [Authentication](https://mehmetkose.github.io/react-websocket/guide/authentication) · [Performance](https://mehmetkose.github.io/react-websocket/guide/performance) · [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) · [Testing](https://mehmetkose.github.io/react-websocket/guide/testing) · [Without React](https://mehmetkose.github.io/react-websocket/guide/without-react)
+- [Authentication](https://mehmetkose.github.io/react-websocket/guide/authentication) · [Performance](https://mehmetkose.github.io/react-websocket/guide/performance) · [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) · [AI agents](https://mehmetkose.github.io/react-websocket/guide/agents) · [Testing](https://mehmetkose.github.io/react-websocket/guide/testing) · [Without React](https://mehmetkose.github.io/react-websocket/guide/without-react)
 - [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Troubleshooting](https://mehmetkose.github.io/react-websocket/troubleshooting) · [Migrating from v2](https://mehmetkose.github.io/react-websocket/migration)
 
 The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it locally.
@@ -157,9 +160,10 @@ The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it lo
 
 v2 was a `<Websocket>` class component. v3 replaces it with hooks: `<Websocket url onMessage />` becomes `useWebSocket(url, { onMessage })`, and `ref.sendMessage(msg)` becomes `send(msg)`. See the [migration guide](https://mehmetkose.github.io/react-websocket/migration) for the full mapping.
 
-## Example
+## Examples
 
-[`example/`](example) has a Tornado broadcast server and a Vite + React 19 client.
+- [`examples/nextjs`](examples/nextjs) is a demo of every feature in a Next.js App Router app, with its own WebSocket server. Run `npm run example:nextjs` and open http://localhost:3000.
+- [`examples/tornado`](examples/tornado) is a small broadcast chat: a Tornado server and a Vite + React 19 client.
 
 ## Contributing
 

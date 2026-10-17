@@ -1,0 +1,31 @@
+{
+  "name": "react-websocket-nextjs-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.ts",
+    "build": "next build",
+    "start": "NODE_ENV=production node server.ts",
+    "typecheck": "tsc --noEmit",
+    "update-library": "npm --prefix ../.. run build && node -e \"require('fs').rmSync('node_modules/react-websocket', { recursive: true, force: true })\" && npm install"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "next": "^16.4.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-websocket": "file:../..",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
+    "typescript": "^5.9.3"
+  }
+}

@@ -58,7 +58,15 @@ export default defineConfig({
     ]
   },
   lint: {
-    ignorePatterns: ['dist', 'coverage', 'docs/.vitepress/cache', 'docs/.vitepress/dist'],
+    ignorePatterns: [
+      'dist',
+      'coverage',
+      'docs/.vitepress/cache',
+      'docs/.vitepress/dist',
+      // Type-aware linting needs the example's own dependencies, which `npm ci` here doesn't
+      // install. It has its own `typecheck` and `build` scripts.
+      'examples/nextjs'
+    ],
     plugins: ['eslint', 'typescript', 'react'],
     options: { typeAware: true, typeCheck: true },
     // The rules ESLint ran here before (eslint, typescript-eslint and react-hooks recommended)

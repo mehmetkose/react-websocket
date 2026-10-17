@@ -21,6 +21,7 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`useWebSocketTopic(topics, topic)`](./use-websocket-topic.md) | Hold topic subscriptions that survive reconnects | Never |
 | [`useWebSocketState(store, selector?, isEqual?)`](./use-websocket-state.md) | Read state reduced from messages | The selected value changes |
 | [`useWebSocketLatency(latency)`](./use-websocket-latency.md) | Show round-trip time | A new measurement, about once per ping |
+| [`useAgentApproval(responder, method)`](./use-agent-approval.md) | Render requests from the server that a person answers | A request arrives or goes away |
 
 ## Functions
 
@@ -31,6 +32,7 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`createWebSocketState(client, options)`](./create-websocket-state.md) | Keep state reduced from a client's messages |
 | [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies, with timeouts |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
+| [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
 
 ## Classes
 
@@ -67,4 +69,8 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`WebSocketLatency`](./create-websocket-latency.md#returns) | The latency tracker from `createWebSocketLatency` |
 | [`WebSocketLatencyOptions`](./create-websocket-latency.md#parameters) | `{ ping, pong, interval?, samples? }` |
 | [`Latency`](./create-websocket-latency.md#latency) | `{ rtt, offset }` |
+| [`WebSocketResponder`](./create-websocket-responder.md#returns) | The responder from `createWebSocketResponder` |
+| [`WebSocketResponderOptions`](./create-websocket-responder.md#parameters) | `{ request, respond, error, cancel?, timeout? }` |
+| [`IncomingRequest`](./create-websocket-responder.md#incomingrequest) | `{ id, method, params, signal, respond, reject }` |
+| [`RequestHandler`](./create-websocket-responder.md#onrequest) | `(params, request) => result \| Promise<result>` for `onRequest` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |
