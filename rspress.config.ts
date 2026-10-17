@@ -62,7 +62,8 @@ export default defineConfig({
         'react-websocket/outbox': './src/outbox.ts',
         'react-websocket/ag-ui': './src/ag-ui.ts',
         'react-websocket/tabs': './src/tabs.ts',
-        'react-websocket/replay': './src/replay.ts'
+        'react-websocket/replay': './src/replay.ts',
+        'react-websocket/devtools': './src/devtools.ts'
       }
     }
   },
@@ -149,6 +150,7 @@ export default defineConfig({
             { text: 'createTabsWebSocket', link: '/api/tabs' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },
             { text: 'react-websocket/replay', link: '/api/replay' },
+            { text: 'WebSocketDevtools', link: '/api/devtools' },
             { text: 'Options', link: '/api/options' },
             { text: 'Types', link: '/api/types' }
           ]

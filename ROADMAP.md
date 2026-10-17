@@ -14,10 +14,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 - **WebTransport behind the same API.** Volatile sends map to datagrams and everything else to streams, with
   automatic fallback to WebSocket. Large and dependent on browser support, so it comes after the others.
 
-### Tooling
-
-- **Devtools overlay.** Shows sockets, topics, the queue and RTT.
-
 ### Protocol adapters
 
 - **MCP over WebSocket.** SEP-1288 proposes a WebSocket transport for server-initiated notifications. It is

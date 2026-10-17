@@ -28,6 +28,7 @@
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **One connection across tabs.** `react-websocket/tabs` lets every tab of an app share one connection, with a leader tab elected over the Web Locks API, and topics that one tab can't unsubscribe from under another.
 - **Recording and replay.** Record a session to a file and replay it without a server, for bug reports, offline demos, and UI tests that don't call an AI model on every run. Add faults on top with `react-websocket/chaos`.
+- **Devtools.** A development panel, `react-websocket/devtools`, with each client's status, queue, send buffer, messages, round-trip time and topics.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
 
@@ -148,6 +149,7 @@ function Room() {
 | `createAgUiAgent(client, options?)` | From `react-websocket/ag-ui`: `run({ messages })` an AG-UI agent over a WebSocket; also `applyAgUiEvent` and `applyPatch` |
 | `createTabsWebSocket(options?)` | From `react-websocket/tabs`: a `WebSocket` class that shares one connection between all the tabs of an app |
 | `createRecordingWebSocket()` / `createReplayWebSocket(recording)` | From `react-websocket/replay`: record sessions to JSON, and replay them without a server, at any speed |
+| `<WebSocketDevtools sources={…} />` | From `react-websocket/devtools`: a development panel showing every client's status, queue, buffer, messages, RTT and topics |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
 | Option | Default | |

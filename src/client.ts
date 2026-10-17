@@ -134,6 +134,9 @@ function isThenable<T>(value: unknown): value is PromiseLike<T> {
  */
 const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 
+/** @internal Method key for what `react-websocket/devtools` shows that the snapshot doesn't. */
+const INSPECT = Symbol.for('react-websocket.inspect');
+
 function createClient<In = unknown, Out = unknown>(
   url: UrlSource,
   options: WebSocketOptions<In, Out> & { [ON_TEARDOWN]?: () => void } = {}
@@ -786,8 +789,9 @@ function createClient<In = unknown, Out = unknown>(
     close,
     reconnect,
     migrate,
-    acquire
-  };
+    acquire,
+    [INSPECT]: () => ({ queued: pending.length })
+  } as WebSocketClient<In, Out>;
 }
 
 /**

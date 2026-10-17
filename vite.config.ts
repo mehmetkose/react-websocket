@@ -53,9 +53,10 @@ export default defineConfig({
       }
     },
     // The hooks are client-only; mark them so Server Components frameworks bundle them correctly.
+    // So is the devtools panel, which imports only types from `core`.
     {
       ...shared,
-      entry: { index: 'src/index.ts' },
+      entry: { index: 'src/index.ts', devtools: 'src/devtools.ts' },
       banner: { js: "'use client';" },
       format: {
         esm: { plugins: [coreAsExternal('./core.js')] },
