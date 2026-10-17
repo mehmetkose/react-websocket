@@ -1,3 +1,8 @@
+---
+title: 'Real-time games with WebSockets and React'
+description: 'Networking for browser games over WebSockets in React: input that isn''t replayed late, awaited requests, ping and server time, and rendering at 60 fps.'
+---
+
 # Real-time games
 
 Browser games run into the same networking problems again and again: input replayed after a reconnect, hand-rolled request ids, ping displays, timers that disagree between players, and React rendering at 60 fps. This page covers the tools for each.

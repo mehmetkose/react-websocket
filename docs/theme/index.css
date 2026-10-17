@@ -424,6 +424,15 @@ button.rp-switch-appearance:focus-visible {
   -webkit-text-fill-color: currentColor;
 }
 
+/* The theme's HomeHero renders both lines in one <h1>, the headline as a <span>. */
+.rp-home-hero__title {
+  margin: 0;
+}
+
+.rp-home-hero__subtitle {
+  display: block;
+}
+
 .rp-home-hero__tagline {
   font-size: 16px;
   line-height: 1.7;

@@ -1,3 +1,8 @@
+---
+title: 'WebSocket authentication in React'
+description: 'Authenticate a WebSocket from the browser with a token in the URL, a sub-protocol, cookies or a first message, and keep credentials fresh across reconnects.'
+---
+
 # Authentication
 
 This page shows how to authenticate a WebSocket connection from the browser, and how to keep credentials fresh across reconnects.

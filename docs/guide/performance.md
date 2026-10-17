@@ -1,3 +1,8 @@
+---
+title: 'React WebSocket performance'
+description: 'What re-renders when WebSocket messages arrive, how to batch high-frequency streams in React, and what react-websocket costs in bundle size.'
+---
+
 # Performance
 
 This page explains when components re-render, how to handle high-frequency streams, and what the library costs in bundle size.

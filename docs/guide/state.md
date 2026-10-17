@@ -1,3 +1,8 @@
+---
+title: 'WebSocket message state with a reducer'
+description: 'Build state from WebSocket messages with a reducer, and re-render each React component only when its slice changes, however many messages arrive.'
+---
+
 # Message state
 
 Most socket UIs show state built up from many messages: the latest price per symbol, a chat log, who's online. `createWebSocketState` keeps that state for you with a reducer, and `useWebSocketState` reads a slice of it. A component re-renders only when **its** slice changes, however many messages arrive.

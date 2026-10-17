@@ -1,3 +1,8 @@
+---
+title: 'Troubleshooting WebSockets in React'
+description: 'Fixes for common react-websocket problems: two sockets in development, ignored options, a stuck status, missing messages, close codes, Next.js and TypeScript.'
+---
+
 # Troubleshooting
 
 Answers to the questions that come up most. If yours isn't here, [open a discussion](https://github.com/mehmetkose/react-websocket/discussions) or [file an issue](https://github.com/mehmetkose/react-websocket/issues).

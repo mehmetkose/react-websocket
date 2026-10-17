@@ -1,3 +1,8 @@
+---
+title: 'WebSocket client without React'
+description: 'react-websocket/core: the same reconnecting, queueing, typed WebSocket client for plain JavaScript, Node or a state library, with no React dependency.'
+---
+
 # Without React
 
 This page covers `react-websocket/core`: the same reconnecting, queueing, typed client, usable from plain JavaScript, Node, or a state library.

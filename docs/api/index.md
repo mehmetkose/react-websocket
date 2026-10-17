@@ -1,3 +1,8 @@
+---
+title: 'React WebSocket API reference'
+description: 'Every hook, function, class and type react-websocket exports, from useWebSocket and createWebSocket to topics, state, requests and latency. All typed.'
+---
+
 # API reference
 
 Everything the package exports. All exports are typed, and every type has inline documentation that your editor shows on hover.

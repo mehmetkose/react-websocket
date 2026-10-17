@@ -1,3 +1,8 @@
+---
+title: 'Typed WebSocket messages: JSON and schemas'
+description: 'Decode, validate and type WebSocket messages in React: raw data, JSON, custom codecs, and zod, valibot or arktype schemas through Standard Schema.'
+---
+
 # Messages and types
 
 This page covers how incoming data is decoded and validated, how outgoing messages are encoded, and how to type both directions.

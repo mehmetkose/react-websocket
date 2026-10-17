@@ -1,3 +1,8 @@
+---
+title: 'Testing React WebSocket components'
+description: 'Test React components that use WebSockets without a real server: a fake WebSocket you control, Vitest and Testing Library, fake timers and flaky networks.'
+---
+
 # Testing
 
 This page shows how to test components that use react-websocket without a real server, using a fake `WebSocket` you control from the test.

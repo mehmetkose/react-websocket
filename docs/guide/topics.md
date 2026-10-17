@@ -1,3 +1,8 @@
+---
+title: 'WebSocket topic subscriptions'
+description: 'Manage WebSocket topic and channel subscriptions in React: shared between components, reference-counted, and sent again after every reconnect.'
+---
+
 # Topic subscriptions
 
 Many servers multiplex one socket into topics or channels: `prices:ACME`, `room:42`, `user:7:notifications`. You send a `subscribe` message to start receiving one and an `unsubscribe` message to stop. This page shows how to manage those subscriptions so they're shared between components and **survive reconnects**.

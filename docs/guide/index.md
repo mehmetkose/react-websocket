@@ -1,3 +1,8 @@
+---
+title: 'Why use a React WebSocket library'
+description: 'What it takes to use the browser''s WebSocket well in React (StrictMode, sharing, reconnects, types, SSR) and how react-websocket handles it in about 3 kB.'
+---
+
 # Why react-websocket
 
 This page covers what the library does for you, what it deliberately doesn't do, and how it fits into a React app.

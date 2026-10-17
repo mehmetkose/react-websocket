@@ -1,3 +1,8 @@
+---
+title: 'WebSockets in Next.js and SSR'
+description: 'Use WebSockets in Next.js (App Router), React Router, Remix and Astro: nothing connects during server rendering, and hydration doesn''t mismatch.'
+---
+
 # Server rendering and Next.js
 
 react-websocket works in server-rendered apps (Next.js, React Router, Remix, Astro, or your own `renderToPipeableStream` setup) without any configuration. This page explains what happens on the server, how hydration works, and how to structure a Next.js App Router project.

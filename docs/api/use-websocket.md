@@ -1,3 +1,8 @@
+---
+title: 'useWebSocket: React WebSocket hook'
+description: 'useWebSocket connects a React component to a WebSocket and re-renders with its status and latest message. Signatures, options, return value and examples.'
+---
+
 # useWebSocket
 
 Connect to a WebSocket and re-render with its status and latest message.

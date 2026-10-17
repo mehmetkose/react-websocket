@@ -1,8 +1,11 @@
+---
+title: 'React WebSocket recipes'
+description: 'Patterns for real-time React features over WebSockets: message routing, request/response, presence and typing indicators, polling, optimistic sends, logging.'
+---
+
 # Recipes
 
 Patterns for common real-time features. Each one is self-contained; copy what you need.
-
-[[toc]]
 
 ## Many message types on one socket
 

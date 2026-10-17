@@ -1,3 +1,7 @@
+---
+description: 'The TypeScript types react-websocket exports: Status, Snapshot, CloseInfo, MessageError, EventMap, SendOptions, WebSocketClient and more.'
+---
+
 # Types
 
 All types are exported from both `react-websocket` and `react-websocket/core`.

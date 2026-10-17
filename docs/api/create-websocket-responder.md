@@ -1,3 +1,7 @@
+---
+description: 'Answer requests the server sends: in code, for tools only the browser has, or by a person, for approvals. The reverse of createWebSocketRequests.'
+---
+
 # createWebSocketResponder
 
 Answer requests the server sends: in code, for tools that only exist in the browser, or by a person, for approvals. The reverse of [`createWebSocketRequests`](./create-websocket-requests.md).

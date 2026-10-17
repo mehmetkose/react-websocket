@@ -1,3 +1,8 @@
+---
+title: 'Chaos testing WebSockets on a bad network'
+description: 'Test your app on a bad network: react-websocket/chaos adds latency, lost and corrupt messages, and refused, dropped and stalled WebSocket connections.'
+---
+
 # Chaos testing
 
 On your machine the network never fails. The server is a few milliseconds away, nothing drops, and every message arrives whole. So the code that handles a bad network, such as reconnecting, the send queue, heartbeat timeouts and invalid messages, rarely runs before your users hit it.

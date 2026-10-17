@@ -1,3 +1,8 @@
+---
+title: 'WebSockets with StrictMode and Activity'
+description: 'How react-websocket keeps one WebSocket per URL under React StrictMode, <Activity>, route changes and transitions, without useEffectEvent or useCallback.'
+---
+
 # StrictMode, Activity and lifecycle
 
 A connection should follow what's on screen without opening duplicate sockets or reconnecting needlessly. This page explains how react-websocket behaves under StrictMode, `<Activity>`, route changes and transitions, and why you don't need `useEffectEvent` or `useCallback` for handlers.

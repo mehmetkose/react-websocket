@@ -1,3 +1,8 @@
+---
+title: 'Migrating from react-websocket v2'
+description: 'Upgrade from the react-websocket v2 <Websocket> component to v3 hooks: every v2 prop and method mapped to v3, and the behaviour changes.'
+---
+
 # Migrating from v2
 
 v2 was a class component that rendered an empty `<div>` and exposed methods through a ref. v3 replaces it with hooks and a standalone client. This page maps every v2 prop and method to v3 and lists the behaviour changes.

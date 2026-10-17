@@ -1,7 +1,9 @@
 import { defineConfig } from '@rspress/core';
+import { pluginSeo } from './docs/plugins/seo';
 import { monochromeDark, monochromeLight } from './docs/theme/monochrome';
 
 const repo = 'https://github.com/mehmetkose/react-websocket';
+const siteUrl = 'https://mehmetkose.github.io/react-websocket/';
 
 export default defineConfig({
   root: 'docs',
@@ -10,12 +12,28 @@ export default defineConfig({
   description:
     'Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready.',
   // Served from GitHub Pages at https://mehmetkose.github.io/react-websocket/
+  siteOrigin: 'https://mehmetkose.github.io',
   base: '/react-websocket/',
   icon: '/favicon.svg',
+  // Tags for every page. The per-page ones (canonical URL, structured data) are added by the
+  // theme's <SeoHead>.
   head: [
     ['meta', { name: 'theme-color', media: '(prefers-color-scheme: light)', content: '#ffffff' }],
-    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: dark)', content: '#000000' }]
+    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: dark)', content: '#000000' }],
+    ['meta', { property: 'og:site_name', content: 'react-websocket' }],
+    ['meta', { property: 'og:locale', content: 'en_US' }],
+    ['meta', { property: 'og:image', content: `${siteUrl}og.png` }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    [
+      'meta',
+      { property: 'og:image:alt', content: 'react-websocket: WebSockets for React, done right' }
+    ],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],
+  plugins: [pluginSeo({ siteUrl })],
+  // llms.txt, llms-full.txt and a Markdown copy of every page, for AI assistants and agents.
+  llms: true,
   route: {
     // Only Markdown files are pages, so the theme and demo components can live under docs/.
     extensions: ['.md', '.mdx'],

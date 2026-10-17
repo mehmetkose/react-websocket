@@ -1,3 +1,8 @@
+---
+title: 'WebSockets with React Suspense'
+description: 'Wait for a WebSocket connection with React 19''s use(client.ready) and Suspense, handle failures with an error boundary, and never flash a fallback on reconnect.'
+---
+
 # Suspense
 
 With React 19, a component can wait for a connection with `use(client.ready)` and let the nearest `<Suspense>` boundary show a fallback in the meantime. This page covers how `ready` behaves, how to handle failures with an error boundary, and how to use it outside React.

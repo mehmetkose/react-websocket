@@ -1,5 +1,7 @@
 ---
 pageType: home
+titleSuffix: 'React WebSocket hook with auto-reconnect'
+description: 'A WebSocket hook for React 18 and 19: shared connections, auto-reconnect, a send queue, typed messages and Suspense. Zero dependencies, about 3 kB.'
 
 hero:
   name: react-websocket
@@ -33,6 +35,10 @@ features:
 
 ## At a glance
 
+```sh
+npm install react-websocket
+```
+
 ```tsx
 import { useWebSocket } from 'react-websocket';
 
@@ -54,3 +60,9 @@ function Ticker() {
 ```
 
 That's the whole setup. Read the [getting started guide](./guide/getting-started.mdx) next.
+
+## Works with your stack
+
+react-websocket uses the standard `WebSocket` API, so any WebSocket server works: Node's `ws`, Hono, Django Channels, Tornado, Go, Phoenix or Cloudflare Durable Objects. In the browser it runs in a Vite app or in a server-rendered framework such as [Next.js, React Router or Astro](./guide/ssr.md), and [`react-websocket/core`](./guide/without-react.md) brings the same client to code without React.
+
+The repository has runnable [examples](https://github.com/mehmetkose/react-websocket/tree/main/examples) for Next.js, Astro, Remix, Hono and Tornado.
