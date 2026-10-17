@@ -34,7 +34,7 @@ function Prices() {
 }
 ```
 
-Every component that passes the same URL (and the same `protocols`) shares one connection. The first component to use a URL creates its client, and **its connection options are used for everyone**. Options passed by later components for the same URL are ignored, except handlers and `enabled`, which are per component. If two components need different options for the same URL, create separate clients with [`createWebSocket`](./create-websocket.md).
+Every component that passes the same URL (and the same `protocols`) shares one connection. The first component to use a URL creates its client, and **its connection options are used for everyone**. Options passed by later components for the same URL are ignored, except handlers and `enabled`, which are per component. In development, a later component that passes different connection options logs a warning naming them. If two components need different options for the same URL, create separate clients with [`createWebSocket`](./create-websocket.md).
 
 Changing `url` closes the old connection (once nothing else uses it) and opens the new one.
 
@@ -96,7 +96,7 @@ Handlers belong to the component: they run only while it is mounted and `enabled
 | --- | --- | --- |
 | `status` | [`Status`](./types.md#status) | `'idle'`, `'connecting'`, `'open'`, `'reconnecting'` or `'closed'` |
 | `lastMessage` | `In \| undefined` | The most recent message, kept across reconnects |
-| `attempt` | `number` | Consecutive failed attempts since the last successful open |
+| `attempt` | `number` | Consecutive failed attempts since the last stable connection (one that stayed open for `reconnect.minUptime`). `0` while open |
 | `send` | `(message: Out, options?: SendOptions) => boolean` | Sends now, or queues until open (see [`SendOptions`](./types.md#sendoptions)). Returns `true` if sent immediately |
 | `close` | `(code?: number, reason?: string) => void` | Closes and stops reconnecting, for every component sharing the connection |
 | `reconnect` | `() => void` | Drops the socket and connects again immediately |
@@ -113,5 +113,5 @@ Handlers belong to the component: they run only while it is mounted and `enabled
 
 ## Caveats
 
-- `useWebSocket(url)` with the same URL but different `json`, `schema` or `reconnect` options in two components uses the first component's options for both. Use `createWebSocket` instead.
+- `useWebSocket(url)` with the same URL but different `json`, `schema` or `reconnect` options in two components uses the first component's options for both, and warns in development. Use `createWebSocket` instead.
 - `lastMessage` is for "show the latest value" UIs. Don't collect messages by watching it in an Effect: if several messages arrive before React renders, you only see the last one. Use `onMessage` instead, which runs once per message.

@@ -30,7 +30,10 @@ export interface Snapshot<In> {
   readonly status: Status;
   /** Most recent message (after `parse`/`json` and `schema`), kept across reconnects. */
   readonly lastMessage: In | undefined;
-  /** Consecutive failed attempts since the last successful open. `0` while open. */
+  /**
+   * Consecutive failed attempts since the last stable connection. A connection that closes
+   * within `reconnect.minUptime` of opening counts as failed. `0` while open.
+   */
   readonly attempt: number;
 }
 
@@ -56,6 +59,14 @@ export interface ReconnectOptions {
    */
   maxAttempts?: number;
   /**
+   * How long a connection must stay open, in ms, before the backoff resets. One that closes
+   * sooner counts as a failed attempt, so a server that accepts and then closes right away
+   * (e.g. rejecting the credentials sent on open) is retried with a growing delay, and
+   * `maxAttempts` still applies. `0` resets on every open.
+   * @default 5000
+   */
+  minUptime?: number;
+  /**
    * Delay before the first retry, in ms.
    * @default 1000
    */
@@ -72,19 +83,26 @@ export interface ReconnectOptions {
   factor?: number;
   /**
    * Randomly shave up to this fraction (0–1) off each delay, so that many clients
-   * dropped at once don't all reconnect at the same moment.
-   * @default 0.5
+   * dropped at once don't all reconnect at the same moment. The default `1` picks each
+   * delay at random between 0 and the backoff ("full jitter").
+   * @default 1
    */
   jitter?: number;
   /**
    * Called on every unexpected close. Return `false` to stop reconnecting.
    *
+   * The default, `retryableClose`, retries everything except `1002` (protocol error), `1003`
+   * (unsupported data) and `1008` (policy violation). Your own function replaces it; call
+   * `retryableClose` from it to keep that rule, or return `true` to retry every close.
+   *
    * @example
    * ```ts
-   * // Don't retry when the server rejects our credentials.
-   * shouldReconnect: close => close.code !== 4001
+   * import { retryableClose } from 'react-websocket';
+   *
+   * // Also stop when our server rejects the credentials.
+   * shouldReconnect: close => close.code !== 4001 && retryableClose(close)
    * ```
-   * @default () => true
+   * @default retryableClose
    */
   shouldReconnect?: (close: CloseInfo) => boolean;
 }
@@ -162,7 +180,8 @@ export interface QueueOptions {
   /**
    * Maximum number of messages held while not connected. When full, the oldest
    * message is dropped, skipping `priority` messages unless nothing else is queued.
-   * @default Infinity
+   * `Infinity` keeps every message.
+   * @default 100
    */
   limit?: number;
 }
@@ -235,8 +254,8 @@ export interface WebSocketOptions<In = unknown, Out = unknown> {
   heartbeat?: HeartbeatOptions;
   /**
    * Buffer `send()` calls made while not connected and send them, in order, on open
-   * (right after `open` listeners run).
-   * `false` drops them instead. `{ limit }` caps the buffer, dropping the oldest.
+   * (right after `open` listeners run). It holds up to 100 messages, dropping the oldest;
+   * `{ limit }` changes that. `false` drops messages instead of queueing them.
    * The queue is cleared by `close()` or when the client gives up.
    * @default true
    */

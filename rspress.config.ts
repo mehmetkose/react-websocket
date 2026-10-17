@@ -72,6 +72,7 @@ export default defineConfig({
         text: 'v3',
         items: [
           { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
+          { text: 'Migrating from v3', link: '/migration-v3' },
           { text: 'Migrating from v2', link: '/migration' },
           { text: 'Contributing', link: `${repo}/blob/main/CONTRIBUTING.md` }
         ]
@@ -136,6 +137,7 @@ export default defineConfig({
           items: [
             { text: 'Recipes', link: '/recipes' },
             { text: 'Troubleshooting', link: '/troubleshooting' },
+            { text: 'Migrating from v3', link: '/migration-v3' },
             { text: 'Migrating from v2', link: '/migration' }
           ]
         }

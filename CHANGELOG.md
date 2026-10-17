@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Safer defaults for reconnecting and queueing. No APIs change, but four defaults do, so this is a major release. Each
+has an option that restores the 3.x behavior; see
+[Migrating from v3](https://mehmetkose.github.io/react-websocket/migration-v3).
+
+### Changed
+
+- **Breaking:** the backoff resets only once a connection has stayed open for `reconnect.minUptime` (5000 ms by default),
+  instead of on every open. A server that accepts and then closes right away, for example to reject the credentials
+  sent from `onOpen`, used to get a new connection about once a second, forever. Now each retry waits longer, `attempt`
+  keeps counting, and `maxAttempts` applies. `minUptime: 0` restores the old behavior.
+- **Breaking:** close codes `1002` (protocol error), `1003` (unsupported data) and `1008` (policy violation, often a
+  rejected login) are no longer retried by default: the client gives up, its status becomes `closed` and `ready`
+  rejects. A `shouldReconnect` of your own still replaces the default. `shouldReconnect: () => true` restores the old
+  behavior.
+- **Breaking:** `reconnect.jitter` defaults to `1` (full jitter) instead of `0.5`, so each delay is random between 0
+  and the backoff. Clients dropped by the same deploy used to come back within the same 500–1000 ms window; now they
+  spread over the whole window. `jitter: 0.5` restores the old behavior.
+- **Breaking:** the send queue holds at most 100 messages by default instead of every message, dropping the oldest
+  first (and calling its `onDrop`). After a long outage, a backlog is no longer replayed in full on reconnect.
+  `queue: { limit: Infinity }` restores the old behavior.
+
+### Added
+
+- `reconnect.minUptime`: how long a connection must stay open, in ms, before the backoff resets.
+- `retryableClose(close)`, the default `reconnect.shouldReconnect`, from both `react-websocket` and
+  `react-websocket/core`. Call it from your own `shouldReconnect` to keep the default rule, e.g.
+  `close => close.code !== 4001 && retryableClose(close)`.
+- In development, `useWebSocket(url)` warns when a component passes different connection options (such as `json`,
+  `parse` or `schema`) than the component that opened the shared connection for that URL. Those options are ignored,
+  so a component could receive data in a shape it doesn't expect. Options written inline count as the same when their
+  contents match.
+
 ## [3.6.0] - 2026-10-17
 
 ### Added
@@ -205,6 +239,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/3.6.0...HEAD
 [3.6.0]: https://github.com/mehmetkose/react-websocket/compare/3.5.0...3.6.0
 [3.5.0]: https://github.com/mehmetkose/react-websocket/compare/3.4.0...3.5.0
 [3.4.0]: https://github.com/mehmetkose/react-websocket/compare/3.3.0...3.4.0

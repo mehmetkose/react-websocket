@@ -1,34 +1,23 @@
 # Roadmap
 
-Ideas that have been checked against the current code (3.2.0) and are worth doing. Nothing here is a
+Ideas that have been checked against the current code (4.0.0) and are worth doing. Nothing here is a
 promise or a schedule. Items marked **behavior change** alter a default, so they need either a major
 version or an opt-in first.
 
 ## Design fixes
 
-### Spread out reconnects (full jitter, close code 1013)
+### Honor close code 1013 (Try Again Later)
 
-Today the delay is `base * (1 - jitter * random)` with `jitter: 0.5`, so it only shortens by up to half.
-After a server deploy, every client retries within the same 500–1000 ms window. `reconnect: { jitter: 1 }`
-already gives full jitter (a random delay from 0 to the base), but nobody knows to set it.
+An overloaded server can close with 1013 to shed load. Today it is retried like any other close.
 
-- Make full jitter the default. **Behavior change** (timing only).
-- Honor close code 1013 (Try Again Later), with an optional server-supplied delay in the close reason.
+- Back off further after a 1013, optionally by a delay the server supplies in the close reason.
 
-### Don't retry closes that can't succeed
+### Expire queued messages
 
-Every close is retried unless `shouldReconnect` says otherwise, including 1002 (protocol error), 1003
-(unsupported data) and 1008 (policy violation, often an auth failure). That hammers the server forever.
+The queue holds 100 messages by default, but a message that waited through a long outage can still be stale when it
+goes out.
 
-- Skip 1002, 1003 and 1008 by default. **Behavior change.** Ship it first as an exported preset, such as
-  `shouldReconnect: retryableClose`, and document it in the authentication guide.
-
-### Bound the send queue by default
-
-`queue.limit` defaults to `Infinity`. After hours offline, every stale message is replayed on reconnect.
-
-- A default cap (for example 100), and a per-message or per-queue `maxAge`. **Behavior change** for the cap.
-  `maxAge` can ship on its own. Messages dropped by age should call `onDrop`, like key and limit drops do.
+- A per-message or per-queue `maxAge`. Messages dropped by age should call `onDrop`, like key and limit drops do.
 
 ### Check liveness on wake
 
@@ -39,14 +28,13 @@ the next heartbeat interval.
 - When a heartbeat is configured, send a ping right away on `online` and on becoming visible, and start the
   pong timeout.
 
-### Warn about conflicting options on a shared URL
+### Create shared URL clients outside render
 
-Hooks with the same URL share one client, and its options come from whichever hook rendered first. A second
-component with different `json`, `parse` or `schema` options silently gets data in a shape it doesn't expect.
-`sharedClient()` also writes to the registry during render, so a render that React discards can still decide
-which options win.
+Hooks with the same URL share one client, and its options come from whichever hook rendered first. A development
+warning now names options that a later hook passes differently, but `sharedClient()` still writes to the registry
+during render, so a render that React discards can decide which options win, and leaves behind an entry nothing
+acquired.
 
-- A development-only warning when a hook's options differ from the shared client's.
 - Look at creating the registry entry outside render, or replacing an entry that no committed hook ever
   acquired.
 

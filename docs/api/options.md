@@ -9,7 +9,7 @@ createWebSocket<In, Out>('wss://api.example.com/live', {
   schema: Message,
   reconnect: { maxAttempts: 10, shouldReconnect: close => close.code !== 4001 },
   heartbeat: { interval: 25_000, pong: 'pong', timeout: 5_000 },
-  queue: { limit: 100 },
+  queue: { limit: 500 },
   logger: console.debug
 });
 ```
@@ -113,21 +113,26 @@ Reconnect with exponential backoff after an unexpected close or a failed attempt
 | `minDelay` | `number` | `1000` | Delay before the first retry, in ms |
 | `maxDelay` | `number` | `30000` | Upper bound for the delay, in ms |
 | `factor` | `number` | `2` | Backoff multiplier |
-| `jitter` | `number` | `0.5` | Randomly shave up to this fraction (0–1) off each delay |
-| `shouldReconnect` | `(close: CloseInfo) => boolean` | always `true` | Return `false` to stop reconnecting after this close |
+| `jitter` | `number` | `1` | Randomly shave up to this fraction (0–1) off each delay |
+| `minUptime` | `number` | `5000` | How long a connection must stay open before the backoff resets, in ms. One that closes sooner counts as a failed attempt. `0` resets on every open |
+| `shouldReconnect` | `(close: CloseInfo) => boolean` | `retryableClose` | Return `false` to stop reconnecting after this close. The default retries every close except `1002`, `1003` and `1008` |
 
-The delay before attempt *n* is `min(maxDelay, minDelay × factor^(n−1))`, minus up to `jitter` of it at random. With the defaults: about 0.5–1 s, 1–2 s, 2–4 s, 4–8 s, … up to 15–30 s.
+The delay before attempt *n* is `min(maxDelay, minDelay × factor^(n−1))`, minus up to `jitter` of it at random. With the defaults, each delay is picked at random between 0 and 1 s, 2 s, 4 s, 8 s, … up to 30 s.
 
 While a retry is scheduled, the client also retries immediately when the browser fires `online` or the page becomes visible again.
 
+A `shouldReconnect` of your own replaces the default. Call the exported `retryableClose` from it to keep the default rule:
+
 ```ts
-{
+import { createWebSocket, retryableClose } from 'react-websocket';
+
+createWebSocket(url, {
   reconnect: {
     maxAttempts: 8,
     // 4001: our server's "invalid token" close code
-    shouldReconnect: close => close.code !== 4001
+    shouldReconnect: close => close.code !== 4001 && retryableClose(close)
   }
-}
+});
 ```
 
 See [Reconnecting and heartbeats](../guide/reconnecting.md).
@@ -155,8 +160,8 @@ Buffer `send()` calls made while not connected, and send them in order when the 
 
 | Value | Behavior |
 | --- | --- |
-| `true` (default) | Queue without limit |
-| `{ limit: n }` | Queue at most `n` messages. When full, the oldest is dropped (and logged), skipping `priority` messages unless nothing else is queued |
+| `true` (default) | Queue at most 100 messages, like `{ limit: 100 }` |
+| `{ limit: n }` | Queue at most `n` messages. When full, the oldest is dropped (and logged), skipping `priority` messages unless nothing else is queued. `Infinity` keeps every message |
 | `false` | Don't queue. `send()` while not open drops the message and returns `false` |
 
 To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `send()`: `{ volatile: true }` drops one message, `{ key }` keeps only the newest queued message per key, and `{ priority: true }` queues a message ahead of the others.
@@ -164,7 +169,7 @@ To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `
 Queued messages are sent right after `open` listeners run, so a handshake sent from `onOpen` goes out first. See [First-message auth](../guide/authentication.md#first-message-auth). The queue is cleared by `close()` and when the client gives up reconnecting.
 
 ```ts
-{ queue: { limit: 100 } }
+{ queue: { limit: 500 } }
 ```
 
 ## Debugging

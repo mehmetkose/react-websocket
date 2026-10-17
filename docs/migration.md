@@ -88,7 +88,7 @@ function ProductDetail() {
 
 **Shared connections.** In v2, every `<Websocket>` opened its own socket. In v3, all components using the same URL share one socket, opened when the first mounts and closed a tick after the last unmounts. Its options come from the component that created it. Use [`createWebSocket`](./guide/shared-clients.md) to define a connection's options once.
 
-**Backoff with jitter.** v2 waited 1, 3, 7, 15, then 30 seconds between attempts, and never reset the count after a successful reconnect. v3 waits 1, 2, 4, 8, 16, then 30 seconds by default, shaves a random part off each delay so clients don't reconnect in lockstep, and resets after every successful open. It also retries immediately when the browser comes back online or the tab becomes visible. See [Reconnecting](./guide/reconnecting.md).
+**Backoff with jitter.** v2 waited 1, 3, 7, 15, then 30 seconds between attempts, and never reset the count after a successful reconnect. v3 waits 1, 2, 4, 8, 16, then 30 seconds by default, shaves a random part off each delay so clients don't reconnect in lockstep, and resets after every successful open (v4 resets only once a connection has stayed open for 5 seconds; see [Migrating from v3](./migration-v3.md)). It also retries immediately when the browser comes back online or the tab becomes visible. See [Reconnecting](./guide/reconnecting.md).
 
 **`onClose` receives an object.** `onClose(code, reason)` becomes `onClose({ code, reason, wasClean })`. It's called for every close, including ones that will be retried.
 

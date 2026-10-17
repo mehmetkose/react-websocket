@@ -12,7 +12,7 @@
 **[Documentation](https://mehmetkose.github.io/react-websocket/)** · [Getting started](https://mehmetkose.github.io/react-websocket/guide/getting-started) · [API](https://mehmetkose.github.io/react-websocket/api/) · [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Changelog](CHANGELOG.md)
 
 - **Shared connections.** Components using the same URL share one socket. StrictMode, `<Activity>` and route transitions never open duplicates.
-- **Auto-reconnect.** Exponential backoff with jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. Optional heartbeats detect dead links.
+- **Auto-reconnect.** Exponential backoff with full jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. It backs off from a server that closes right after accepting, and stops on close codes that retrying can't fix. Optional heartbeats detect dead links.
 - **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent. Put control messages first with `priority`, and drop stream data on a slow link with `maxBuffered`.
 - **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
 - **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
@@ -126,6 +126,7 @@ function Room() {
 | `createWebSocketSendRate(client, options?)` | `send(message, key)` coalesced per key at a rate that drops on a congested link |
 | `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
+| `retryableClose(close)` | The default `reconnect.shouldReconnect`: retries every close except `1002`, `1003` and `1008` |
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
@@ -136,9 +137,9 @@ function Room() {
 | `json` | `false` | `JSON.parse` incoming and `JSON.stringify` outgoing messages |
 | `parse(data)` / `serialize(message)` | | Custom codec; takes precedence over `json` |
 | `schema` | | Standard Schema validation; types are inferred |
-| `reconnect` | `true` | `false`, or `{ maxAttempts, minDelay, maxDelay, factor, jitter, shouldReconnect }` |
+| `reconnect` | `true` | `false`, or `{ maxAttempts, minDelay, maxDelay, factor, jitter, minUptime, shouldReconnect }` |
 | `heartbeat` | | `{ interval, message, pong, timeout }` |
-| `queue` | `true` | `false`, or `{ limit }` |
+| `queue` | `true` (100 messages) | `false`, or `{ limit }` |
 | `logger` | | e.g. `console.debug` |
 | `WebSocket` | global | Custom implementation for tests, Node, or chaos testing |
 
@@ -149,7 +150,7 @@ function Room() {
 - [Shared clients](https://mehmetkose.github.io/react-websocket/guide/shared-clients) · [Messages and types](https://mehmetkose.github.io/react-websocket/guide/messages) · [Reconnecting and heartbeats](https://mehmetkose.github.io/react-websocket/guide/reconnecting)
 - [Suspense](https://mehmetkose.github.io/react-websocket/guide/suspense) · [Server rendering and Next.js](https://mehmetkose.github.io/react-websocket/guide/ssr) · [StrictMode, Activity and lifecycle](https://mehmetkose.github.io/react-websocket/guide/lifecycle)
 - [Authentication](https://mehmetkose.github.io/react-websocket/guide/authentication) · [Performance](https://mehmetkose.github.io/react-websocket/guide/performance) · [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) · [AI agents](https://mehmetkose.github.io/react-websocket/guide/agents) · [Testing](https://mehmetkose.github.io/react-websocket/guide/testing) · [Chaos testing](https://mehmetkose.github.io/react-websocket/guide/chaos) · [Without React](https://mehmetkose.github.io/react-websocket/guide/without-react)
-- [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Troubleshooting](https://mehmetkose.github.io/react-websocket/troubleshooting) · [Migrating from v2](https://mehmetkose.github.io/react-websocket/migration)
+- [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Troubleshooting](https://mehmetkose.github.io/react-websocket/troubleshooting) · [Migrating from v3](https://mehmetkose.github.io/react-websocket/migration-v3) · [Migrating from v2](https://mehmetkose.github.io/react-websocket/migration)
 
 The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it locally.
 

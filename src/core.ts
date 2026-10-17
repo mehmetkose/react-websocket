@@ -1,4 +1,4 @@
-export { createWebSocket } from './client';
+export { createWebSocket, retryableClose } from './client';
 export { createWebSocketLatency } from './latency';
 export type { Latency, WebSocketLatency, WebSocketLatencyOptions } from './latency';
 export { createWebSocketRequests } from './requests';

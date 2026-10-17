@@ -36,7 +36,7 @@ any state ──close()──▶ closed ──connect() / reconnect()──▶ c
 any state ──last hook unmounts──▶ idle
 ```
 
-`attempt` counts consecutive failed attempts since the last successful open. It is `0` while open and resets on every successful connection.
+`attempt` counts consecutive failed attempts. It is `0` while open, and it resets once a connection has stayed open for `minUptime` (5 seconds by default). A connection that closes sooner counts as a failed attempt, so `attempt` carries on from where it was.
 
 ## Backoff
 
@@ -46,7 +46,7 @@ After an unexpected close, the client waits and tries again. The delay before at
 delay = min(maxDelay, minDelay × factor^(n − 1)) × (1 − jitter × random())
 ```
 
-With the defaults (`minDelay: 1000`, `factor: 2`, `maxDelay: 30000`, `jitter: 0.5`), the delays before jitter are 1 s, 2 s, 4 s, 8 s, 16 s, then 30 s for every attempt after that. Jitter randomly shortens each delay by up to half, so thousands of clients dropped by the same server restart don't all reconnect at the same moment.
+With the defaults (`minDelay: 1000`, `factor: 2`, `maxDelay: 30000`, `jitter: 1`), the delays before jitter are 1 s, 2 s, 4 s, 8 s, 16 s, then 30 s for every attempt after that. Full jitter then picks each delay at random between 0 and that value, so thousands of clients dropped by the same server deploy spread their reconnects over the whole window instead of arriving together. A lower `jitter` keeps more of each delay: with `0.5`, it is between half and all of it.
 
 Tune it with the [`reconnect`](../api/options.md#reconnect) option:
 
@@ -59,6 +59,7 @@ export const live = createWebSocket('wss://api.example.com/live', {
     maxDelay: 10_000,
     factor: 1.5,
     jitter: 0.3,
+    minUptime: 10_000,
     maxAttempts: 20
   }
 });
@@ -70,10 +71,17 @@ export const live = createWebSocket('wss://api.example.com/live', {
 | `minDelay` | `1000` | Delay before the first retry, in ms |
 | `maxDelay` | `30000` | Upper bound for any delay, in ms |
 | `factor` | `2` | Multiplier per attempt |
-| `jitter` | `0.5` | Fraction (0–1) randomly shaved off each delay |
-| `shouldReconnect` | always | Return `false` to stop after a given close |
+| `jitter` | `1` | Fraction (0–1) randomly shaved off each delay |
+| `minUptime` | `5000` | How long a connection must stay open before the backoff resets, in ms |
+| `shouldReconnect` | `retryableClose` | Return `false` to stop after a given close. The default stops on `1002`, `1003` and `1008` |
 
 `reconnect: false` disables reconnecting entirely. The first unexpected close then makes the status `closed`.
+
+### Servers that close right after accepting
+
+A server can accept a connection and close it at once, for example when it rejects the credentials sent from `onOpen`, or when it is overloaded. If every open reset the backoff, the client would come back about once a second, forever.
+
+So a connection resets the backoff only once it has stayed open for `minUptime`. One that closes sooner counts as a failed attempt: the next delay is longer, and `maxAttempts` still applies. `minUptime: 0` resets on every open.
 
 ### Giving up
 
@@ -83,16 +91,28 @@ When `maxAttempts` is reached, or `shouldReconnect` returns `false`, the client 
 - [`ready`](./suspense.md) rejects with an `Error` describing the last close;
 - the send queue is cleared.
 
-Use `shouldReconnect` to stop on close codes that retrying can't fix, such as an authentication failure:
+Some closes can't be fixed by trying again the same way, so by default the client gives up on them at once:
+
+| Code | Meaning |
+| --- | --- |
+| `1002` | Protocol error |
+| `1003` | Unsupported data |
+| `1008` | Policy violation, often a rejected login or origin |
+
+Every other close is retried, including `1001` (going away), `1006` (network loss) and `1011` (server error). This rule is the default `shouldReconnect`, exported as `retryableClose`. Your own `shouldReconnect` replaces it, so call `retryableClose` from yours to keep it, for example to also stop on your server's own code for an invalid token:
 
 ```ts
+import { createWebSocket, retryableClose } from 'react-websocket';
+
 const live = createWebSocket(url, {
   reconnect: {
     // 4001 is our server's "invalid token" code.
-    shouldReconnect: close => close.code !== 4001
+    shouldReconnect: close => close.code !== 4001 && retryableClose(close)
   }
 });
 ```
+
+To retry every close, pass `shouldReconnect: () => true`.
 
 `shouldReconnect` receives a [`CloseInfo`](../api/types.md#closeinfo) (`code`, `reason`, `wasClean`). It isn't consulted after `close()`, which never reconnects.
 
@@ -177,14 +197,15 @@ chat.send({ text: 'sent while offline' }); // returns false: queued
 
 | `queue` | Behaviour while not open |
 | --- | --- |
-| `true` (default) | Queue every message |
-| `{ limit: 100 }` | Queue up to 100; when full, the **oldest** is dropped |
+| `true` (default) | Queue up to 100 messages; when full, the **oldest** is dropped |
+| `{ limit: 500 }` | Queue up to 500 |
+| `{ limit: Infinity }` | Queue every message |
 | `false` | Drop the message (logged via `logger`) |
 
 The queue is cleared when you call `close()` and when the client gives up reconnecting, so stale messages aren't sent on a later connection.
 
-:::tip Bound the queue for long outages
-The default queue is unbounded. If users can stay offline for a long time while your app keeps calling `send()`, for example with presence or cursor updates, set a `limit`, or use `queue: false` for messages that are only meaningful in real time.
+:::tip Size the queue for your outages
+The 100-message default keeps a long outage from building up a backlog that floods the server on reconnect. A dropped message is logged via `logger` and calls its [`onDrop`](../api/types.md#sendoptions). Raise `limit` if your app sends more than that while offline and every message matters, or use `queue: false` for messages that are only meaningful in real time, such as presence or cursor updates.
 :::
 
 You can also decide per message. `send(message, { volatile: true })` drops a message that would be queued, and `send(message, { key: 'cursor' })` keeps only the newest queued message with that key:
@@ -205,7 +226,7 @@ Messages queued while offline go out in order. A control message such as "cancel
 agent.send({ type: 'cancel', runId }, { priority: true });
 ```
 
-Priority messages go out ahead of everything queued without `priority`, in the order they were sent. Messages sent from `open` listeners, such as an auth handshake, still go first. With `queue.limit`, ordinary messages are evicted before priority ones.
+Priority messages go out ahead of everything queued without `priority`, in the order they were sent. Messages sent from `open` listeners, such as an auth handshake, still go first. When the queue is full, ordinary messages are evicted before priority ones.
 
 `priority` only reorders the queue. Once the socket is open, a message goes straight to the browser's send buffer, and nothing can overtake what's already there. To keep that buffer short, send high-rate streams with `maxBuffered`, which drops a message while more than that many bytes are waiting:
 
@@ -221,7 +242,7 @@ Pass a `logger` to see attempts, delays, heartbeat timeouts and dropped messages
 createWebSocket(url, { logger: console.debug });
 // connecting wss://api.example.com/live
 // closed { code: 1006, reason: '', wasClean: false }
-// reconnecting in 1734ms (attempt 1)
+// reconnecting in 734ms (attempt 1)
 ```
 
 ## See also

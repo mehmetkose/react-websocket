@@ -53,11 +53,15 @@ export const live = createWebSocket(url, { json: true, heartbeat: { interval: 25
 
 - `close()` was called,
 - the client gave up after `reconnect.maxAttempts` failures,
-- `reconnect.shouldReconnect` returned `false`,
+- `reconnect.shouldReconnect` returned `false`. By default it does for close codes `1002`, `1003` and `1008`,
 - `reconnect: false` is set and the connection closed,
 - the `WebSocket` constructor threw (usually an invalid URL, such as a missing `ws://` or `wss://`). Retrying wouldn't help, so the client doesn't.
 
 Listen with `onClose` and `onError` to see which.
+
+## Reconnects keep getting slower
+
+A connection resets the backoff only once it has stayed open for [`reconnect.minUptime`](./api/options.md#reconnect) (5 seconds by default). If the server keeps closing connections sooner, often because it rejects the credentials sent on open, each retry waits longer than the last, up to `maxDelay`. Check `onClose` for the code and reason the server sends. If your server closes connections on purpose shortly after opening them, lower `minUptime`.
 
 ## Messages don't arrive
 
@@ -105,12 +109,12 @@ createWebSocket(url, {
 | `1000` | Normal closure | `close()` was called, or the server finished normally |
 | `1001` | Going away | Server restart or deploy, or the page navigated away |
 | `1006` | Abnormal closure | No close frame: network loss, server crash, failed handshake (bad URL path, auth rejected at upgrade, TLS error). Browsers deliberately hide the details |
-| `1008` | Policy violation | The server rejected the client, often for auth or origin |
+| `1008` | Policy violation | The server rejected the client, often for auth or origin. Not retried by default |
 | `1011` | Internal error | The server hit an unexpected error |
 | `4000` | Heartbeat timeout | Set by this library when a `heartbeat.timeout` expires |
 | `4001`–`4999` | Application-defined | Your server's own meanings, e.g. `4001` for unauthorized |
 
-To stop retrying on some of these, see [`shouldReconnect`](./api/options.md#reconnect).
+The client doesn't retry `1002` (protocol error), `1003` (unsupported data) or `1008`, and retries every other code. To change which codes are retried, see [`shouldReconnect`](./api/options.md#reconnect).
 
 ## `WebSocket is not defined`, or nothing connects in tests
 
