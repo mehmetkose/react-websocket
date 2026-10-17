@@ -20,6 +20,7 @@
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
 - **Requests, streams and latency.** Await a reply, or iterate over streamed ones such as an LLM's tokens, with timeouts and a cancel that tells the server to stop. Measure round-trip time and the server's clock for ping displays and synchronized countdowns.
 - **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
+- **Offline outbox.** Messages kept in IndexedDB until the server acknowledges them, from `react-websocket/outbox`, so an order taken on flaky Wi-Fi survives reconnects and page reloads, and retries are safe with idempotency keys.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
@@ -118,6 +119,7 @@ function Room() {
 | `useWebSocketLatency(latency)` | Round-trip time and server clock offset |
 | `useAgentApproval(responder, method)` | Requests from the server waiting for a person to answer |
 | `useWebSocketStream(rpc, options?)` | Stream the replies to a request into a value, e.g. tokens into an answer; returns `{ value, status, error, start, abort }` |
+| `useWebSocketOutbox(outbox)` | The messages waiting in an outbox, for a "3 orders waiting to sync" banner |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
 | `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
@@ -129,6 +131,7 @@ function Room() {
 | `retryableClose(close)` | The default `reconnect.shouldReconnect`: retries every close except `1002`, `1003` and `1008` |
 | `retryAfter(close)` | The default `reconnect.retryAfter`: the delay a `1012` (Service Restart) or `1013` (Try Again Later) close asks for, in seconds in its reason |
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
+| `createWebSocketOutbox(client, { name, send, ack })` | From `react-websocket/outbox`: `add(message)` keeps a message in IndexedDB and sends it until the server acknowledges it, across reconnects and reloads |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
 | Option | Default | |

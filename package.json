@@ -47,6 +47,16 @@
         "default": "./dist/timeline.cjs"
       }
     },
+    "./outbox": {
+      "import": {
+        "types": "./dist/outbox.d.ts",
+        "default": "./dist/outbox.js"
+      },
+      "require": {
+        "types": "./dist/outbox.d.cts",
+        "default": "./dist/outbox.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -116,6 +126,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "5.0.3",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.1.2",
     "publint": "^0.3.25",
     "react": "^19.3.0",
@@ -209,6 +220,13 @@
       "path": "dist/timeline.js",
       "import": "{ createWebSocketTimeline }",
       "limit": "1 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/outbox (createWebSocketOutbox)",
+      "path": "dist/outbox.js",
+      "import": "{ createWebSocketOutbox }",
+      "limit": "1.15 kB",
       "gzip": true
     }
   ],

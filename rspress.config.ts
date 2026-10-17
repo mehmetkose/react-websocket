@@ -58,7 +58,8 @@ export default defineConfig({
         'react-websocket$': './src/index.ts',
         'react-websocket/core': './src/core.ts',
         'react-websocket/chaos': './src/chaos.ts',
-        'react-websocket/timeline': './src/timeline.ts'
+        'react-websocket/timeline': './src/timeline.ts',
+        'react-websocket/outbox': './src/outbox.ts'
       }
     }
   },
@@ -93,6 +94,7 @@ export default defineConfig({
             { text: 'Shared clients', link: '/guide/shared-clients' },
             { text: 'Messages and types', link: '/guide/messages' },
             { text: 'Reconnecting and heartbeats', link: '/guide/reconnecting' },
+            { text: 'Offline outbox', link: '/guide/outbox' },
             { text: 'Topic subscriptions', link: '/guide/topics' },
             { text: 'Message state', link: '/guide/state' },
             { text: 'Real-time games', link: '/guide/games' },
@@ -119,6 +121,7 @@ export default defineConfig({
             { text: 'useWebSocketLatency', link: '/api/use-websocket-latency' },
             { text: 'useAgentApproval', link: '/api/use-agent-approval' },
             { text: 'useWebSocketStream', link: '/api/use-websocket-stream' },
+            { text: 'useWebSocketOutbox', link: '/api/use-websocket-outbox' },
             { text: 'createWebSocket', link: '/api/create-websocket' },
             { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
             { text: 'createWebSocketState', link: '/api/create-websocket-state' },
@@ -127,6 +130,7 @@ export default defineConfig({
             { text: 'createWebSocketSendRate', link: '/api/create-websocket-send-rate' },
             { text: 'createWebSocketResponder', link: '/api/create-websocket-responder' },
             { text: 'createWebSocketTimeline', link: '/api/create-websocket-timeline' },
+            { text: 'createWebSocketOutbox', link: '/api/create-websocket-outbox' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },
             { text: 'Options', link: '/api/options' },
             { text: 'Types', link: '/api/types' }
