@@ -78,7 +78,7 @@ The full picture, including backoff and heartbeats, is in [Reconnecting and hear
 
 | Member | |
 | --- | --- |
-| `send(message)` | Send now, or queue until open. Returns `true` if sent immediately |
+| `send(message, options?)` | Send now, or queue until open. `{ volatile: true }` drops instead of queueing, `{ key }` keeps only the newest queued message per key. See [`SendOptions`](./types.md#sendoptions). Returns `true` if sent immediately |
 | `on(type, listener)` | Listen to `'open'`, `'message'`, `'close'` or `'error'`. Returns an unsubscribe function |
 | `connect()` | Connect, and stay connected until `close()` even with no hooks mounted |
 | `close(code?, reason?)` | Close, stop reconnecting, clear the queue. Status becomes `'closed'` |

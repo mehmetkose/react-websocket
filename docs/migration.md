@@ -44,7 +44,7 @@ function ProductDetail() {
   const { send } = useWebSocket<{ movement: number }, string>(
     'wss://api.example.com/live/product/12345/',
     {
-      json: true, // parses incoming messages; also JSON.stringifies outgoing ones
+      parse: data => JSON.parse(data as string), // incoming only; outgoing strings are sent as-is
       onMessage: ({ movement }) => setCount(c => c + movement),
       reconnect: { minDelay: 5000, maxDelay: 5000, jitter: 0 },
       logger: console.debug
@@ -60,7 +60,7 @@ function ProductDetail() {
 }
 ```
 
-`json: true` also stringifies outgoing messages, so `send('refresh')` sends `"refresh"` (with quotes). If your server expects the raw string, drop `json: true` and parse in `onMessage` yourself, or set `parse: JSON.parse` to parse incoming messages only.
+`parse` decodes incoming messages only, so `send('refresh')` sends the raw string `refresh`, as v2's `sendMessage` did. Don't reach for `json: true` here: it also `JSON.stringify`s outgoing messages, so `send('refresh')` would send `"refresh"` (with quotes). Use `json: true` when your server expects JSON in both directions.
 
 ## Mapping
 

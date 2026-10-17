@@ -13,11 +13,12 @@
 
 - **Shared connections.** Components using the same URL share one socket. StrictMode, `<Activity>` and route transitions never open duplicates.
 - **Auto-reconnect.** Exponential backoff with jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. Optional heartbeats detect dead links.
-- **Send queue.** `send()` before the socket is open just works. The message goes out on connect.
+- **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent.
 - **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
 - **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
 - **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes.
+- **Requests and latency.** Await replies with timeouts and cancellation, and measure round-trip time and the server's clock for ping displays and synchronized countdowns.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
 
@@ -112,9 +113,12 @@ function Room() {
 | `useWebSocketStatus(client)` | The status; re-renders only when it changes |
 | `useWebSocketTopic(topics, topic)` | Hold topic subscriptions that survive reconnects |
 | `useWebSocketState(store, selector?)` | Read state reduced from messages; re-renders only when the selection changes |
+| `useWebSocketLatency(latency)` | Round-trip time and server clock offset |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
 | `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
+| `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, with timeouts |
+| `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 
 | Option | Default | |
@@ -136,7 +140,7 @@ function Room() {
 
 - [Shared clients](https://mehmetkose.github.io/react-websocket/guide/shared-clients) · [Messages and types](https://mehmetkose.github.io/react-websocket/guide/messages) · [Reconnecting and heartbeats](https://mehmetkose.github.io/react-websocket/guide/reconnecting)
 - [Suspense](https://mehmetkose.github.io/react-websocket/guide/suspense) · [Server rendering and Next.js](https://mehmetkose.github.io/react-websocket/guide/ssr) · [StrictMode, Activity and lifecycle](https://mehmetkose.github.io/react-websocket/guide/lifecycle)
-- [Authentication](https://mehmetkose.github.io/react-websocket/guide/authentication) · [Performance](https://mehmetkose.github.io/react-websocket/guide/performance) · [Testing](https://mehmetkose.github.io/react-websocket/guide/testing) · [Without React](https://mehmetkose.github.io/react-websocket/guide/without-react)
+- [Authentication](https://mehmetkose.github.io/react-websocket/guide/authentication) · [Performance](https://mehmetkose.github.io/react-websocket/guide/performance) · [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) · [Testing](https://mehmetkose.github.io/react-websocket/guide/testing) · [Without React](https://mehmetkose.github.io/react-websocket/guide/without-react)
 - [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Troubleshooting](https://mehmetkose.github.io/react-websocket/troubleshooting) · [Migrating from v2](https://mehmetkose.github.io/react-websocket/migration)
 
 The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it locally.

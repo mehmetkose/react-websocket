@@ -178,6 +178,14 @@ The queue is cleared when you call `close()` and when the client gives up reconn
 The default queue is unbounded. If users can stay offline for a long time while your app keeps calling `send()`, for example with presence or cursor updates, set a `limit`, or use `queue: false` for messages that are only meaningful in real time.
 :::
 
+You can also decide per message. `send(message, { volatile: true })` drops a message that would be queued, and `send(message, { key: 'cursor' })` keeps only the newest queued message with that key:
+
+```ts
+chat.send({ text: 'hello' }); // queued while offline
+chat.send({ type: 'typing' }, { volatile: true }); // dropped while offline
+chat.send({ type: 'cursor', x, y }, { key: 'cursor' }); // only the newest is queued
+```
+
 `send()` returns `true` only when the message went out immediately. Use it if you need to know whether a message was queued.
 
 ## Debugging

@@ -4,6 +4,7 @@ import {
   type EventMap,
   type ReconnectOptions,
   type SendData,
+  type SendOptions,
   type Snapshot,
   type StandardSchemaResult,
   type UrlSource,
@@ -120,7 +121,7 @@ function createClient<In = unknown, Out = unknown>(
   let refs = 0;
   // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
   let pinned = false;
-  let pending: SendData[] = [];
+  let pending: { data: SendData; key: string | undefined }[] = [];
   let ready: Deferred | null = null;
   // Opened at least once since the client was last started. `ready` stays resolved through
   // automatic reconnects so `use(client.ready)` doesn't swap content for a fallback on every blip.
@@ -288,7 +289,7 @@ function createClient<In = unknown, Out = unknown>(
       if (ws !== socket) return; // a listener closed or replaced it
       const queued = pending;
       pending = [];
-      for (const data of queued) socket.send(data);
+      for (const { data } of queued) socket.send(data);
     };
     socket.onmessage = event => receive(event, socket);
     socket.onerror = event => emit('error', event);
@@ -406,7 +407,7 @@ function createClient<In = unknown, Out = unknown>(
     emit('message', message, event);
   }
 
-  function send(message: Out): boolean {
+  function send(message: Out, sendOptions?: SendOptions): boolean {
     const data = options.serialize
       ? options.serialize(message)
       : options.json
@@ -416,7 +417,7 @@ function createClient<In = unknown, Out = unknown>(
       ws.send(data);
       return true;
     }
-    if (queueLimit === 0) {
+    if (queueLimit === 0 || sendOptions?.volatile) {
       log('dropped message: socket is not open');
       return false;
     }
@@ -425,7 +426,9 @@ function createClient<In = unknown, Out = unknown>(
       log('dropped message: no WebSocket implementation available');
       return false;
     }
-    pending.push(data);
+    const key = sendOptions?.key;
+    if (key !== undefined) pending = pending.filter(entry => entry.key !== key);
+    pending.push({ data, key });
     if (pending.length > queueLimit) {
       pending.shift();
       log(`dropped oldest queued message: queue limit (${queueLimit}) reached`);

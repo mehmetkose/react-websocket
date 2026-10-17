@@ -2,11 +2,13 @@ import { useEffect, useInsertionEffect, useMemo, useRef, useSyncExternalStore } 
 // Import the client through the `core` entry: the build keeps it external, so both entries
 // share one copy of it (and of `MessageError`).
 import { createWebSocket } from './core';
+import type { Latency, WebSocketLatency } from './latency';
 import type { WebSocketState } from './state';
 import type { WebSocketTopics } from './topics';
 import type {
   CloseInfo,
   EventMap,
+  SendOptions,
   Snapshot,
   Status,
   WebSocketClient,
@@ -40,8 +42,11 @@ export interface UseWebSocketOptions<In, Out>
 
 /** What `useWebSocket` returns: the current {@link Snapshot} plus stable actions. */
 export interface UseWebSocketResult<In, Out> extends Snapshot<In> {
-  /** Send now, or queue until open. Returns `true` if sent immediately. Stable identity. */
-  send: (message: Out) => boolean;
+  /**
+   * Send now, or queue until open (see {@link SendOptions} for volatile and keyed sends).
+   * Returns `true` if sent immediately. Stable identity.
+   */
+  send: (message: Out, options?: SendOptions) => boolean;
   /** Close and stop reconnecting (for every component sharing the connection). Stable identity. */
   close: (code?: number, reason?: string) => void;
   /** Drop the socket and connect again right away. Stable identity. */
@@ -53,6 +58,8 @@ export interface UseWebSocketResult<In, Out> extends Snapshot<In> {
 const IDLE: Snapshot<never> = Object.freeze({ status: 'idle', lastMessage: undefined, attempt: 0 });
 const idleSnapshot = () => IDLE;
 const idleStatus = (): Status => 'idle';
+const NO_LATENCY: Latency = Object.freeze({ rtt: undefined, offset: undefined });
+const noLatency = () => NO_LATENCY;
 const noopSubscribe = () => () => {};
 const noopSend = () => false;
 const noop = () => {};
@@ -281,4 +288,21 @@ export function useWebSocketTopic(
     const releases = (JSON.parse(key) as string[]).map(t => topics.acquire(t));
     return () => releases.forEach(release => release());
   }, [topics, key]);
+}
+
+/**
+ * Read round-trip time and server clock offset from a `createWebSocketLatency` instance.
+ * Re-renders when a measurement changes, about once per ping interval. Keeps the connection
+ * open while mounted. On the server, and during hydration, both values are `undefined`.
+ *
+ * @example
+ * ```tsx
+ * const { rtt } = useWebSocketLatency(latency);
+ * return <span>{rtt === undefined ? '–' : `${Math.round(rtt)} ms`}</span>;
+ * ```
+ */
+export function useWebSocketLatency(latency: WebSocketLatency): Latency {
+  const snapshot = useSyncExternalStore(latency.subscribe, latency.getSnapshot, noLatency);
+  useHold(latency.client, true);
+  return snapshot;
 }

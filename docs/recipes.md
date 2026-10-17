@@ -107,18 +107,34 @@ function Room({ roomId }: { roomId: string }) {
 
 Each distinct URL is its own shared connection. If the URL comes from a text field, debounce it so you don't connect on every keystroke.
 
-To switch rooms on one connection instead, keep a single client and send `join`/`leave` messages from an effect:
+To switch rooms on one connection instead, keep a single client and let [topic subscriptions](./guide/topics.md) send the `join`/`leave` messages:
 
-```tsx
-useEffect(() => {
-  live.send({ type: 'join', roomId });
-  return () => {
-    live.send({ type: 'leave', roomId });
-  };
-}, [roomId]);
+```ts
+// rooms.ts
+import { createWebSocket, createWebSocketTopics } from 'react-websocket';
+
+type RoomIn = { roomId: string; user: string; text: string };
+type RoomOut = { type: 'join' | 'leave'; roomId: string };
+
+export const rooms = createWebSocket<RoomIn, RoomOut>('wss://api.example.com/rooms', { json: true });
+
+export const roomTopics = createWebSocketTopics(rooms, {
+  subscribe: roomId => ({ type: 'join', roomId }),
+  unsubscribe: roomId => ({ type: 'leave', roomId })
+});
 ```
 
-Sends made before the connection opens are queued, and the server should re-join rooms itself after a reconnect, or you can re-send `join` from an `open` listener.
+```tsx
+import { useWebSocketTopic } from 'react-websocket';
+import { roomTopics } from './rooms';
+
+function Room({ roomId }: { roomId: string }) {
+  useWebSocketTopic(roomTopics, roomId); // joins roomId, leaves the previous one
+  // …
+}
+```
+
+Calling `send` from an effect yourself gets two things wrong. The server forgets rooms when the connection drops, so nothing joins them again after a reconnect. And `send` queues while disconnected, so a `leave` for a room you switched away from while offline goes out after the reconnect, for a room the new connection never joined. Topics join every held room again each time the socket opens, and never queue `join` or `leave`.
 
 ## Presence and typing indicators
 
@@ -136,11 +152,21 @@ const chat = createWebSocket<In, Out>('wss://api.example.com/chat', { json: true
 export function Composer() {
   const [typing, setTyping] = useState<string[]>([]);
   const lastSent = useRef(0);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useWebSocketEvent(chat, 'message', event => {
     if (event.type !== 'typing') return;
-    setTyping(users => (users.includes(event.user) ? users : [...users, event.user]));
-    setTimeout(() => setTyping(users => users.filter(u => u !== event.user)), 3000);
+    const { user } = event;
+    setTyping(users => (users.includes(user) ? users : [...users, user]));
+    // Restart this user's timer, so an earlier timeout doesn't hide them while they're still typing.
+    clearTimeout(timers.current.get(user));
+    timers.current.set(
+      user,
+      setTimeout(() => {
+        timers.current.delete(user);
+        setTyping(users => users.filter(u => u !== user));
+      }, 3000)
+    );
   });
 
   function onInput() {
@@ -262,7 +288,7 @@ In development, `logger: console.debug` is often all you need.
 | Setup | Inline in a component | One module-level definition |
 | Sharing | Components using the same URL share one socket | Explicit: everything importing the client shares it |
 | Options | From whichever component created it first | Defined once, with the client |
-| URL from props/state | Natural: change the URL to switch | Create one client per URL, or send join/leave messages |
+| URL from props/state | Natural: change the URL to switch | Create one client per URL, or use [topics](./guide/topics.md) for join/leave |
 | Auth token per attempt | Not available (string URLs only) | `url` can be a function |
 | Use outside React | No | Yes: `send`, `on`, `ready` work anywhere |
 

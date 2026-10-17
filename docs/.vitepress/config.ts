@@ -49,6 +49,7 @@ export default defineConfig({
           { text: 'Reconnecting and heartbeats', link: '/guide/reconnecting' },
           { text: 'Topic subscriptions', link: '/guide/topics' },
           { text: 'Message state', link: '/guide/state' },
+          { text: 'Real-time games', link: '/guide/games' },
           { text: 'Suspense', link: '/guide/suspense' },
           { text: 'Server rendering and Next.js', link: '/guide/ssr' },
           { text: 'StrictMode, Activity and lifecycle', link: '/guide/lifecycle' },
@@ -67,9 +68,12 @@ export default defineConfig({
           { text: 'useWebSocketStatus', link: '/api/use-websocket-status' },
           { text: 'useWebSocketTopic', link: '/api/use-websocket-topic' },
           { text: 'useWebSocketState', link: '/api/use-websocket-state' },
+          { text: 'useWebSocketLatency', link: '/api/use-websocket-latency' },
           { text: 'createWebSocket', link: '/api/create-websocket' },
           { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
           { text: 'createWebSocketState', link: '/api/create-websocket-state' },
+          { text: 'createWebSocketRequests', link: '/api/create-websocket-requests' },
+          { text: 'createWebSocketLatency', link: '/api/create-websocket-latency' },
           { text: 'Options', link: '/api/options' },
           { text: 'Types', link: '/api/types' }
         ]

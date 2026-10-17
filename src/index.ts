@@ -2,6 +2,7 @@ export * from './core';
 export {
   useWebSocket,
   useWebSocketEvent,
+  useWebSocketLatency,
   useWebSocketState,
   useWebSocketStatus,
   useWebSocketTopic

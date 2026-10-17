@@ -92,7 +92,7 @@ Handlers belong to the component: they run only while it is mounted and `enabled
 | `status` | [`Status`](./types.md#status) | `'idle'`, `'connecting'`, `'open'`, `'reconnecting'` or `'closed'` |
 | `lastMessage` | `In \| undefined` | The most recent message, kept across reconnects |
 | `attempt` | `number` | Consecutive failed attempts since the last successful open |
-| `send` | `(message: Out) => boolean` | Sends now, or queues until open. Returns `true` if sent immediately |
+| `send` | `(message: Out, options?: SendOptions) => boolean` | Sends now, or queues until open (see [`SendOptions`](./types.md#sendoptions)). Returns `true` if sent immediately |
 | `close` | `(code?: number, reason?: string) => void` | Closes and stops reconnecting, for every component sharing the connection |
 | `reconnect` | `() => void` | Drops the socket and connects again immediately |
 | `client` | `WebSocketClient<In, Out> \| null` | The underlying client, or `null` when disconnected |

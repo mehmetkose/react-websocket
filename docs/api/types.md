@@ -114,6 +114,33 @@ type SendData = string | ArrayBufferLike | Blob | ArrayBufferView;
 
 Whatever `WebSocket.prototype.send` accepts in your TypeScript DOM lib.
 
+### SendOptions
+
+Per-message options for `send()`.
+
+```ts
+interface SendOptions {
+  /** Drop the message instead of queueing it when the socket isn't open. */
+  volatile?: boolean;
+  /** Keep only the newest queued message with this key. */
+  key?: string;
+}
+```
+
+| Option | |
+| --- | --- |
+| `volatile` | While not open, drop the message and return `false` instead of queueing it. For data that's stale by the time a reconnect finishes, such as player input |
+| `key` | While not open, replace any queued message with the same key. The new one moves to the back of the queue. For state where only the latest value matters, such as an aim angle or a cursor position |
+
+Both only matter while the socket isn't open. When it's open, the message is sent right away either way.
+
+```ts
+game.send({ type: 'input', dx, dy }, { volatile: true });
+game.send({ type: 'aim', angle }, { key: 'aim' });
+```
+
+See [Real-time games](../guide/games.md#input-don-t-replay-stale-messages).
+
 ### StandardSchemaV1
 
 The [Standard Schema](https://standardschema.dev) interface. zod (3.24+), valibot (1.0+), arktype (2.0+) and other libraries implement it, so you can pass their schemas directly to the [`schema`](./options.md#schema) option. You don't need to import this type.
@@ -128,7 +155,7 @@ interface WebSocketClient<In = unknown, Out = unknown> {
   subscribe(listener: () => void): () => void;
   getSnapshot(): Snapshot<In>;
   on<K extends keyof EventMap<In>>(type: K, listener: EventMap<In>[K]): () => void;
-  send(message: Out): boolean;
+  send(message: Out, options?: SendOptions): boolean;
   connect(): void;
   close(code?: number, reason?: string): void;
   reconnect(): void;
@@ -144,7 +171,7 @@ interface WebSocketClient<In = unknown, Out = unknown> {
 | `subscribe(listener)` | Called whenever the snapshot changes. Compatible with `useSyncExternalStore` |
 | `getSnapshot()` | The current [`Snapshot`](#snapshot) |
 | `on(type, listener)` | Listen to an [event](#eventmap). Returns an unsubscribe function. Subscribing the same function twice creates two independent subscriptions |
-| `send(message)` | Encode and send now, or queue until open (see [`queue`](./options.md#queue)). Returns `true` if sent immediately |
+| `send(message, options?)` | Encode and send now, or queue until open (see [`queue`](./options.md#queue) and [`SendOptions`](#sendoptions)). Returns `true` if sent immediately |
 | `connect()` | Start connecting, and stay connected even with no hooks mounted, until `close()`. Does nothing if already connecting or open |
 | `close(code = 1000, reason?)` | Close, stop reconnecting and clear the queue. Status becomes `'closed'` |
 | `reconnect()` | Drop the current socket and connect again now, resetting the backoff. Also restarts a `'closed'` client |
