@@ -35,6 +35,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`useAgUiAgent(agent)`](./ag-ui.md#useaguiagent) | Render an AG-UI agent's thread: messages, tool calls, shared state | Every event |
 | [`useWebSocketStream(rpc, options?)`](./use-websocket-stream.md) | Stream the replies to a request into a value, such as tokens into an answer, with Stop | Every reply, or once per frame |
 | [`useWebSocketOutbox(outbox)`](./use-websocket-outbox.md) | List the messages waiting in an outbox | A message is added, sent or acknowledged |
+| [`useWebSocketPresence(presence)`](./use-websocket-presence.md) | Render the other peers' shared state, such as live cursors | A peer's state arrives, it leaves or it times out |
 
 ## Functions
 
@@ -47,6 +48,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies or stream them, with timeouts and cancellation |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
 | [`createWebSocketSendRate(client, options?)`](./create-websocket-send-rate.md) | Send aim, cursor or position at a rate that adapts to the connection, coalesced per key |
+| [`createWebSocketPresence(client, options)`](./create-websocket-presence.md) | Share per-peer state such as cursors, throttled and refreshed, with peers that expire when they go quiet |
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
 | [`createWebSocketRuns(client, options)`](./create-websocket-runs.md) | Stream runs, such as an agent's answer, that resume after a reconnect or a reload, with a `keep` or `cancel` policy |
 | [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
@@ -102,6 +104,9 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`WebSocketSendRate`](./create-websocket-send-rate.md#returns) | The sender from `createWebSocketSendRate` |
 | [`WebSocketSendRateOptions`](./create-websocket-send-rate.md#parameters) | `{ maxRate?, minRate?, maxBuffered?, latency?, maxRttIncrease? }` |
 | [`SendRate`](./create-websocket-send-rate.md#sendrate) | `{ rate, congested }` |
+| [`WebSocketPresence`](./create-websocket-presence.md#returns) | The presence from `createWebSocketPresence` |
+| [`WebSocketPresenceOptions`](./create-websocket-presence.md#parameters) | `{ send, leave?, receive, timeout?, refresh?, maxRate? }` |
+| [`PresencePeer`](./create-websocket-presence.md#returns) | `{ peer, state, updatedAt }` |
 | [`WebSocketResponder`](./create-websocket-responder.md#returns) | The responder from `createWebSocketResponder` |
 | [`WebSocketResponderOptions`](./create-websocket-responder.md#parameters) | `{ request, respond, error, cancel?, timeout? }` |
 | [`IncomingRequest`](./create-websocket-responder.md#incomingrequest) | `{ id, method, params, signal, respond, reject }` |

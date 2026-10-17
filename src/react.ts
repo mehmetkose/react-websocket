@@ -13,6 +13,7 @@ import { createWebSocket } from './core';
 import type { AgUiAgent, AgUiThread } from './ag-ui';
 import type { Latency, WebSocketLatency } from './latency';
 import type { OutboxEntry, WebSocketOutbox } from './outbox';
+import type { PresencePeer, WebSocketPresence } from './presence';
 // Types only: a value import from anything but `./core` would bundle a second copy into this entry.
 import type { RequestOptions, WebSocketRequests } from './requests';
 import type { IncomingRequest, WebSocketResponder } from './responder';
@@ -481,6 +482,29 @@ export function useWebSocketOutbox<M>(
 }
 
 const noRun = () => undefined;
+
+/**
+ * The other peers' shared state from `createWebSocketPresence`, such as their cursors.
+ * Re-renders when a peer's state arrives, it leaves, or it times out. Keeps the connection open
+ * while mounted. On the server the list is empty.
+ *
+ * @example
+ * ```tsx
+ * const peers = useWebSocketPresence(cursors);
+ * return peers.map(({ peer, state }) => <Cursor key={peer} x={state.x} y={state.y} />);
+ * ```
+ */
+export function useWebSocketPresence<P>(
+  presence: WebSocketPresence<P> | null | undefined
+): readonly PresencePeer<P>[] {
+  const peers = useSyncExternalStore(
+    presence?.subscribe ?? noopSubscribe,
+    presence?.getSnapshot ?? noRequests,
+    noRequests
+  );
+  useHold(presence?.client ?? null, true);
+  return peers;
+}
 
 /**
  * The thread of an AG-UI agent from `react-websocket/ag-ui`: its messages, shared state and

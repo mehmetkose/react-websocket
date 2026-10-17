@@ -229,6 +229,16 @@
       "gzip": true
     },
     {
+      "name": "react-websocket (presence + hook)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketPresence, useWebSocketPresence }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "750 B",
+      "gzip": true
+    },
+    {
       "name": "react-websocket (adaptive send rate)",
       "path": "dist/index.js",
       "import": "{ createWebSocketSendRate }",
