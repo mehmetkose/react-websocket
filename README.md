@@ -19,6 +19,7 @@
 - **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
 - **Requests and latency.** Await replies with timeouts and cancellation, and measure round-trip time and the server's clock for ping displays and synchronized countdowns.
+- **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
@@ -123,6 +124,7 @@ function Room() {
 | `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
 | `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
+| `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
 | Option | Default | |
@@ -167,6 +169,7 @@ v2 was a `<Websocket>` class component. v3 replaces it with hooks: `<Websocket u
 - [`examples/astro`](examples/astro) is the same demo of every feature as Astro islands sharing one connection, with a page that keeps it open across navigation. Run `npm run example:astro` and open http://localhost:4321.
 - [`examples/remix`](examples/remix) is the same demo in a Remix 3 app, which doesn't use React: every card uses `react-websocket/core` through small bindings that stand in for the hooks. Run `npm run example:remix` and open http://localhost:44100.
 - [`examples/hono`](examples/hono) is a chat room with presence: a Hono server on Node.js and a Vite + React 19 client sharing one set of message types. Run `npm run example:hono` and open http://localhost:5173.
+- [`examples/game`](examples/game) is a multiplayer game: a Node.js server with a fixed tick and a Vite + React canvas client, with a panel that adds lag and packet loss so you can see interpolation and prediction at work. Run `npm run example:game` and open http://localhost:5180.
 - [`examples/tornado`](examples/tornado) is a small broadcast chat: a Tornado server and a Vite + React 19 client.
 
 ## Contributing

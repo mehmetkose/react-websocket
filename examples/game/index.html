@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>react-websocket game example</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      body {
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+        max-width: 42rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: auto;
+        background: #f4f4f1;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 1rem;
+      }
+      .muted {
+        color: #666;
+      }
+      .status {
+        padding: 0 0.5rem;
+        border-radius: 4px;
+        background: #eee;
+      }
+      .status[data-status='open'] {
+        background: #c8f2c8;
+      }
+      .status[data-status='reconnecting'] {
+        background: #ffe3a8;
+      }
+      .status[data-status='closed'] {
+        background: #f6c3c3;
+      }
+      .roster {
+        list-style: none;
+        padding: 0;
+      }
+      .dot {
+        display: inline-block;
+        width: 0.7rem;
+        height: 0.7rem;
+        margin-right: 0.3rem;
+        border-radius: 50%;
+      }
+      .stats[data-starved='true'] {
+        color: #b3261e;
+      }
+      fieldset {
+        margin: 1rem 0;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>react-websocket game</h1>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

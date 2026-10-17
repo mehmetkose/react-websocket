@@ -18,6 +18,16 @@ All notable changes to this project are documented here. The format is based on
 - `createWebSocketState(client, { batch: 'frame' })` notifies subscribers at most once per animation frame instead of
   once per message, so a fast stream renders once per frame. `getState()` stays current, and `setState` and `reset`
   still notify right away.
+- `react-websocket/timeline`, a new entry point for multiplayer games. `createWebSocketTimeline(client, options)` keeps
+  server snapshots by server time. `at()` renders them slightly in the past, interpolated, so other players move
+  smoothly. `input(input)` sends an input tagged with a sequence number and predicts it, and `predicted()` replays
+  the inputs the server hasn't confirmed (`ack`) on top of the newest snapshot, so your own controls respond at
+  once. The clock comes from `createWebSocketLatency` or is estimated from snapshot arrivals. It starts over on
+  reconnect, keeping the last frame visible. About 0.85 kB min+gzip, with no React dependency. The
+  [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) guide covers interpolation,
+  prediction and what the server has to send.
+- A [game example](https://github.com/mehmetkose/react-websocket/tree/main/examples/game): a multiplayer canvas game
+  with a Node.js server at a fixed tick, and a panel that adds lag and packet loss with `react-websocket/chaos`.
 
 ## [3.4.0] - 2026-10-17
 

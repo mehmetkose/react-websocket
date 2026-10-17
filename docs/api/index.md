@@ -13,6 +13,7 @@ Everything the package exports. All exports are typed, and every type has inline
 | --- | --- | --- |
 | `react-websocket` | Hooks, `createWebSocket`, `MessageError`, types | Marked `'use client'` for Server Components frameworks |
 | `react-websocket/core` | `createWebSocket`, the other `create*` functions, `MessageError`, types | No React dependency. Use it in workers, Node, or other frameworks |
+| `react-websocket/timeline` | `createWebSocketTimeline`, its types | For multiplayer games. No React dependency |
 | `react-websocket/chaos` | `createChaosWebSocket`, its types | A development tool. No React dependency |
 
 Every entry point ships as ESM and CommonJS with type declarations for each.
@@ -39,6 +40,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies, with timeouts |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
+| [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
 
 ## Classes
@@ -80,6 +82,10 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`WebSocketResponderOptions`](./create-websocket-responder.md#parameters) | `{ request, respond, error, cancel?, timeout? }` |
 | [`IncomingRequest`](./create-websocket-responder.md#incomingrequest) | `{ id, method, params, signal, respond, reject }` |
 | [`RequestHandler`](./create-websocket-responder.md#onrequest) | `(params, request) => result \| Promise<result>` for `onRequest` |
+| [`WebSocketTimeline`](./create-websocket-timeline.md#returns) | The timeline from `createWebSocketTimeline` |
+| [`WebSocketTimelineOptions`](./create-websocket-timeline.md#parameters) | `{ snapshot, interpolate?, delay?, extrapolate?, buffer?, latency?, input? }` |
+| [`TimelineSnapshot`](./create-websocket-timeline.md#timelinesnapshot) | `{ time, state, ack? }` |
+| [`TimelineInputOptions`](./create-websocket-timeline.md#parameters) | `{ send, predict, maxBuffered? }` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |
 | [`ChaosWebSocket`](./chaos.md#returns) | The class from `createChaosWebSocket`: `typeof WebSocket` plus its controls |
 | [`ChaosOptions`](./chaos.md#parameters) | `{ WebSocket?, seed?, logger? }` plus the faults |

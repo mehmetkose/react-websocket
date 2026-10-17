@@ -65,4 +65,4 @@ That's the whole setup. Read the [getting started guide](./guide/getting-started
 
 react-websocket uses the standard `WebSocket` API, so any WebSocket server works: Node's `ws`, Hono, Django Channels, Tornado, Go, Phoenix or Cloudflare Durable Objects. In the browser it runs in a Vite app or in a server-rendered framework such as [Next.js, React Router or Astro](./guide/ssr.md), and [`react-websocket/core`](./guide/without-react.md) brings the same client to code without React.
 
-The repository has runnable [examples](https://github.com/mehmetkose/react-websocket/tree/main/examples) for Next.js, Astro, Remix, Hono and Tornado.
+The repository has runnable [examples](https://github.com/mehmetkose/react-websocket/tree/main/examples) for Next.js, Astro, Remix, Hono and Tornado, and a multiplayer game.
