@@ -982,6 +982,60 @@ describe('heartbeat', () => {
     socket.finishClose(4000); // late close of the dead socket is ignored
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  describe('on wake', () => {
+    const heartbeat = { interval: 30_000, message: 'ping', pong: 'pong', timeout: 2000 };
+
+    it('checks an open connection when the browser comes back online', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter, heartbeat });
+      ws.connect();
+      const socket = MockWebSocket.last;
+      socket.open();
+      window.dispatchEvent(new Event('online'));
+      expect(socket.sent).toEqual(['ping']);
+      vi.advanceTimersByTime(1999);
+      expect(ws.getSnapshot().status).toBe('open');
+      vi.advanceTimersByTime(1);
+      // A half-open socket after sleep: found within `timeout`, not the next `interval`.
+      expect(socket.closedWith).toEqual({ code: 4000, reason: 'heartbeat timeout' });
+      expect(ws.getSnapshot().status).toBe('reconnecting');
+      ws.close();
+    });
+
+    it('checks it when the tab becomes visible, and keeps it when the server answers', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter, heartbeat });
+      ws.connect();
+      const socket = MockWebSocket.last;
+      socket.open();
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(socket.sent).toEqual(['ping']);
+      socket.receive('pong');
+      vi.advanceTimersByTime(heartbeat.timeout);
+      expect(ws.getSnapshot().status).toBe('open');
+      expect(socket.closedWith).toBeUndefined();
+      ws.close();
+    });
+
+    it("doesn't send another ping while one is unanswered", () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter, heartbeat });
+      ws.connect();
+      MockWebSocket.last.open();
+      window.dispatchEvent(new Event('online'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(MockWebSocket.last.sent).toEqual(['ping']);
+      ws.close();
+    });
+
+    it('sends nothing without a heartbeat', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+      ws.connect();
+      MockWebSocket.last.open();
+      window.dispatchEvent(new Event('online'));
+      expect(MockWebSocket.last.sent).toEqual([]);
+      expect(MockWebSocket.instances).toHaveLength(1);
+      ws.close();
+    });
+  });
 });
 
 describe('ready', () => {

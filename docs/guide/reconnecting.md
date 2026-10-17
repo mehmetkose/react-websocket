@@ -187,6 +187,8 @@ While a retry is scheduled, the client skips the rest of the wait and retries im
 
 So a laptop that wakes from sleep reconnects as soon as it can, not after a 30-second backoff. The exception is a wait the server asked for, with a [`1013` close](#overloaded-servers-1013) or your `retryAfter`.
 
+While the connection is open, the same two events make the client check that it still works, if you configured a [heartbeat](#heartbeats). After sleep or a network change, a socket can be dead while `readyState` still says `OPEN`. So the client sends a ping right away and, with a `timeout`, reconnects if nothing comes back within it, instead of waiting for the next `interval`. Only one ping is outstanding at a time, so switching tabs back and forth doesn't flood the server.
+
 ### Manual control
 
 Both actions are on the hook result and on the client, and keep the same identity between renders:
@@ -238,6 +240,7 @@ const live = createWebSocket('wss://api.example.com/live', {
 - `message` is sent as-is on every `interval`. It doesn't go through `serialize` or `json`, so for a JSON protocol pass a string such as `'{"type":"ping"}'`.
 - Incoming data exactly equal to `pong` is swallowed. It doesn't update `lastMessage` or reach `onMessage`.
 - With `timeout`, **any** incoming data counts as a sign of life, not only the pong. If nothing at all arrives within `timeout` ms of a ping, the connection is treated as dead. The client closes it with code `4000` (reason `'heartbeat timeout'`), reports the close, and reconnects with the normal backoff. Your `shouldReconnect` sees code `4000`.
+- A ping also goes out right away when the browser comes back online or the tab becomes visible, so a connection that died while the laptop slept is found within `timeout`, not after up to `interval` more. See [Retrying right away](#retrying-right-away).
 
 The heartbeat requires your server to answer pings with some data. Browsers can't send protocol-level ping frames, so this is an application-level ping.
 

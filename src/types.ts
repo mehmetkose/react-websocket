@@ -161,6 +161,10 @@ export interface HeartbeatOptions {
   /**
    * If nothing at all arrives within this many ms after a ping, the connection is
    * treated as dead: it closes with code `4000` and reconnects.
+   *
+   * A ping also goes out right away when the browser comes back online or the tab becomes
+   * visible, so a connection that died during sleep is found within `timeout`, not after up
+   * to `interval` more.
    */
   timeout?: number;
 }

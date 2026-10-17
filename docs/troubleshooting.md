@@ -98,7 +98,7 @@ createWebSocket(url, {
 });
 ```
 
-`timeout` also catches dead connections that never report a close, like a laptop waking from sleep: if nothing arrives within `timeout` ms of a ping, the client closes with code `4000` and reconnects.
+`timeout` also catches dead connections that never report a close, like a laptop waking from sleep: if nothing arrives within `timeout` ms of a ping, the client closes with code `4000` and reconnects. A ping goes out as soon as the browser comes back online or the tab becomes visible, so after sleep that takes `timeout`, not up to `interval` more.
 
 ## Close codes
 

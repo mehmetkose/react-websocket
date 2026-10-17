@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- With a `heartbeat`, an open connection is checked right away when the browser comes back online or the tab becomes
+  visible: a ping goes out at once and the `timeout` starts. After sleep, a socket can be dead while `readyState` still
+  says `OPEN`, and the client used to notice only at the next `interval`, often half a minute later. Only one ping is
+  outstanding at a time.
+
 ## [4.2.0] - 2026-10-17
 
 ### Added
@@ -265,6 +274,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.2.0...HEAD
 [4.2.0]: https://github.com/mehmetkose/react-websocket/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/mehmetkose/react-websocket/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/mehmetkose/react-websocket/compare/3.6.0...4.0.0

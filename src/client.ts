@@ -236,46 +236,54 @@ function createClient<In = unknown, Out = unknown>(
     ready.reject(reason);
   }
 
-  function retryNow() {
-    if (retryTimer !== undefined && !serverWait) {
+  /** The network or the tab came back: retry now, or check that an open connection still works. */
+  function wake() {
+    if (retryTimer !== undefined) {
+      if (serverWait) return;
       log('network or visibility change, retrying now');
       open();
+    } else if (heartbeatTimer !== undefined && pongTimer === undefined) {
+      // After sleep or a network change, a socket can be dead while still reading OPEN.
+      log('network or visibility change, checking the connection');
+      ping(ws!);
     }
   }
 
   function onVisibilityChange() {
-    if (document.visibilityState === 'visible') retryNow();
+    if (document.visibilityState === 'visible') wake();
   }
 
   function bindWindow() {
     if (windowBound || typeof window === 'undefined') return;
     windowBound = true;
-    window.addEventListener('online', retryNow);
+    window.addEventListener('online', wake);
     document.addEventListener('visibilitychange', onVisibilityChange);
   }
 
   function unbindWindow() {
     if (!windowBound) return;
     windowBound = false;
-    window.removeEventListener('online', retryNow);
+    window.removeEventListener('online', wake);
     document.removeEventListener('visibilitychange', onVisibilityChange);
   }
 
+  /** Send a heartbeat ping and, with a `timeout`, close the socket if nothing comes back. */
+  function ping(socket: WebSocket) {
+    const heartbeat = options.heartbeat!;
+    socket.send(heartbeat.message ?? 'ping');
+    if (heartbeat.timeout && pongTimer === undefined) {
+      pongTimer = setTimeout(() => {
+        log('heartbeat timeout');
+        // The close handshake may never finish on a dead link, so don't wait for it.
+        detach(socket, false);
+        socket.close(4000, 'heartbeat timeout');
+        handleClose({ code: 4000, reason: 'heartbeat timeout', wasClean: false });
+      }, heartbeat.timeout);
+    }
+  }
+
   function startHeartbeat(socket: WebSocket) {
-    const heartbeat = options.heartbeat;
-    if (!heartbeat) return;
-    heartbeatTimer = setInterval(() => {
-      socket.send(heartbeat.message ?? 'ping');
-      if (heartbeat.timeout && pongTimer === undefined) {
-        pongTimer = setTimeout(() => {
-          log('heartbeat timeout');
-          // The close handshake may never finish on a dead link, so don't wait for it.
-          detach(socket, false);
-          socket.close(4000, 'heartbeat timeout');
-          handleClose({ code: 4000, reason: 'heartbeat timeout', wasClean: false });
-        }, heartbeat.timeout);
-      }
-    }, heartbeat.interval);
+    if (options.heartbeat) heartbeatTimer = setInterval(ping, options.heartbeat.interval, socket);
   }
 
   /** Stop the timers that belong to the current open socket. */

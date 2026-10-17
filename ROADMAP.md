@@ -13,15 +13,6 @@ goes out.
 
 - A per-message or per-queue `maxAge`. Messages dropped by age should call `onDrop`, like key and limit drops do.
 
-### Check liveness on wake
-
-After sleep, a socket can be half-open while `readyState` is still `OPEN`. The `online` and
-`visibilitychange` handlers only act when a retry timer is pending, so a dead socket can go unnoticed until
-the next heartbeat interval.
-
-- When a heartbeat is configured, send a ping right away on `online` and on becoming visible, and start the
-  pong timeout.
-
 ### Create shared URL clients outside render
 
 Hooks with the same URL share one client, and its options come from whichever hook rendered first. A development
