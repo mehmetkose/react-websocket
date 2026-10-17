@@ -169,6 +169,16 @@
       "gzip": true
     },
     {
+      "name": "react-websocket (feeds + state hooks)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketFeeds, createWebSocketState, useWebSocketTopic, useWebSocketState }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1.3 kB",
+      "gzip": true
+    },
+    {
       "name": "react-websocket (requests + latency)",
       "path": "dist/index.js",
       "import": "{ createWebSocketRequests, createWebSocketLatency, useWebSocketLatency }",

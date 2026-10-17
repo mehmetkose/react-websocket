@@ -2,6 +2,9 @@ import type { WebSocketClient } from './types';
 
 type Timer = ReturnType<typeof setTimeout>;
 
+/** @internal Option key for a callback run when nothing holds a topic anymore. Used by feeds. */
+export const ON_RELEASE = Symbol('react-websocket.onRelease');
+
 /** Options for {@link createWebSocketTopics}: the messages your server expects. */
 export interface WebSocketTopicsOptions<Out> {
   /** The message that subscribes to `topic`. */
@@ -51,7 +54,7 @@ export interface WebSocketTopics {
 // `type: 'subscribe'` from widening to `string` inside the callbacks.
 export function createWebSocketTopics<const Out>(
   client: WebSocketClient<any, Out>,
-  options: WebSocketTopicsOptions<NoInfer<Out>>
+  options: WebSocketTopicsOptions<NoInfer<Out>> & { [ON_RELEASE]?: (topic: string) => void }
 ): WebSocketTopics {
   const counts = new Map<string, number>();
   const pendingRemoval = new Map<string, Timer>();
@@ -108,7 +111,10 @@ export function createWebSocketTopics<const Out>(
             topic,
             setTimeout(() => {
               pendingRemoval.delete(topic);
-              if (!counts.has(topic)) unsubscribe(topic);
+              if (!counts.has(topic)) {
+                unsubscribe(topic);
+                options[ON_RELEASE]?.(topic);
+              }
             }, 0)
           );
         }

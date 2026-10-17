@@ -11,10 +11,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 ### Live data
 
-- **Sequenced streams with gap detection and resume.** Track a sequence number per topic, detect gaps, and on
-  reconnect send `resume { lastSeq }` and drop duplicates, falling back to a snapshot when the server can't
-  replay. This gives close to exactly-once delivery for trading, sports data and chat, and fits the existing
-  re-subscribe-on-reconnect logic in topics.
 - **One socket across tabs.** Elect a leader tab over `BroadcastChannel` (or use a `SharedWorker`) and
   multiplex topics through it. Users with 10–20 tabs open would cost one server connection instead of one per
   tab. A separate entry point.
@@ -27,7 +23,7 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   drops a streaming answer halfway, and the tokens are paid for anyway. Events carry an offset, the run id is
   kept in `sessionStorage`, and on reconnect or reload the client sends `resume { runId, offset }` and drops
   duplicates. A per-run disconnect policy chooses `keep` (background agents keep working) or `cancel` (chat
-  stops spending). This is sequenced streams (above) applied to `rpc.stream` runs, so it ships after them.
+  stops spending). This is what `createWebSocketFeeds` does for topics, applied to `rpc.stream` runs.
 - **Voice sessions with interruption.** On interruption the client must stop audio, discard queued frames,
   cancel generation and report how much the user actually heard, or the transcript includes words they never
   heard. The library's part is the transport, which ships: `priority` sends for control messages, and

@@ -32,7 +32,7 @@ Read it in components with [`useWebSocketState`](./use-websocket-state.md). The 
 
 | Parameter | Type | |
 | --- | --- | --- |
-| `client` | [`WebSocketClient<In>`](./types.md#websocketclient) | The client whose messages are reduced. `In` is taken from it |
+| `client` | [`WebSocketClient<In>`](./types.md#websocketclient) or `MessageSource<In>` | The client whose messages are reduced, or [feeds](./create-websocket-feeds.md) to reduce their messages instead: numbered ones once each and in order. `In` is taken from it |
 | `options.initialState` | `S` | The state before any message, and what `reset()` returns to. Also used for server rendering |
 | `options.reduce` | `(state: S, message: In) => S` | Pure. Return a new object to change the state, or the same `state` to ignore the message |
 | `options.batch` | `'frame'` | Notify subscribers at most once per animation frame instead of once per message. `getState()` stays current. Default: notify on every change |
@@ -48,7 +48,7 @@ Read it in components with [`useWebSocketState`](./use-websocket-state.md). The 
 | `setState(update)` | Replace the state, or pass `state => next` to update it |
 | `reset()` | Back to `initialState` |
 | `dispose()` | Stop reducing messages. Only for stores created dynamically |
-| `client` | The client |
+| `client` | The client, also when created from feeds |
 | `initialState` | The initial state |
 
 ## Behavior

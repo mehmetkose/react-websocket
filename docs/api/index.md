@@ -39,6 +39,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | --- | --- |
 | [`createWebSocket(url, options?)`](./create-websocket.md) | Create a client to share across components or use outside React |
 | [`createWebSocketTopics(client, options)`](./create-websocket-topics.md) | Manage reference-counted topic subscriptions, resent after every reconnect |
+| [`createWebSocketFeeds(client, options)`](./create-websocket-feeds.md) | Topic subscriptions with numbered messages: each delivered once and in order across reconnects, with resume and snapshots |
 | [`createWebSocketState(client, options)`](./create-websocket-state.md) | Keep state reduced from a client's messages |
 | [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies or stream them, with timeouts and cancellation |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
@@ -79,6 +80,10 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`QueueOptions`](./options.md#queue) | Send queue limit and maximum age |
 | [`WebSocketTopics`](./create-websocket-topics.md#returns) | The topic manager from `createWebSocketTopics` |
 | [`WebSocketTopicsOptions`](./create-websocket-topics.md#parameters) | `{ subscribe, unsubscribe? }` |
+| [`WebSocketFeeds`](./create-websocket-feeds.md#returns) | The feeds from `createWebSocketFeeds`: topics plus `on('message')` and `position()` |
+| [`WebSocketFeedsOptions`](./create-websocket-feeds.md#parameters) | `{ subscribe, unsubscribe?, resume?, sequence, snapshot?, onGap? }` |
+| [`FeedPosition`](./create-websocket-feeds.md#parameters) | `{ topic, seq }` |
+| [`MessageSource`](./create-websocket-state.md#parameters) | Something with the client's `message` event, such as feeds, for `createWebSocketState` |
 | [`WebSocketState`](./create-websocket-state.md#returns) | The store from `createWebSocketState` |
 | [`WebSocketStateOptions`](./create-websocket-state.md#parameters) | `{ initialState, reduce, batch? }` |
 | [`WebSocketRequests`](./create-websocket-requests.md#returns) | The request manager from `createWebSocketRequests` |

@@ -16,7 +16,7 @@
 - **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent. Put control messages first with `priority`, and drop stream data on a slow link with `maxBuffered`.
 - **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
 - **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
-- **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
+- **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop. With numbered messages, each arrives once and in order: duplicates are dropped, gaps are filled, and a reconnect resumes where it left off.
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
 - **Requests, streams and latency.** Await a reply, or iterate over streamed ones such as an LLM's tokens, with timeouts and a cancel that tells the server to stop. Measure round-trip time and the server's clock for ping displays and synchronized countdowns.
 - **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
@@ -122,6 +122,7 @@ function Room() {
 | `useWebSocketOutbox(outbox)` | The messages waiting in an outbox, for a "3 orders waiting to sync" banner |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
+| `createWebSocketFeeds(client, { subscribe, sequence, snapshot })` | Topics with numbered messages, each delivered once and in order across reconnects; pass it to `createWebSocketState` |
 | `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
 | `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, and `stream(message)` an async iterator of replies, with timeouts and `cancel` |
 | `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |

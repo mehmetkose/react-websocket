@@ -28,6 +28,16 @@ export interface WebSocketStateOptions<S, In> {
  *
  * @typeParam S - The state type. Don't use a function type: `setState` treats functions as updaters.
  */
+/**
+ * Messages from somewhere other than the client itself, such as the in-order messages of
+ * `createWebSocketFeeds`, for `createWebSocketState`.
+ */
+export interface MessageSource<In> {
+  /** The client the messages come from. */
+  readonly client: WebSocketClient<any, any>;
+  on(type: 'message', listener: (message: In, event: MessageEvent) => void): () => void;
+}
+
 export interface WebSocketState<S> {
   /** The client whose messages this store reduces. Hooks reading the store keep it connected. */
   readonly client: WebSocketClient<any, any>;
@@ -50,6 +60,9 @@ export interface WebSocketState<S> {
  * It starts listening immediately and keeps the state across reconnects; it doesn't open
  * the connection by itself.
  *
+ * Pass feeds from `createWebSocketFeeds` in place of the client to reduce their messages
+ * instead: numbered ones once each and in order.
+ *
  * @example
  * ```ts
  * const prices = createWebSocket<Tick>('wss://api.example.com/prices', { json: true });
@@ -64,10 +77,11 @@ export interface WebSocketState<S> {
  * ```
  */
 export function createWebSocketState<S, In>(
-  client: WebSocketClient<In, any>,
-  // `In` comes from the client only, not from how `reduce` annotates its parameter.
+  source: WebSocketClient<In, any> | MessageSource<In>,
+  // `In` comes from the source only, not from how `reduce` annotates its parameter.
   options: WebSocketStateOptions<S, NoInfer<In>>
 ): WebSocketState<S> {
+  const client = 'client' in source ? source.client : source;
   const { initialState, reduce, batch } = options;
   let state = initialState;
   // What subscribers were last told about, so a frame that finds nothing new stays quiet.
@@ -100,7 +114,7 @@ export function createWebSocketState<S, In>(
   }
 
   // A throwing reducer leaves the state unchanged; the client re-throws the error asynchronously.
-  const off = client.on('message', message =>
+  const off = (source as MessageSource<In>).on('message', message =>
     update(current => reduce(current, message), batch === 'frame')
   );
 

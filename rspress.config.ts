@@ -124,6 +124,7 @@ export default defineConfig({
             { text: 'useWebSocketOutbox', link: '/api/use-websocket-outbox' },
             { text: 'createWebSocket', link: '/api/create-websocket' },
             { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
+            { text: 'createWebSocketFeeds', link: '/api/create-websocket-feeds' },
             { text: 'createWebSocketState', link: '/api/create-websocket-state' },
             { text: 'createWebSocketRequests', link: '/api/create-websocket-requests' },
             { text: 'createWebSocketLatency', link: '/api/create-websocket-latency' },
