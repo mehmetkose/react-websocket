@@ -1,0 +1,45 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import { StatusBadge } from '../components/StatusBadge';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Every react-websocket feature as Astro islands sharing one connection."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <!-- Navigating between pages swaps the content without a full page load, so the client and
+         its socket survive. Without it, every link would reconnect. -->
+    <ClientRouter />
+  </head>
+  <body>
+    <main>
+      <header class="top">
+        <h1>
+          react-websocket + Astro
+          <!-- Persisted: the same island, still mounted, on every page. -->
+          <StatusBadge client:load transition:persist="status" />
+        </h1>
+        <nav>
+          <a href="/" aria-current={path === '/' ? 'page' : undefined}>Demo</a>
+          <a href="/about" aria-current={path === '/about' ? 'page' : undefined}>About</a>
+        </nav>
+      </header>
+      <slot />
+    </main>
+  </body>
+</html>

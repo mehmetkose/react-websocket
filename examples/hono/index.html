@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>react-websocket Hono example</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      body {
+        font:
+          15px/1.5 system-ui,
+          sans-serif;
+        max-width: 40rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .muted {
+        color: #666;
+      }
+      .status {
+        padding: 0 0.5rem;
+        border-radius: 4px;
+        background: #eee;
+      }
+      .status[data-status='open'] {
+        background: #c8f2c8;
+      }
+      .status[data-status='reconnecting'] {
+        background: #ffe3a8;
+      }
+      .status[data-status='closed'] {
+        background: #f6c3c3;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>react-websocket + Hono</h1>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

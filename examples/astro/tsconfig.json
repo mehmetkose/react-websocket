@@ -1,0 +1,13 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    // server.ts and demo-server.ts run in Node without a build step, so they import `.ts` files
+    // by name and use only erasable syntax.
+    "erasableSyntaxOnly": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"]
+}

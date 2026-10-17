@@ -43,6 +43,9 @@ npm test
 | `npm run example:tornado:server` | Start the Tornado example's WebSocket server (`pip install -r examples/tornado/requirements.txt` first) |
 | `npm run example:tornado` | Start the Tornado example's Vite app against that server |
 | `npm run example:nextjs` | Build the library, install it into the Next.js example, and start the demo on http://localhost:3000 |
+| `npm run example:hono` | Build the library, install it into the Hono example, and start its server and Vite app on http://localhost:5173 |
+| `npm run example:astro` | Build the library, install it into the Astro example, and start the demo on http://localhost:4321 |
+| `npm run example:remix` | Build the library, install it into the Remix 3 example, and start the demo on http://localhost:44100 |
 
 Before opening a pull request, run:
 
@@ -70,6 +73,9 @@ docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly
   nextjs/      Next.js demo of every feature, with its own WebSocket server and the built package
+  hono/        Vite + React chat against a Hono server, sharing message types, with the built package
+  astro/       Astro islands demo of every feature, with its own WebSocket server and the built package
+  remix/       Remix 3 demo of every feature with react-websocket/core (no React), with the built package
 ```
 
 ## Writing tests

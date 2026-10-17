@@ -1,0 +1,26 @@
+{
+  "name": "react-websocket-remix-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_ENV=development node --watch --import remix/node-tsx server.ts",
+    "start": "NODE_ENV=production node --import remix/node-tsx server.ts",
+    "typecheck": "tsc --noEmit",
+    "update-library": "npm --prefix ../.. run build && node -e \"require('fs').rmSync('node_modules/react-websocket', { recursive: true, force: true })\" && npm install"
+  },
+  "engines": {
+    "node": ">=24.3"
+  },
+  "dependencies": {
+    "react-websocket": "file:../..",
+    "remix": "^3.0.0",
+    "ws": "^8.22.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/ws": "^8.18.2",
+    "typescript": "^5.9.3"
+  }
+}

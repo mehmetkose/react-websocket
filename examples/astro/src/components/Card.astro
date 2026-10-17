@@ -1,0 +1,22 @@
+---
+// A demo section: what it shows, the APIs it uses, and something to try. An Astro component,
+// so it renders to plain HTML and ships no JavaScript; only the islands inside it hydrate.
+interface Props {
+  title: string;
+  uses: string[];
+  /** How the card's islands hydrate, shown in the corner. */
+  island: string;
+}
+
+const { title, uses, island } = Astro.props;
+---
+
+<section class="card">
+  <header class="card-head">
+    <h2>{title}</h2>
+    <code class="island" title="How this card's islands hydrate">{island}</code>
+  </header>
+  <p class="uses">{uses.map(name => <code>{name}</code>)}</p>
+  <slot />
+  <p class="try"><strong>Try it:</strong> <slot name="try" /></p>
+</section>

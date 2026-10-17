@@ -63,9 +63,12 @@ export default defineConfig({
       'coverage',
       'docs/.vitepress/cache',
       'docs/.vitepress/dist',
-      // Type-aware linting needs the example's own dependencies, which `npm ci` here doesn't
-      // install. It has its own `typecheck` and `build` scripts.
-      'examples/nextjs'
+      // Type-aware linting needs the examples' own dependencies, which `npm ci` here doesn't
+      // install. They have their own `typecheck` and `build` scripts.
+      'examples/nextjs',
+      'examples/hono',
+      'examples/astro',
+      'examples/remix'
     ],
     plugins: ['eslint', 'typescript', 'react'],
     options: { typeAware: true, typeCheck: true },
