@@ -318,6 +318,10 @@ spend.subscribe(() => {
 
 Render the total with `useWebSocketState(spend, totals => Object.values(totals).reduce((a, b) => a + b, 0))`. A client-side budget is a convenience, not a limit: enforce real limits on the server.
 
+## Voice
+
+Voice agents stream audio both ways, and the hard part is the interruption: stop playback, cancel generation, and tell the server how much the user actually heard. See [Voice agents and interruptions](./voice.md).
+
 ## Things to watch for
 
 - **One responder per client.** Two responders on one client both see every request, and one of them answers `NotFoundError`.

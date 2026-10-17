@@ -23,6 +23,7 @@
 - **Presence and live cursors.** Share per-peer state such as cursors: throttled, refreshed while idle, never replayed stale, and expired when a peer vanishes without saying goodbye.
 - **Offline outbox.** Messages kept in IndexedDB until the server acknowledges them, from `react-websocket/outbox`, so an order taken on flaky Wi-Fi survives reconnects and page reloads, and retries are safe with idempotency keys.
 - **Resumable runs.** An AI agent's streamed answer that survives a refresh, a network switch or a sleeping laptop: it resumes from the last event received, or is cancelled so the server stops spending.
+- **Voice.** Microphone frames that never replay stale or build up lag, control messages that jump the queue, and a [guide](https://mehmetkose.github.io/react-websocket/guide/voice) to interruptions that truncate the transcript to what the user heard.
 - **AG-UI.** Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket with `react-websocket/ag-ui`: messages, tool calls and JSON Patch shared state, with a snapshot when a patch fails, and runs that resume after a reconnect or a reload.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
