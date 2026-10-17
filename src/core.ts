@@ -10,6 +10,8 @@ export type {
   WebSocketResponder,
   WebSocketResponderOptions
 } from './responder';
+export { createWebSocketSendRate } from './sendrate';
+export type { SendRate, WebSocketSendRate, WebSocketSendRateOptions } from './sendrate';
 export { createWebSocketState } from './state';
 export type { WebSocketState, WebSocketStateOptions } from './state';
 export { createWebSocketTopics } from './topics';

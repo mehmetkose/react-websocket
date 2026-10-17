@@ -55,12 +55,6 @@ which options win.
 These build on what exists already: the `WebSocket` injection option, `latency.serverNow()`, volatile and
 keyed sends, and topics. Large ones should ship as separate entry points so the core budget stays small.
 
-### Games
-
-- **Adaptive send rate.** Lower the input tick rate and coalesce keyed sends based on RTT and
-  `bufferedAmount`, so players on poor connections degrade smoothly instead of building up lag. Builds on
-  `send(message, { maxBuffered })`.
-
 ### Live data
 
 - **Sequenced streams with gap detection and resume.** Track a sequence number per topic, detect gaps, and on

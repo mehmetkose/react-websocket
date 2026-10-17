@@ -7,7 +7,10 @@ export type ServerMessage =
   | { type: 'snapshot'; time: number; ack: number; you: string; players: Record<string, Player> }
   | { type: 'pong'; id: number; time: number };
 
-export type ClientMessage = ({ type: 'input'; seq: number } & Move) | { type: 'ping'; id: number };
+export type ClientMessage =
+  | ({ type: 'input'; seq: number } & Move)
+  | { type: 'aim'; angle: number }
+  | { type: 'ping'; id: number };
 
 /** Sent as plain text both ways, outside JSON, to keep the connection alive. */
 export const HEARTBEAT = 'heartbeat';

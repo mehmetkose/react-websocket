@@ -1,6 +1,6 @@
 ---
 title: 'Real-time games with WebSockets and React'
-description: 'Networking for browser games over WebSockets in React: input that isn''t replayed late, snapshot interpolation, client-side prediction, awaited requests, ping and server time, and rendering at 60 fps.'
+description: 'Networking for browser games over WebSockets in React: input that isn''t replayed late, snapshot interpolation, client-side prediction, an adaptive send rate, awaited requests, ping and server time, and rendering at 60 fps.'
 ---
 
 # Real-time games
@@ -70,7 +70,7 @@ Movement you want to show right away goes through [the timeline](#responsive-con
 | --- | --- |
 | Chat, purchases, "ready" | Default: queue and send in order |
 | Fire, jump and other one-shot input | `{ volatile: true }` |
-| Aim, cursor or position, sent every tick | `{ key: 'aim', maxBuffered: 4096 }` |
+| Aim, cursor or position, sent every tick | `{ key: 'aim', maxBuffered: 4096 }`, or [an adaptive send rate](#poor-connections-adaptive-send-rate) |
 | "Leave", "pause" and other control messages | `{ priority: true }`, ahead of anything queued |
 | Movement you predict | `timeline.input()` |
 
@@ -297,6 +297,49 @@ shown.x += (target.x - shown.x) * 0.3;
 shown.y += (target.y - shown.y) * 0.3;
 ```
 
+## Poor connections: adaptive send rate
+
+A player on a slow link can't upload 60 messages a second. The browser buffers what it can't send yet, every message waits behind the ones before it, and the lag keeps growing. `maxBuffered` stops the growth by dropping messages, but it's better not to send them in the first place.
+
+`createWebSocketSendRate` sends state such as aim or a cursor at a rate that adapts. It ticks up to `maxRate` times a second, halves the rate when the send buffer fills up or the round trip rises, and climbs back one tick a second at a time while the link keeps up. Between ticks, only the newest message per key is kept:
+
+```ts
+// stream.ts
+import { createWebSocketSendRate } from 'react-websocket';
+import { game } from './game';
+import { latency } from './latency';
+
+export const stream = createWebSocketSendRate(game, { latency, maxRate: 30 });
+```
+
+```ts
+// Every frame, or on every pointer move: at most 30 a second, fewer on a congested link.
+stream.send({ type: 'aim', angle }, 'aim');
+```
+
+Before a one-shot action that must carry the newest state, flush what's waiting:
+
+```ts
+stream.flush();
+game.send({ type: 'fire', angle }, { volatile: true });
+```
+
+A steady high ping keeps the full rate. Only a round trip that rises counts, because that's what a filling queue looks like.
+
+Don't send predicted inputs through it: coalescing drops messages, and a dropped input is never confirmed. Use the rate to send fewer, bigger inputs instead. Each input says how many simulation steps it covers, and both `predict` and the server apply them all:
+
+```ts
+// In the render loop, once per 60 Hz step while a key is held:
+steps++;
+if (performance.now() - lastInput >= 1000 / stream.getSnapshot().rate) {
+  timeline.input({ dx, dy, steps });
+  steps = 0;
+  lastInput = performance.now();
+}
+```
+
+The timeline only predicts inputs it has sent, so draw your player with the steps not sent yet on top: `move(mine, { dx, dy, steps })`. The rate adapts on ticks, so this works while you stream something, such as aim, through `send()`. `stream.getSnapshot()` returns `{ rate, congested }` for a HUD. The [game example](https://github.com/mehmetkose/react-websocket/tree/main/examples/game) has a switch to compare.
+
 ## The server's side
 
 The timeline needs four things from your server:
@@ -410,7 +453,7 @@ Browsers throttle timers in background tabs to about once per second, and someti
 
 ## See also
 
-- [`createWebSocketTimeline`](../api/create-websocket-timeline.md), [`createWebSocketRequests`](../api/create-websocket-requests.md), [`createWebSocketLatency`](../api/create-websocket-latency.md), [`useWebSocketLatency`](../api/use-websocket-latency.md)
+- [`createWebSocketTimeline`](../api/create-websocket-timeline.md), [`createWebSocketSendRate`](../api/create-websocket-send-rate.md), [`createWebSocketRequests`](../api/create-websocket-requests.md), [`createWebSocketLatency`](../api/create-websocket-latency.md), [`useWebSocketLatency`](../api/use-websocket-latency.md)
 - The [game example](https://github.com/mehmetkose/react-websocket/tree/main/examples/game): a multiplayer demo with a network panel
 - [`SendOptions`](../api/types.md#sendoptions)
 - [Message state](./state.md) and [Performance](./performance.md)

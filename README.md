@@ -19,7 +19,7 @@
 - **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
 - **Requests and latency.** Await replies with timeouts and cancellation, and measure round-trip time and the server's clock for ping displays and synchronized countdowns.
-- **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once.
+- **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
@@ -122,6 +122,7 @@ function Room() {
 | `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
 | `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, with timeouts |
 | `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
+| `createWebSocketSendRate(client, options?)` | `send(message, key)` coalesced per key at a rate that drops on a congested link |
 | `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
