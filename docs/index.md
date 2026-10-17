@@ -1,5 +1,5 @@
 ---
-layout: home
+pageType: home
 
 hero:
   name: react-websocket
@@ -53,4 +53,4 @@ function Ticker() {
 }
 ```
 
-That's the whole setup. Read the [getting started guide](./guide/getting-started.md) next.
+That's the whole setup. Read the [getting started guide](./guide/getting-started.mdx) next.

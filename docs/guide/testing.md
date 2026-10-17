@@ -168,7 +168,7 @@ it('backs off exponentially', () => {
 });
 ```
 
-::: tip Suspense with fake timers
+:::tip Suspense with fake timers
 React schedules Suspense retries on its own timers. For tests that use `use(client.ready)`, switch to real timers (`vi.useRealTimers()`) and wait with `await screen.findBy…`.
 :::
 

@@ -59,9 +59,9 @@
     "format:check": "vp fmt --check",
     "check:package": "npm run build && publint --strict && attw --pack . --profile node16",
     "size": "npm run build && size-limit",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs",
+    "docs:dev": "rspress dev",
+    "docs:build": "rspress build",
+    "docs:preview": "rspress preview",
     "example:tornado": "vp dev examples/tornado",
     "example:tornado:server": "python3 examples/tornado/server.py",
     "example:nextjs": "npm --prefix examples/nextjs run update-library && npm --prefix examples/nextjs run dev",
@@ -97,6 +97,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@fontsource-variable/geist-mono": "^5.3.0",
+    "@rspress/core": "^2.0.23",
     "@size-limit/preset-small-lib": "^14.2.0",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",
@@ -111,7 +112,6 @@
     "typescript": "^7.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
     "vite-plus": "1.1.0",
-    "vitepress": "^1.6.4",
     "vitest": "5.0.3"
   },
   "size-limit": [
@@ -174,15 +174,7 @@
     }
   ],
   "overrides": {
-    "@docsearch/react": {
-      "react": "$react",
-      "react-dom": "$react-dom",
-      "@types/react": "$@types/react"
-    },
     "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
-    "vitest": "5.0.3",
-    "vitepress": {
-      "vite": "^5.4.21"
-    }
+    "vitest": "5.0.3"
   }
 }

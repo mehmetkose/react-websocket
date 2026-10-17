@@ -4,6 +4,5 @@ node_modules
 *.log
 dist
 coverage
-docs/.vitepress/cache
-docs/.vitepress/dist
+doc_build
 .vitest/

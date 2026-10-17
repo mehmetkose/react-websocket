@@ -1,28 +1,19 @@
+import { PackageManagerTabs } from '@rspress/core/theme';
+
 # Getting started
 
 This guide takes you from installation to a working, typed, shared connection in a few minutes.
 
 ## Install
 
-::: code-group
-
-```sh [npm]
-npm install react-websocket
-```
-
-```sh [pnpm]
-pnpm add react-websocket
-```
-
-```sh [yarn]
-yarn add react-websocket
-```
-
-```sh [bun]
-bun add react-websocket
-```
-
-:::
+<PackageManagerTabs
+  command={{
+    npm: 'npm install react-websocket',
+    pnpm: 'pnpm add react-websocket',
+    yarn: 'yarn add react-websocket',
+    bun: 'bun add react-websocket'
+  }}
+/>
 
 `react` 18 or 19 is a peer dependency. There are no other dependencies.
 
@@ -116,7 +107,7 @@ Type parameters describe what you expect; they don't check it at runtime. To val
 
 Components that call `useWebSocket` with the same URL already share one socket.
 
-::: warning Options come from the first component
+:::warning Options come from the first component
 A shared socket keeps the options of whichever component connected first. Later components with the same URL reuse it as-is, so their connection options (`json`, `reconnect`, `schema`, …) are ignored; only their handlers and `enabled` apply. See [Shared clients](./shared-clients.md#by-url).
 :::
 

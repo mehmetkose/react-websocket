@@ -194,7 +194,7 @@ Components read data with `useChat(state => state.messages)` and status with `us
 
 To keep the connection open for the whole session instead, forward with `chat.on('message', …)` at module level and call `chat.connect()`.
 
-::: tip Do you need Zustand for this?
+:::tip Do you need Zustand for this?
 If the store only accumulates socket data, [`createWebSocketState`](./state.md) does the same with a reducer and per-component selectors, with no extra dependency. Reach for Zustand when many app actions also change the same data.
 :::
 

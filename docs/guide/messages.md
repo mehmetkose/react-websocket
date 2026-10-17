@@ -32,7 +32,7 @@ The two type parameters are:
 - `In`: the type of incoming messages, after decoding. It types `lastMessage`, `onMessage` and the `message` event.
 - `Out`: the type that `send()` accepts.
 
-::: warning Generics are not validation
+:::warning Generics are not validation
 `useWebSocket<ServerEvent>` only tells TypeScript what to expect. Nothing checks it at runtime. To check incoming data, use a [schema](#validating-with-a-schema).
 :::
 

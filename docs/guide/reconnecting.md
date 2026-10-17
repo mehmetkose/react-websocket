@@ -156,7 +156,7 @@ const live = createWebSocket('wss://api.example.com/live', {
 
 The heartbeat requires your server to answer pings with some data. Browsers can't send protocol-level ping frames, so this is an application-level ping.
 
-::: tip Try it
+:::tip Try it
 A dead connection is hard to produce on purpose. [`Chaos.stall()`](./chaos.md#trigger-faults-on-demand) makes one in development: the socket stays open but goes silent, so you can watch your `timeout` catch it.
 :::
 
@@ -178,7 +178,7 @@ chat.send({ text: 'sent while offline' }); // returns false: queued
 
 The queue is cleared when you call `close()` and when the client gives up reconnecting, so stale messages aren't sent on a later connection.
 
-::: tip Bound the queue for long outages
+:::tip Bound the queue for long outages
 The default queue is unbounded. If users can stay offline for a long time while your app keeps calling `send()`, for example with presence or cursor updates, set a `limit`, or use `queue: false` for messages that are only meaningful in real time.
 :::
 
