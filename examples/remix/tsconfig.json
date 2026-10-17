@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ESNext",
+    // Node runs server.ts and the app without a build step, and the asset server compiles the
+    // browser modules on demand, so imports name `.ts` files and use only erasable syntax.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    // Remix components use JSX, but not React.
+    "jsx": "react-jsx",
+    "jsxImportSource": "remix/component",
+    "noEmit": true
+  },
+  "exclude": ["node_modules"]
+}

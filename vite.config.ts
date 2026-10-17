@@ -67,7 +67,8 @@ export default defineConfig({
       // install. They have their own `typecheck` and `build` scripts.
       'examples/nextjs',
       'examples/hono',
-      'examples/astro'
+      'examples/astro',
+      'examples/remix'
     ],
     plugins: ['eslint', 'typescript', 'react'],
     options: { typeAware: true, typeCheck: true },
