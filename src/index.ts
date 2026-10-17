@@ -4,6 +4,7 @@ export {
   useWebSocket,
   useWebSocketEvent,
   useWebSocketLatency,
+  useWebSocketOutbox,
   useWebSocketState,
   useWebSocketStatus,
   useWebSocketStream,

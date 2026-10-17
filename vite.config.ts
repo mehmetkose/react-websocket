@@ -30,10 +30,10 @@ export default defineConfig({
     { ...shared, entry: { core: 'src/core.ts' }, format: ['esm', 'cjs'] },
     // A development tool with no imports, built on its own so it shares no chunks with `core`.
     { ...shared, entry: { chaos: 'src/chaos.ts' }, format: ['esm', 'cjs'] },
-    // Imports only types from `core`, so it ships no imports and needs no client directive.
+    // Imports only types from `core`, so they ship no imports and need no client directive.
     {
       ...shared,
-      entry: { timeline: 'src/timeline.ts' },
+      entry: { timeline: 'src/timeline.ts', outbox: 'src/outbox.ts' },
       format: {
         esm: { plugins: [coreAsExternal('./core.js')] },
         cjs: { plugins: [coreAsExternal('./core.cjs')] }

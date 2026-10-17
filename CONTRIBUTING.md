@@ -68,6 +68,7 @@ src/
   index.ts     The main entry (core + hooks), built with a 'use client' banner
   chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
   timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
+  outbox.ts    The react-websocket/outbox entry: messages stored until acknowledged
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
@@ -76,6 +77,7 @@ test/
   chaos.test.ts    The chaos WebSocket, alone and with the client
   timeline.test.ts The timeline, with fake timers standing in for the clock
   sendrate.test.ts The adaptive send rate, with a settable bufferedAmount and chaos latency
+  outbox.test.tsx  The outbox, with memory storage and fake-indexeddb
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

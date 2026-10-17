@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `react-websocket/outbox`, a new entry point. `createWebSocketOutbox(client, { name, send, ack })` keeps messages until
+  the server acknowledges them, across reconnects and page reloads. `add(message)` stores a message in IndexedDB and
+  sends it with an idempotency key as soon as the socket is open, and every new connection sends the unacknowledged
+  ones again, in order, so the server can ignore repeats. After a reload, the stored messages are sent before new
+  ones. While messages are waiting, the outbox holds the connection open. `maxAge` and `onExpire` drop messages that
+  are too old, and `remove(id)` and `clear()` cancel them. `indexedDBStorage(name)` and `memoryStorage()` are the
+  built-in storages; pass your own as `storage`. About 1.1 kB min+gzip, with no React dependency. See
+  [Offline outbox](https://mehmetkose.github.io/react-websocket/guide/outbox).
+- `useWebSocketOutbox(outbox)` lists the messages waiting in an outbox, for a "3 orders waiting to sync" banner.
+
 ## [4.4.0] - 2026-10-17
 
 ### Added
@@ -290,6 +304,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.4.0...HEAD
 [4.4.0]: https://github.com/mehmetkose/react-websocket/compare/4.3.0...4.4.0
 [4.3.0]: https://github.com/mehmetkose/react-websocket/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/mehmetkose/react-websocket/compare/4.1.0...4.2.0

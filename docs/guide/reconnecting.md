@@ -282,6 +282,10 @@ chat.send({ type: 'cursor', x, y }, { key: 'cursor' }); // only the newest is qu
 
 `send()` returns `true` only when the message went out immediately. Use it if you need to know whether a message was queued.
 
+:::tip Messages that must not be lost
+The queue lives in memory, and a message leaves it once it's handed to the socket, even if the connection then drops before the server gets it. For orders, reports and anything else that must arrive, use the [offline outbox](./outbox.md): it keeps messages in IndexedDB until the server acknowledges them, across reloads.
+:::
+
 ### Expiring stale messages
 
 A message that waited through a long outage can be stale by the time it goes out: a "typing…" indicator, a price quote, a request the user has given up on. `maxAge` drops a queued message once it has waited longer than that many milliseconds, for the whole queue or per message:

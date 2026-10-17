@@ -51,10 +51,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   events and cancel a run that crosses a client-side budget.
 ### Business
 
-- **Persistent offline outbox.** Keep the queue in IndexedDB with idempotency keys, so it survives reloads and
-  requests are safe to retry. For POS, field-service and warehouse apps on flaky Wi-Fi. Pairs with
-  `queue.maxAge`.
-
 - **Presence and live cursors** (`createWebSocketPresence`). Per-peer temporary state that expires, throttled
   through keyed sends.
 

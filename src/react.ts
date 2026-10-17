@@ -11,6 +11,7 @@ import {
 // share one copy of it (and of `MessageError`).
 import { createWebSocket } from './core';
 import type { Latency, WebSocketLatency } from './latency';
+import type { OutboxEntry, WebSocketOutbox } from './outbox';
 // Types only: a value import from anything but `./core` would bundle a second copy into this entry.
 import type { RequestOptions, WebSocketRequests } from './requests';
 import type { IncomingRequest, WebSocketResponder } from './responder';
@@ -389,6 +390,28 @@ export function useWebSocketLatency(latency: WebSocketLatency): Latency {
   const snapshot = useSyncExternalStore(latency.subscribe, latency.getSnapshot, noLatency);
   useHold(latency.client, true);
   return snapshot;
+}
+
+/**
+ * The messages waiting in an outbox from `react-websocket/outbox`, oldest first, for a "3 orders
+ * waiting to sync" banner. Re-renders when they change. `null` lists nothing. On the server the
+ * list is empty.
+ *
+ * @example
+ * ```tsx
+ * const waiting = useWebSocketOutbox(orders);
+ * if (!waiting.length) return null;
+ * return <p role="status">{waiting.length} orders waiting to sync</p>;
+ * ```
+ */
+export function useWebSocketOutbox<M>(
+  outbox: WebSocketOutbox<M> | null | undefined
+): readonly OutboxEntry<M>[] {
+  return useSyncExternalStore(
+    outbox?.subscribe ?? noopSubscribe,
+    outbox?.getSnapshot ?? noRequests,
+    noRequests
+  );
 }
 
 /**
