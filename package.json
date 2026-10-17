@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -123,6 +123,15 @@
         "react"
       ],
       "limit": "2.6 kB"
+    },
+    {
+      "name": "react-websocket (topics + state hooks)",
+      "path": "dist/index.js",
+      "import": "{ useWebSocketTopic, useWebSocketState, createWebSocketTopics, createWebSocketState }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1 kB"
     }
   ],
   "overrides": {
