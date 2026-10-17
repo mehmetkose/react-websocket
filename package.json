@@ -209,6 +209,16 @@
       "gzip": true
     },
     {
+      "name": "react-websocket (runs + hook)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketRuns, useAgentRun }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1.7 kB",
+      "gzip": true
+    },
+    {
       "name": "react-websocket (adaptive send rate)",
       "path": "dist/index.js",
       "import": "{ createWebSocketSendRate }",

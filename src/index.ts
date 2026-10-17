@@ -1,6 +1,7 @@
 export * from './core';
 export {
   useAgentApproval,
+  useAgentRun,
   useWebSocket,
   useWebSocketEvent,
   useWebSocketLatency,

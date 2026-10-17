@@ -30,6 +30,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`useWebSocketState(store, selector?, isEqual?)`](./use-websocket-state.md) | Read state reduced from messages | The selected value changes |
 | [`useWebSocketLatency(latency)`](./use-websocket-latency.md) | Show round-trip time | A new measurement, about once per ping |
 | [`useAgentApproval(responder, method)`](./use-agent-approval.md) | Render requests from the server that a person answers | A request arrives or goes away |
+| [`useAgentRun(runs, runId)`](./use-agent-run.md) | Render a resumable run, such as an agent's answer that survives reconnects and reloads | Every event of the run |
 | [`useWebSocketStream(rpc, options?)`](./use-websocket-stream.md) | Stream the replies to a request into a value, such as tokens into an answer, with Stop | Every reply, or once per frame |
 | [`useWebSocketOutbox(outbox)`](./use-websocket-outbox.md) | List the messages waiting in an outbox | A message is added, sent or acknowledged |
 
@@ -45,6 +46,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
 | [`createWebSocketSendRate(client, options?)`](./create-websocket-send-rate.md) | Send aim, cursor or position at a rate that adapts to the connection, coalesced per key |
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
+| [`createWebSocketRuns(client, options)`](./create-websocket-runs.md) | Stream runs, such as an agent's answer, that resume after a reconnect or a reload, with a `keep` or `cancel` policy |
 | [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
 | [`createWebSocketOutbox(client, options)`](./create-websocket-outbox.md) | Keep messages in IndexedDB until the server acknowledges them, across reconnects and reloads. From `react-websocket/outbox` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
@@ -99,6 +101,12 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`WebSocketResponderOptions`](./create-websocket-responder.md#parameters) | `{ request, respond, error, cancel?, timeout? }` |
 | [`IncomingRequest`](./create-websocket-responder.md#incomingrequest) | `{ id, method, params, signal, respond, reject }` |
 | [`RequestHandler`](./create-websocket-responder.md#onrequest) | `(params, request) => result \| Promise<result>` for `onRequest` |
+| [`WebSocketRuns`](./create-websocket-runs.md#returns) | The runs from `createWebSocketRuns` |
+| [`WebSocketRunsOptions`](./create-websocket-runs.md#parameters) | `{ name, start, resume, cancel?, event, done?, error?, initial, reduce, policy?, storage? }` |
+| [`AgentRun`](./create-websocket-runs.md#agentrun) | `{ runId, status, value, error }` |
+| [`RunPolicy`](./create-websocket-runs.md#parameters) | `'keep' \| 'cancel'`: what happens to a run when its connection drops |
+| [`RunStatus`](./create-websocket-runs.md#agentrun) | `'streaming' \| 'done' \| 'error' \| 'aborted'` |
+| [`RunStorage`](./create-websocket-runs.md#parameters) | `getItem`, `setItem` and `removeItem`, like `sessionStorage` |
 | [`WebSocketTimeline`](./create-websocket-timeline.md#returns) | The timeline from `createWebSocketTimeline` |
 | [`WebSocketTimelineOptions`](./create-websocket-timeline.md#parameters) | `{ snapshot, interpolate?, delay?, extrapolate?, buffer?, latency?, input? }` |
 | [`TimelineSnapshot`](./create-websocket-timeline.md#timelinesnapshot) | `{ time, state, ack? }` |

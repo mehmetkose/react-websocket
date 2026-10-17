@@ -6,6 +6,15 @@ export type { Latency, WebSocketLatency, WebSocketLatencyOptions } from './laten
 export { createWebSocketRequests } from './requests';
 export type { RequestOptions, WebSocketRequests, WebSocketRequestsOptions } from './requests';
 export { createWebSocketResponder } from './responder';
+export { createWebSocketRuns } from './runs';
+export type {
+  AgentRun,
+  RunPolicy,
+  RunStatus,
+  RunStorage,
+  WebSocketRuns,
+  WebSocketRunsOptions
+} from './runs';
 export type {
   IncomingRequest,
   RequestHandler,

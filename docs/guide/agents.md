@@ -189,7 +189,79 @@ for await (const reply of ask.stream('Summarize this page')) {
 }
 ```
 
-If the connection drops mid-answer, the stream throws after the tokens that arrived, and the hook reports `status: 'error'` with the partial answer. The server may still be generating: whether a new connection can pick the answer up again is up to your protocol.
+If the connection drops mid-answer, the stream throws after the tokens that arrived, and the hook reports `status: 'error'` with the partial answer. The server may still be generating, and its tokens are paid for. To pick the answer up again, make it a resumable run.
+
+## Resumable runs
+
+A refresh, a switch from Wi-Fi to cellular, or a laptop that sleeps drops a streaming answer halfway. With [`createWebSocketRuns`](../api/create-websocket-runs.md), the answer survives: each run has an id, its events are numbered, and the client asks for what it missed.
+
+```ts
+// runs.ts
+import { createWebSocketRuns } from 'react-websocket';
+import { agent } from './agent';
+
+export const runs = createWebSocketRuns(agent, {
+  name: 'chat',
+  start: (prompt: string, runId) => ({ type: 'run', runId, prompt }),
+  resume: (runId, after) => ({ type: 'resume', runId, after }),
+  cancel: runId => ({ type: 'cancel', runId }),
+  event: message => (message.type === 'token' || message.type === 'done' ? message : undefined),
+  done: message => message.type === 'done',
+  initial: '',
+  reduce: (text, message) => text + message.text
+});
+```
+
+[`useAgentRun`](../api/use-agent-run.md) renders one:
+
+```tsx
+import { useState } from 'react';
+import { useAgentRun } from 'react-websocket';
+import { runs } from './runs';
+
+function Chat() {
+  // After a reload, pick up the run that was streaming.
+  const [runId, setRunId] = useState(() => runs.list().at(-1)?.runId ?? null);
+  const run = useAgentRun(runs, runId);
+  return (
+    <>
+      <button onClick={() => setRunId(runs.start(prompt))}>Ask</button>
+      <button onClick={() => runId && runs.abort(runId)} disabled={run?.status !== 'streaming'}>
+        Stop
+      </button>
+      <p>{run?.value}</p>
+    </>
+  );
+}
+```
+
+What happens:
+
+- **`start(prompt)`** makes a run id, sends `start(prompt, runId)` as soon as the socket is open, and folds each event into the run's `value` with `reduce`.
+- **The connection drops.** On the next one, the run sends `resume(runId, after)` with the offset of the last event received, so the server sends only what was missed. Anything it sends twice is dropped. Until the first event arrives, it sends `start` again instead, so the server should start a run only once per id.
+- **The page reloads.** Streaming runs are remembered in `sessionStorage`. The new page follows them again from their first event (`resume(runId, undefined)`), so `reduce` rebuilds the answer, and `runs.list()` finds them.
+- **It ends** with `done`, with an `error` event, or with `abort(runId)`, which sends `cancel`. Then it's forgotten from storage, and its final `value` stays.
+
+### Background agents or a chat answer
+
+Each run has a policy for when its connection drops. `keep`, the default, resumes it, for agents that work in the background. `cancel` aborts it and sends `cancel` first thing on the next connection, for a chat answer nobody may be waiting for, so the server stops spending:
+
+```ts
+const runId = runs.start(prompt, { policy: 'cancel' });
+```
+
+The client can only cancel once it's connected again, so have the server cancel on its own too: send the policy with the start message, and stop a `cancel` run when its socket closes.
+
+### The server's side
+
+The server keeps each run's events while it streams, and a while after, each with an `offset` that counts from 1:
+
+- On `start` with a new id, it starts the run. On `start` with an id it knows, it carries on as for `resume`.
+- On `resume` with `after`, it sends the events after that offset, then follows the run live on this connection. Without `after`, it sends them all.
+- For an id it doesn't know, it sends an error event, which ends the run on the client.
+- An error event carries the next offset, like any other event.
+
+To follow a run from somewhere else, such as one listed in a chat history from the server, pass its id to `useAgentRun`, or call `runs.attach(runId)`: it's followed from its first event.
 
 ## Things to watch for
 
