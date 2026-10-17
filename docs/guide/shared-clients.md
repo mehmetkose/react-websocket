@@ -33,6 +33,10 @@ Only mounted components count. A component whose render React throws away, becau
 
 In development, a hook whose connection options differ from the first one's logs a `console.warn` that names them. Options written inline count as the same when they have the same contents, even though they are new objects and functions on every render. A `schema` is compared by identity, so create schemas outside components: on React 18, StrictMode's second render can't be told apart from another component, and a schema created during render warns there.
 
+:::tip Across tabs
+Clients share a connection between the components of one tab. To share one between tabs too, see [One connection across tabs](./tabs.md).
+:::
+
 ### With a module-level client
 
 `createWebSocket` defines a connection once, outside any component. Import it wherever you need it:

@@ -73,6 +73,7 @@ src/
   timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
   outbox.ts    The react-websocket/outbox entry: messages stored until acknowledged
   ag-ui.ts     The react-websocket/ag-ui entry: AG-UI events, JSON Patch, and agents on runs
+  tabs.ts      The react-websocket/tabs entry: one WebSocket shared by every tab
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
@@ -86,6 +87,7 @@ test/
   runs.test.tsx    Resumable runs: reconnects, reloads, policies, and useAgentRun
   ag-ui.test.tsx   JSON Patch, the AG-UI reducer, and agents over the mock socket
   presence.test.tsx  Presence: throttling, refresh, expiry and the hook
+  tabs.test.ts       Shared tabs, with Node's BroadcastChannel and a fake Web Locks API
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

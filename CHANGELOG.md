@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `react-websocket/tabs`, a new entry point. `createTabsWebSocket(options?)` returns a `WebSocket` class that shares one
+  connection between all the tabs of an app: pass it as the `WebSocket` option, and only one tab, elected with the
+  Web Locks API, connects to the server, while the others reach it over a `BroadcastChannel`. Each tab keeps its own
+  client, queue, reconnects and hooks. When the leading tab closes, another takes over. With `topics`, an
+  unsubscribe reaches the server only when no other tab holds the topic, and messages go only to the tabs that hold
+  their topic. Without `BroadcastChannel` or locks, each tab connects on its own. About 1.7 kB min+gzip, with no
+  imports. See [One connection across tabs](https://mehmetkose.github.io/react-websocket/guide/tabs).
+
 ## [4.12.0] - 2026-10-17
 
 ### Added
@@ -393,6 +405,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.12.0...HEAD
 [4.12.0]: https://github.com/mehmetkose/react-websocket/compare/4.11.0...4.12.0
 [4.11.0]: https://github.com/mehmetkose/react-websocket/compare/4.10.0...4.11.0
 [4.10.0]: https://github.com/mehmetkose/react-websocket/compare/4.9.0...4.10.0
