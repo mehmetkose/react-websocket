@@ -17,14 +17,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 - **WebTransport behind the same API.** Volatile sends map to datagrams and everything else to streams, with
   automatic fallback to WebSocket. Large and dependent on browser support, so it comes after the others.
 
-### AI agents
-
-- **Voice sessions with interruption.** On interruption the client must stop audio, discard queued frames,
-  cancel generation and report how much the user actually heard, or the transcript includes words they never
-  heard. The library's part is the transport, which ships: `priority` sends for control messages, and
-  volatile audio frames with `maxBuffered` dropping stale ones while open. What's left is a guide showing
-  `truncate { itemId, heardMs }` from playback position. Audio capture and playback stay in the app.
-
 ### Tooling
 
 - **Devtools overlay.** Shows sockets, topics, the queue and RTT.

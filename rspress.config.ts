@@ -102,6 +102,7 @@ export default defineConfig({
             { text: 'Real-time games', link: '/guide/games' },
             { text: 'AI agents', link: '/guide/agents' },
             { text: 'AG-UI', link: '/guide/ag-ui' },
+            { text: 'Voice agents', link: '/guide/voice' },
             { text: 'Suspense', link: '/guide/suspense' },
             { text: 'Server rendering and Next.js', link: '/guide/ssr' },
             { text: 'StrictMode, Activity and lifecycle', link: '/guide/lifecycle' },
