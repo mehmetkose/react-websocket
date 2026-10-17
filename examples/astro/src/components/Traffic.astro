@@ -1,0 +1,66 @@
+---
+// The same connection, without React: a custom element in a plain Astro <script>. Custom
+// elements set themselves up when they enter the page and clean up when they leave, which also
+// covers the page swaps the client router does.
+---
+
+<live-traffic>
+  <dl class="facts">
+    <dt>Status</dt>
+    <dd data-status>–</dd>
+    <dt>Messages</dt>
+    <dd data-total>0</dd>
+  </dl>
+  <ul class="quotes" data-counts></ul>
+</live-traffic>
+
+<script>
+  import { live } from '../lib/live';
+
+  class LiveTraffic extends HTMLElement {
+    #cleanup: (() => void)[] = [];
+
+    connectedCallback() {
+      const status = this.querySelector('[data-status]')!;
+      const total = this.querySelector('[data-total]')!;
+      const list = this.querySelector('[data-counts]')!;
+      const counts = new Map<string, number>();
+      let received = 0;
+
+      const showStatus = () => {
+        const { status: current, attempt } = live.getSnapshot();
+        status.textContent = attempt > 0 ? `${current} (attempt ${attempt})` : current;
+      };
+      showStatus();
+
+      this.#cleanup.push(
+        // Hold the connection open while this element is on the page, the way a hook does.
+        live.acquire(),
+        // The status store: called on every change, read with getSnapshot().
+        live.subscribe(showStatus),
+        // Every validated message. Writes to the DOM directly; there is nothing to re-render.
+        live.on('message', message => {
+          counts.set(message.type, (counts.get(message.type) ?? 0) + 1);
+          total.textContent = String(++received);
+          list.replaceChildren(
+            ...[...counts].map(([type, count]) => {
+              const name = document.createElement('span');
+              const value = document.createElement('strong');
+              name.textContent = type;
+              value.textContent = String(count);
+              const item = document.createElement('li');
+              item.append(name, value);
+              return item;
+            })
+          );
+        })
+      );
+    }
+
+    disconnectedCallback() {
+      for (const off of this.#cleanup.splice(0)) off();
+    }
+  }
+
+  customElements.define('live-traffic', LiveTraffic);
+</script>

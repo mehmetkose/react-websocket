@@ -1,0 +1,136 @@
+---
+// Prerendered to static HTML at build time. Each React component below is an island that
+// hydrates on its own schedule (see its `client:` directive) and joins the shared connection.
+import { Agent } from '../components/Agent';
+import Card from '../components/Card.astro';
+import { Chat } from '../components/Chat';
+import { Connection, FirstConnection } from '../components/Connection';
+import { Cursors } from '../components/Cursors';
+import { Latency } from '../components/Latency';
+import { Prices } from '../components/Prices';
+import { Requests } from '../components/Requests';
+import Traffic from '../components/Traffic.astro';
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="react-websocket Astro demo">
+  <p class="muted">
+    Every feature on one shared connection. Each card is a separate island, hydrating when its
+    directive says, and all of them use the same client. Open a second tab to see the chat and
+    cursors from both sides. The code for each card is in <code>src/components/</code>.
+  </p>
+
+  <div class="grid">
+    <Card
+      title="Connection"
+      island="client:load + client:only"
+      uses={[
+        'useWebSocket',
+        'useWebSocketEvent',
+        'reconnect',
+        'heartbeat',
+        'schema',
+        'url()',
+        'Suspense'
+      ]}
+    >
+      <Connection client:load />
+      <FirstConnection client:only="react">
+        <p slot="fallback" class="muted">Waiting for the first connection…</p>
+      </FirstConnection>
+      <Fragment slot="try">
+        drop the connection and watch the backoff, go silent until the heartbeat gives up, or get
+        refused (close code 4003, which <code>shouldReconnect</code> doesn’t retry). Bad data is
+        reported as a <code>MessageError</code>.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="AI agent: server requests"
+      island="client:load"
+      uses={['createWebSocketResponder', 'useAgentApproval']}
+    >
+      <Agent client:load />
+      <Fragment slot="try">
+        select some text on this page, then ask the agent to email it. It reads the selection and
+        your time zone through handlers, then waits for your approval. Stop the run to see the
+        server cancel its request.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="Chat: the send queue"
+      island="client:load"
+      uses={['send()', 'queue', 'useWebSocketEvent']}
+    >
+      <Chat client:load />
+      <Fragment slot="try">
+        close the connection, send a few messages, then reconnect. They go out in order.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="Prices: topics and state"
+      island="client:idle"
+      uses={[
+        'createWebSocketTopics',
+        'useWebSocketTopic',
+        'createWebSocketState',
+        'useWebSocketState'
+      ]}
+    >
+      <Prices client:idle />
+      <Fragment slot="try">
+        toggle symbols to subscribe and unsubscribe, then drop the connection: the feed resumes on
+        its own.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="Cursors: volatile and keyed sends"
+      island="client:visible"
+      uses={['send(m, { volatile })', 'send(m, { key })', 'useWebSocketState']}
+    >
+      <Cursors client:visible />
+      <Fragment slot="try">
+        close the connection, move the pointer and pick a few colors, then reconnect. Only the last
+        color is sent.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="Requests"
+      island="client:idle"
+      uses={['createWebSocketRequests', 'request()', 'AbortSignal']}
+    >
+      <Requests client:idle />
+      <Fragment slot="try">
+        the slow request outlasts its 2 s timeout. Close the connection while one is pending: it
+        rejects.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="Latency and server time"
+      island="client:visible"
+      uses={['createWebSocketLatency', 'useWebSocketLatency', 'serverNow()']}
+    >
+      <Latency client:visible />
+      <Fragment slot="try">
+        the demo server’s clock runs 2.5 s fast on purpose. The offset is measured from the pings.
+      </Fragment>
+    </Card>
+
+    <Card
+      title="Without React"
+      island="<script>"
+      uses={['react-websocket/core', 'acquire()', 'subscribe()', 'getSnapshot()', 'on()']}
+    >
+      <Traffic />
+      <Fragment slot="try">
+        this card is a custom element in a plain Astro <code>&lt;script&gt;</code>, with no React.
+        It counts every message the shared client receives, whichever island asked for it.
+      </Fragment>
+    </Card>
+  </div>
+</Layout>

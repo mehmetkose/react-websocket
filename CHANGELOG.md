@@ -10,6 +10,9 @@ All notable changes to this project are documented here. The format is based on
 
 - A [Hono example](https://github.com/mehmetkose/react-websocket/tree/main/examples/hono): a chat room with
   presence, with a Hono server on Node.js and a Vite + React client that share their message types.
+- An [Astro demo](https://github.com/mehmetkose/react-websocket/tree/main/examples/astro) of every feature,
+  including server requests: React islands sharing one connection, a card using `react-websocket/core`
+  from a plain `<script>`, and a connection kept open across page navigation.
 
 ## [3.3.0] - 2026-10-17
 

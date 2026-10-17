@@ -1,0 +1,33 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="About the react-websocket Astro demo">
+  <article class="prose">
+    <h2>The connection survived the navigation</h2>
+    <p>
+      The name next to the status above didn’t change: the server names every connection, so a
+      new socket would have come back with a new name. The layout’s
+      <code>&lt;ClientRouter /&gt;</code> swaps pages without a full page load, so the shared client
+      stays in memory. The status badge is persisted with <code>transition:persist</code>, so it
+      stays mounted and holds the connection while the old page’s islands unmount and the new
+      page’s hydrate. Go <a href="/">back to the demo</a> and the cards rejoin the same socket.
+    </p>
+    <p>
+      Without the router, every link is a full page load, and every page load is a new connection.
+    </p>
+
+    <h2>How the example is built</h2>
+    <p>
+      Astro endpoints can’t accept WebSocket upgrades. In development, a small integration in
+      <code>astro.config.ts</code> attaches the demo’s WebSocket server to Astro’s dev server. In
+      production, <code>server.ts</code> serves the build with Express and handles upgrades on the
+      same port.
+    </p>
+    <p>
+      The pages are prerendered to static HTML. Only <code>/api/token</code> runs on demand: it
+      issues the short-lived token the WebSocket URL carries, and the client fetches a fresh one
+      before every connection attempt.
+    </p>
+  </article>
+</Layout>

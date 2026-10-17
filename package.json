@@ -56,6 +56,7 @@
     "example:tornado:server": "python3 examples/tornado/server.py",
     "example:nextjs": "npm --prefix examples/nextjs run update-library && npm --prefix examples/nextjs run dev",
     "example:hono": "npm --prefix examples/hono run update-library && npm --prefix examples/hono run dev",
+    "example:astro": "npm --prefix examples/astro run update-library && npm --prefix examples/astro run dev",
     "prepublishOnly": "npm run check && npm test && npm run check:package"
   },
   "repository": {
