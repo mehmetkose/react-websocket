@@ -6,3 +6,4 @@ dist
 coverage
 docs/.vitepress/cache
 docs/.vitepress/dist
+.vitest/

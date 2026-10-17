@@ -39,9 +39,9 @@
   "scripts": {
     "build": "rm -rf dist && tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:coverage": "vp test run --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -51,7 +51,7 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "example": "vite example",
+    "example": "vp dev example",
     "example:server": "python3 example/server.py",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run check:package"
   },
@@ -88,7 +88,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/coverage-v8": "5.0.3",
     "eslint": "^10.12.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
@@ -101,9 +101,10 @@
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1",
-    "vite": "^8.3.4",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+    "vite-plus": "1.1.0",
     "vitepress": "^1.6.4",
-    "vitest": "^5.0.3"
+    "vitest": "5.0.3"
   },
   "size-limit": [
     {
@@ -148,6 +149,11 @@
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react"
+    },
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+    "vitest": "5.0.3",
+    "vitepress": {
+      "vite": "^5.4.21"
     }
   }
 }
