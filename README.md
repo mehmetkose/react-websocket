@@ -163,6 +163,7 @@ v2 was a `<Websocket>` class component. v3 replaces it with hooks: `<Websocket u
 ## Examples
 
 - [`examples/nextjs`](examples/nextjs) is a demo of every feature in a Next.js App Router app, with its own WebSocket server. Run `npm run example:nextjs` and open http://localhost:3000.
+- [`examples/hono`](examples/hono) is a chat room with presence: a Hono server on Node.js and a Vite + React 19 client sharing one set of message types. Run `npm run example:hono` and open http://localhost:5173.
 - [`examples/tornado`](examples/tornado) is a small broadcast chat: a Tornado server and a Vite + React 19 client.
 
 ## Contributing

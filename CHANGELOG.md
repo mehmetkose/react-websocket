@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- A [Hono example](https://github.com/mehmetkose/react-websocket/tree/main/examples/hono): a chat room with
+  presence, with a Hono server on Node.js and a Vite + React client that share their message types.
+
 ## [3.3.0] - 2026-10-17
 
 ### Added
