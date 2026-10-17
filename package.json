@@ -94,7 +94,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "size-limit": "^14.2.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
     "vite-plus": "1.1.0",
     "vitepress": "^1.6.4",
