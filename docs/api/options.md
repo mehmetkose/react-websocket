@@ -157,6 +157,8 @@ Send a ping on an interval while open. Use it to keep connections alive through 
 
 Any incoming message counts as a sign of life, not just `pong`.
 
+A ping is also sent right away when the browser fires `online` or the page becomes visible again, unless one is already waiting for an answer. A connection that died while the laptop slept is then found within `timeout`, instead of after up to `interval` more.
+
 ### queue
 
 Buffer `send()` calls made while not connected, and send them in order when the socket opens.

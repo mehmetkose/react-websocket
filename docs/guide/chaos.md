@@ -56,7 +56,7 @@ Every fault is off until you set it.
 | `stall: [10_000, 30_000]` | Each open connection goes silent after a random time in this range. Nothing arrives, sends vanish, `readyState` stays `OPEN`, and no `close` event fires | [`heartbeat.timeout`](./reconnecting.md#heartbeats) |
 | `corrupt: 0.05` | Each incoming message is cut short with this probability. Text gets U+FFFD appended, so it never parses as JSON | `onError` with a [`MessageError`](../api/types.md#messageerror) |
 
-A stall is what happens when a laptop sleeps or a NAT forgets the connection: the socket is dead but nothing says so. Without a heartbeat `timeout`, the client stays `open` forever, and `send()` keeps returning `true` while every message disappears. Try `stall` once on any app that stays open for long.
+A stall is what happens when a laptop sleeps or a NAT forgets the connection: the socket is dead but nothing says so. Without a heartbeat `timeout`, the client stays `open` forever, and `send()` keeps returning `true` while every message disappears. Try `stall` once on any app that stays open for long. To see a wake check, call `Chaos.stall()`, then switch tabs and back: the heartbeat pings at once and reconnects after `timeout`.
 
 ## Trigger faults on demand
 
