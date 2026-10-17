@@ -26,6 +26,7 @@
 - **Voice.** Microphone frames that never replay stale or build up lag, control messages that jump the queue, and a [guide](https://mehmetkose.github.io/react-websocket/guide/voice) to interruptions that truncate the transcript to what the user heard.
 - **AG-UI.** Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket with `react-websocket/ag-ui`: messages, tool calls and JSON Patch shared state, with a snapshot when a patch fails, and runs that resume after a reconnect or a reload.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
+- **One connection across tabs.** `react-websocket/tabs` lets every tab of an app share one connection, with a leader tab elected over the Web Locks API, and topics that one tab can't unsubscribe from under another.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
 
@@ -144,6 +145,7 @@ function Room() {
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
 | `createWebSocketOutbox(client, { name, send, ack })` | From `react-websocket/outbox`: `add(message)` keeps a message in IndexedDB and sends it until the server acknowledges it, across reconnects and reloads |
 | `createAgUiAgent(client, options?)` | From `react-websocket/ag-ui`: `run({ messages })` an AG-UI agent over a WebSocket; also `applyAgUiEvent` and `applyPatch` |
+| `createTabsWebSocket(options?)` | From `react-websocket/tabs`: a `WebSocket` class that shares one connection between all the tabs of an app |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
 | Option | Default | |

@@ -28,8 +28,8 @@ export default defineConfig({
   pack: [
     // `react-websocket/core` has no React dependency and no client directive.
     { ...shared, entry: { core: 'src/core.ts' }, format: ['esm', 'cjs'] },
-    // A development tool with no imports, built on its own so it shares no chunks with `core`.
-    { ...shared, entry: { chaos: 'src/chaos.ts' }, format: ['esm', 'cjs'] },
+    // Tools with no imports, built on their own so they share no chunks with `core`.
+    { ...shared, entry: { chaos: 'src/chaos.ts', tabs: 'src/tabs.ts' }, format: ['esm', 'cjs'] },
     // Imports only types from `core`, so they ship no imports and need no client directive.
     {
       ...shared,

@@ -11,9 +11,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 ### Live data
 
-- **One socket across tabs.** Elect a leader tab over `BroadcastChannel` (or use a `SharedWorker`) and
-  multiplex topics through it. Users with 10–20 tabs open would cost one server connection instead of one per
-  tab. A separate entry point.
 - **WebTransport behind the same API.** Volatile sends map to datagrams and everything else to streams, with
   automatic fallback to WebSocket. Large and dependent on browser support, so it comes after the others.
 

@@ -16,6 +16,7 @@ Everything the package exports. All exports are typed, and every type has inline
 | `react-websocket/timeline` | `createWebSocketTimeline`, its types | For multiplayer games. No React dependency |
 | `react-websocket/ag-ui` | `createAgUiAgent`, `applyAgUiEvent`, `applyPatch`, their types | AG-UI agents over a WebSocket. No React dependency |
 | `react-websocket/outbox` | `createWebSocketOutbox`, `indexedDBStorage`, `memoryStorage`, their types | Messages kept until acknowledged, across reloads. No React dependency |
+| `react-websocket/tabs` | `createTabsWebSocket`, its types | One connection shared by every tab. No React dependency |
 | `react-websocket/chaos` | `createChaosWebSocket`, its types | A development tool. No React dependency |
 
 Every entry point ships as ESM and CommonJS with type declarations for each.
@@ -57,6 +58,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createAgUiAgent(client, options?)`](./ag-ui.md#createaguiagent) | Run an AG-UI agent over a WebSocket, with resumable runs and JSON Patch state. From `react-websocket/ag-ui` |
 | [`applyAgUiEvent(thread, event)`](./ag-ui.md#applyaguievent) | Fold an AG-UI event into a thread. From `react-websocket/ag-ui` |
 | [`applyPatch(document, operations)`](./ag-ui.md#applypatch) | Apply a JSON Patch without changing the document. From `react-websocket/ag-ui` |
+| [`createTabsWebSocket(options?)`](./tabs.md) | A `WebSocket` class that shares one connection between all the tabs of an app. From `react-websocket/tabs` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
 | [`retryableClose(close)`](../guide/reconnecting.md#giving-up) | The default `reconnect.shouldReconnect`: `false` for close codes `1002`, `1003` and `1008`. Call it from your own to keep that rule |
 | [`retryAfter(close)`](../guide/reconnecting.md#overloaded-servers-1013) | The default `reconnect.retryAfter`: the delay in ms from a `1012` or `1013` close whose reason is a number of seconds. Call it from your own to keep reading it |
@@ -132,6 +134,8 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`AgUiThread`](./ag-ui.md#aguithread) | `{ messages, state, status, step?, error?, result?, stale }` |
 | [`AgUiMessage`](./ag-ui.md#aguithread), [`AgUiToolCall`](./ag-ui.md#aguithread), [`AgUiEvent`](./ag-ui.md#applyaguievent), [`AgUiEnvelope`](./ag-ui.md#createaguiagent), [`RunAgentInput`](./ag-ui.md#createaguiagent), [`JsonPatchOperation`](./ag-ui.md#applypatch) | AG-UI's shapes, from `react-websocket/ag-ui` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |
+| [`TabsWebSocket`](./tabs.md#returns) | The class from `createTabsWebSocket`: `typeof WebSocket` plus `dispose()` |
+| [`TabsWebSocketOptions`](./tabs.md#parameters), [`TabsTopics`](./tabs.md#parameters) | `{ WebSocket?, json?, topics?, linger? }` and `{ subscribe, unsubscribe, topic? }` |
 | [`ChaosWebSocket`](./chaos.md#returns) | The class from `createChaosWebSocket`: `typeof WebSocket` plus its controls |
 | [`ChaosOptions`](./chaos.md#parameters) | `{ WebSocket?, seed?, logger? }` plus the faults |
 | [`ChaosFaults`](./chaos.md#types) | `{ enabled?, latency?, loss?, refuse?, drop?, stall?, corrupt? }` for `configure()` |

@@ -60,7 +60,8 @@ export default defineConfig({
         'react-websocket/chaos': './src/chaos.ts',
         'react-websocket/timeline': './src/timeline.ts',
         'react-websocket/outbox': './src/outbox.ts',
-        'react-websocket/ag-ui': './src/ag-ui.ts'
+        'react-websocket/ag-ui': './src/ag-ui.ts',
+        'react-websocket/tabs': './src/tabs.ts'
       }
     }
   },
@@ -93,6 +94,7 @@ export default defineConfig({
           text: 'Guide',
           items: [
             { text: 'Shared clients', link: '/guide/shared-clients' },
+            { text: 'One connection across tabs', link: '/guide/tabs' },
             { text: 'Messages and types', link: '/guide/messages' },
             { text: 'Reconnecting and heartbeats', link: '/guide/reconnecting' },
             { text: 'Offline outbox', link: '/guide/outbox' },
@@ -142,6 +144,7 @@ export default defineConfig({
             { text: 'createWebSocketTimeline', link: '/api/create-websocket-timeline' },
             { text: 'createWebSocketOutbox', link: '/api/create-websocket-outbox' },
             { text: 'react-websocket/ag-ui', link: '/api/ag-ui' },
+            { text: 'createTabsWebSocket', link: '/api/tabs' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },
             { text: 'Options', link: '/api/options' },
             { text: 'Types', link: '/api/types' }
