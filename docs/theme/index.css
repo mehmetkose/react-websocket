@@ -354,6 +354,43 @@ html.dark {
 
 /* ---------- Navigation and chrome ---------- */
 
+/* The theme toggle is a <button> (components/SwitchAppearance.tsx); keep the icon-only look. */
+button.rp-switch-appearance {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+}
+
+button.rp-switch-appearance:focus-visible {
+  outline: 2px solid var(--rp-c-text-1);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* The selected search result is filled with ink, so its text takes the page color (Rspress
+   hard-codes white, which vanishes on the white fill in dark mode). The search panel's styles load
+   after these, so `:root` outranks Rspress's selectors instead of relying on order. */
+:root .rp-suggest-item--current .rp-suggest-item__link,
+:root .rp-suggest-item--current .rp-suggest-item__container .rp-suggest-item__icon,
+:root
+  .rp-suggest-item--current
+  .rp-suggest-item__container
+  .rp-suggest-item__content
+  .rp-suggest-item__statement,
+:root
+  .rp-suggest-item--current
+  .rp-suggest-item__container
+  .rp-suggest-item__content
+  .rp-suggest-item__mark,
+:root
+  .rp-suggest-item--current
+  .rp-suggest-item__container
+  .rp-suggest-item__content
+  .rp-suggest-item__title {
+  color: var(--rp-c-bg);
+}
+
 .rp-nav__title,
 .rspress-logo {
   font-weight: 700;
