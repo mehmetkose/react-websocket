@@ -1,6 +1,24 @@
 import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
+  fmt: {
+    singleQuote: true,
+    trailingComma: 'none',
+    tabWidth: 2,
+    arrowParens: 'avoid',
+    printWidth: 100,
+    // Keep package.json in its hand-written order, as Prettier did.
+    sortPackageJson: false,
+    ignorePatterns: [
+      'dist',
+      'coverage',
+      'package-lock.json',
+      'docs/.vitepress/cache',
+      'docs/.vitepress/dist',
+      // Prose is hand-wrapped; tables and examples are formatted by hand.
+      '*.md'
+    ]
+  },
   lint: {
     ignorePatterns: ['dist', 'coverage', 'docs/.vitepress/cache', 'docs/.vitepress/dist'],
     plugins: ['eslint', 'typescript', 'react'],

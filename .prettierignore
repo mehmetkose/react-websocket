@@ -1,8 +1,0 @@
-dist
-coverage
-node_modules
-package-lock.json
-docs/.vitepress/cache
-docs/.vitepress/dist
-# Prose is hand-wrapped; tables and examples are formatted by hand.
-*.md
