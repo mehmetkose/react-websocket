@@ -14,21 +14,37 @@ export interface WebSocketRequestsOptions<Req, In, Out> {
   reply: (message: In) => number | string | null | undefined;
   /**
    * Called on a reply. Return something other than `undefined` to reject the request with
-   * it instead of resolving, e.g. for a server-side error reply.
+   * it instead of resolving, e.g. for a server-side error reply. A stream throws it.
    */
   error?: (message: In) => unknown;
   /**
-   * Default time to wait for a reply, in ms. `Infinity` waits forever.
+   * Whether a reply is the last one of a stream. `stream()` needs it. That reply is yielded
+   * too, then the stream ends.
+   */
+  done?: (message: In) => boolean;
+  /**
+   * Build the message that tells the server to stop working on request `id`. Sent when this
+   * side gives up: the request's `signal` aborts, it times out, a loop over a stream exits
+   * early, or the manager is disposed. Not sent after the last reply, an error reply, a lost
+   * connection or `close()`.
+   */
+  cancel?: (id: number) => Out;
+  /**
+   * Default time to wait for a reply, in ms. For a stream, the time to wait for each reply,
+   * including the first. `Infinity` waits forever.
    * @default 10000
    */
   timeout?: number;
 }
 
-/** Per-call options for {@link WebSocketRequests.request}. */
+/** Per-call options for {@link WebSocketRequests.request} and {@link WebSocketRequests.stream}. */
 export interface RequestOptions extends SendOptions {
-  /** Time to wait for a reply, in ms. Overrides the manager's `timeout`. */
+  /**
+   * Time to wait for a reply (for a stream, for each reply), in ms. Overrides the manager's
+   * `timeout`.
+   */
   timeout?: number;
-  /** Abort the request. It rejects with `signal.reason`. A late reply is ignored. */
+  /** Abort the request. It rejects (a stream throws) with `signal.reason`. A late reply is ignored. */
   signal?: AbortSignal;
 }
 
@@ -46,7 +62,26 @@ export interface WebSocketRequests<Req, In> {
    * queue (replaced by a newer request with the same `key`, or evicted by `queue.limit`).
    */
   request(message: Req, options?: RequestOptions): Promise<In>;
-  /** Number of requests waiting for a reply. */
+  /**
+   * Send a request and iterate over its replies, up to and including the one `done` matches.
+   * Holds the connection until the stream ends. Needs the `done` option.
+   *
+   * `timeout` is the time to wait for each reply. Replies that arrive before the loop reads
+   * them are buffered. The stream is one-shot: iterate it once.
+   *
+   * Fails where `request()` rejects, with the same errors, after yielding the replies already
+   * received. Aborting `signal` throws `signal.reason` right away and discards them. Leaving
+   * the loop early, aborting and timing out send `cancel`.
+   *
+   * @example
+   * ```ts
+   * for await (const reply of rpc.stream({ type: 'ask', prompt }, { signal })) {
+   *   text += reply.delta;
+   * }
+   * ```
+   */
+  stream(message: Req, options?: RequestOptions): AsyncIterableIterator<In>;
+  /** Number of requests and streams waiting for a reply. */
   pending(): number;
   /** Reject every pending request and stop listening. Only needed for managers created dynamically. */
   dispose(): void;
@@ -56,11 +91,16 @@ export interface WebSocketRequests<Req, In> {
 // and resolve each other's requests with one reply.
 const lastIds = new WeakMap<WebSocketClient<any, any>, number>();
 
+const VOLATILE = { volatile: true };
+const noop = () => {};
+
 interface Pending<In> {
-  resolve(reply: In): void;
-  reject(reason: unknown): void;
   /** The socket the request went out on, or `null` while it waits in the client's queue. */
   socket: WebSocket | null;
+  /** A reply that isn't an error. */
+  receive(reply: In): void;
+  /** Settle, failed with `reason` or not. `cancel` tells the server to stop. Only the first call counts. */
+  end(failed: boolean, reason?: unknown, cancel?: boolean): void;
 }
 
 /**
@@ -89,8 +129,12 @@ export function createWebSocketRequests<Req, In, const Out>(
 ): WebSocketRequests<Req, In> {
   const waiting = new Map<string, Pending<In>>();
 
-  function rejectWhere(test: (entry: Pending<In>) => boolean, reason: () => unknown) {
-    for (const entry of [...waiting.values()]) if (test(entry)) entry.reject(reason());
+  function endWhere(
+    test: (entry: Pending<In>) => boolean,
+    reason: () => unknown,
+    cancel?: boolean
+  ) {
+    for (const entry of [...waiting.values()]) if (test(entry)) entry.end(true, reason(), cancel);
   }
 
   const offs = [
@@ -99,8 +143,8 @@ export function createWebSocketRequests<Req, In, const Out>(
       const entry = id == null ? undefined : waiting.get(String(id));
       if (!entry) return;
       const error = options.error?.(message);
-      if (error === undefined) entry.resolve(message);
-      else entry.reject(error);
+      if (error === undefined) entry.receive(message);
+      else entry.end(true, error);
     }),
     // `open` listeners run before the client flushes its queue: queued requests go out on this socket.
     client.on('open', () => {
@@ -110,12 +154,12 @@ export function createWebSocketRequests<Req, In, const Out>(
       const { status } = client.getSnapshot();
       if (status === 'closed' || status === 'idle') {
         // The queue was cleared too, so nothing still waiting can be sent.
-        rejectWhere(
+        endWhere(
           () => true,
           () => new Error('WebSocket was closed before the request was answered')
         );
       } else {
-        rejectWhere(
+        endWhere(
           entry => entry.socket !== null && entry.socket !== client.socket,
           () => new Error('WebSocket connection was lost before the request was answered')
         );
@@ -123,85 +167,174 @@ export function createWebSocketRequests<Req, In, const Out>(
     })
   ];
 
-  return {
-    client,
-    request(message, requestOptions = {}) {
-      const { signal } = requestOptions;
-      if (signal?.aborted) return Promise.reject(signal.reason);
+  /**
+   * Send `message` as a new request. `next` gets each reply that isn't an error and returns
+   * whether it was the last; `done` runs once, when the request ends. Returns a function that
+   * ends it from this side and tells the server.
+   */
+  function start(
+    message: Req,
+    requestOptions: RequestOptions,
+    next: (reply: In) => boolean,
+    done: (failed: boolean, reason?: unknown) => void
+  ): () => void {
+    const { signal, priority } = requestOptions;
+    if (signal?.aborted) {
+      done(true, signal.reason);
+      return noop;
+    }
 
-      const id = (lastIds.get(client) ?? 0) + 1;
-      lastIds.set(client, id);
-      const key = String(id);
-      const timeout = requestOptions.timeout ?? options.timeout ?? 10_000;
+    const id = (lastIds.get(client) ?? 0) + 1;
+    lastIds.set(client, id);
+    const key = String(id);
+    const timeout = requestOptions.timeout ?? options.timeout ?? 10_000;
+    const release = client.acquire();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => entry.end(true, signal!.reason, true);
 
-      return new Promise<In>((resolve, reject) => {
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        const release = client.acquire();
-        const onAbort = () => entry.reject(signal!.reason);
+    function arm() {
+      clearTimeout(timer);
+      if (timeout > 0 && timeout < Infinity) {
+        timer = setTimeout(
+          () =>
+            entry.end(
+              true,
+              new DOMException(`Request ${id} timed out after ${timeout}ms`, 'TimeoutError'),
+              true
+            ),
+          timeout
+        );
+      }
+    }
 
-        function settle() {
-          waiting.delete(key);
-          clearTimeout(timer);
-          signal?.removeEventListener('abort', onAbort);
-          release();
-        }
-
-        const entry: Pending<In> = {
-          socket: null,
-          resolve(reply) {
-            settle();
-            resolve(reply);
-          },
-          reject(reason) {
-            settle();
-            reject(reason);
+    const entry: Pending<In> = {
+      socket: null,
+      receive(reply) {
+        if (next(reply)) entry.end(false);
+        else arm();
+      },
+      end(failed, reason, cancel) {
+        if (!waiting.delete(key)) return;
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+        release();
+        done(failed, reason);
+        if (cancel && options.cancel) {
+          try {
+            // Still queued, it can't be taken back: queue the cancel right behind it. Once sent,
+            // the cancel only means something on that connection, so drop it unless it's open.
+            client.send(options.cancel(id), entry.socket ? VOLATILE : { priority });
+          } catch (error) {
+            queueMicrotask(() => {
+              throw error;
+            });
           }
-        };
-        waiting.set(key, entry);
-        signal?.addEventListener('abort', onAbort, { once: true });
-        if (timeout > 0 && timeout < Infinity) {
-          timer = setTimeout(
-            () =>
-              entry.reject(
-                new DOMException(`Request ${id} timed out after ${timeout}ms`, 'TimeoutError')
-              ),
-            timeout
-          );
         }
+      }
+    };
+    waiting.set(key, entry);
+    signal?.addEventListener('abort', onAbort, { once: true });
+    arm();
 
-        const { status } = client.getSnapshot();
-        if (status === 'closed' || status === 'idle') {
-          // Closed until someone reconnects it, or (idle after acquiring) it can't connect here.
-          entry.reject(new Error(`WebSocket is ${status}: request not sent`));
-          return;
-        }
-        let sent: boolean;
-        try {
-          sent = client.send(options.send(message, id), {
-            ...requestOptions,
-            onDrop() {
-              entry.reject(new Error('Request was dropped from the send queue before it was sent'));
-              requestOptions.onDrop?.();
-            }
-          });
-        } catch (error) {
-          entry.reject(error);
-          return;
-        }
+    const { status } = client.getSnapshot();
+    if (status === 'closed' || status === 'idle') {
+      // Closed until someone reconnects it, or (idle after acquiring) it can't connect here.
+      entry.end(true, new Error(`WebSocket is ${status}: request not sent`));
+    } else {
+      try {
+        const sent = client.send(options.send(message, id), {
+          ...requestOptions,
+          onDrop() {
+            entry.end(
+              true,
+              new Error('Request was dropped from the send queue before it was sent')
+            );
+            requestOptions.onDrop?.();
+          }
+        });
         if (sent) entry.socket = client.socket;
         // Open but not sent: `maxBuffered` dropped it, and nothing will send it later.
         else if (client.socket?.readyState === 1)
-          entry.reject(new Error('WebSocket send buffer is full: request dropped'));
+          entry.end(true, new Error('WebSocket send buffer is full: request dropped'));
         else if (requestOptions.volatile)
-          entry.reject(new Error('WebSocket is not open: request dropped'));
+          entry.end(true, new Error('WebSocket is not open: request dropped'));
+      } catch (error) {
+        entry.end(true, error);
+      }
+    }
+    return () => entry.end(false, undefined, true);
+  }
+
+  return {
+    client,
+    request(message, requestOptions = {}) {
+      return new Promise<In>((resolve, reject) => {
+        start(
+          message,
+          requestOptions,
+          reply => {
+            resolve(reply);
+            return true;
+          },
+          (failed, reason) => {
+            if (failed) reject(reason);
+          }
+        );
       });
+    },
+    stream(message, requestOptions = {}) {
+      const last = options.done;
+      if (!last) throw new TypeError('stream() needs the `done` option');
+      const replies: In[] = [];
+      let ended: [failed: boolean, reason: unknown] | undefined;
+      let wake = noop;
+      const stop = start(
+        message,
+        requestOptions,
+        reply => {
+          replies.push(reply);
+          wake();
+          return last(reply);
+        },
+        (failed, reason) => {
+          // Aborting stops right away; any other end comes after the replies already received.
+          if (requestOptions.signal?.aborted) replies.length = 0;
+          ended = [failed, reason];
+          wake();
+        }
+      );
+
+      async function* read() {
+        try {
+          for (;;) {
+            if (replies.length) yield replies.shift()!;
+            else if (ended) {
+              if (ended[0]) throw ended[1];
+              return;
+            } else await new Promise<void>(resolve => (wake = resolve));
+          }
+        } finally {
+          stop();
+        }
+      }
+
+      const iterator = read();
+      const close = iterator.return;
+      // A generator closed before its first `next()` skips `finally`, and one closed during a
+      // `next()` waits for it: stop first, so leaving a loop tells the server right away.
+      iterator.return = value => {
+        stop();
+        return close.call(iterator, value);
+      };
+      return iterator;
     },
     pending: () => waiting.size,
     dispose() {
       offs.forEach(off => off());
-      rejectWhere(
+      endWhere(
         () => true,
-        () => new Error('Requests were disposed')
+        () => new Error('Requests were disposed'),
+        true
       );
     }
   };

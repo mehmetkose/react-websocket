@@ -1,11 +1,11 @@
 ---
 title: 'AI agents over WebSockets in React'
-description: 'Let an AI agent on your server ask the browser over a WebSocket: approve tool calls from your React UI, or answer with data only the browser has.'
+description: 'Stream an AI agent''s answer over a WebSocket in React with a Stop button, approve its tool calls from your UI, or answer with data only the browser has.'
 ---
 
 # AI agents
 
-An agent running on your server sometimes needs the browser: to ask the user before it acts, or to use something only the browser has, like the page selection, the user's location or their logged-in session. Over a WebSocket, that's a request from the server that the client answers. This page shows how to answer them in code and from your UI.
+An agent running on your server sometimes needs the browser: to ask the user before it acts, or to use something only the browser has, like the page selection, the user's location or their logged-in session. Over a WebSocket, that's a request from the server that the client answers. This page shows how to answer them in code and from your UI, and how to stream the agent's answer token by token with a Stop button.
 
 ## The setup
 
@@ -16,12 +16,15 @@ The examples on this page share one client and one responder:
 import { createWebSocket, createWebSocketResponder } from 'react-websocket';
 
 type AgentIn =
-  | { type: 'token'; text: string }
+  | { type: 'token'; id: number; text: string }
+  | { type: 'end'; id: number }
+  | { type: 'failed'; id: number; error: string }
   | { type: 'call'; id: string; method: string; params: Record<string, string>; timeout?: number }
   | { type: 'cancel'; id: string };
 
 type AgentOut =
-  | { type: 'prompt'; text: string }
+  | { type: 'prompt'; id: number; text: string }
+  | { type: 'stop'; id: number }
   | { type: 'result'; id: number | string; result?: unknown; error?: string };
 
 export const agent = createWebSocket<AgentIn, AgentOut>('wss://agent.example.com', { json: true });
@@ -127,6 +130,66 @@ To keep every request waiting, whether or not a dialog is on screen, register th
 ```ts
 tools.onRequest('approve_tool'); // requests wait until some dialog answers them
 ```
+
+## Streaming the answer
+
+The agent's answer arrives as many messages: tokens, then an end. [`createWebSocketRequests`](../api/create-websocket-requests.md#streaming-replies) with `done` turns them into one stream per prompt, and `cancel` tells the server to stop generating when nobody is reading anymore:
+
+```ts
+// agent.ts
+export const ask = createWebSocketRequests(agent, {
+  send: (text: string, id) => ({ type: 'prompt', id, text }),
+  reply: message =>
+    message.type === 'token' || message.type === 'end' || message.type === 'failed'
+      ? message.id
+      : undefined,
+  error: message => (message.type === 'failed' ? new Error(message.error) : undefined),
+  done: message => message.type === 'end',
+  cancel: id => ({ type: 'stop', id }),
+  // The time to wait for each token, including the first: allow for a model that thinks first.
+  timeout: 60_000
+});
+```
+
+The server answers `{ type: 'prompt', id, text }` with `{ type: 'token', id, text }` messages, then `{ type: 'end', id }`, or `{ type: 'failed', id, error }` if it fails. On `{ type: 'stop', id }` it stops generating.
+
+In a component, [`useWebSocketStream`](../api/use-websocket-stream.md) folds the tokens into text:
+
+```tsx
+import { useWebSocketStream } from 'react-websocket';
+import { ask } from './agent';
+
+function Answer({ prompt }: { prompt: string }) {
+  const answer = useWebSocketStream(ask, {
+    initial: '',
+    reduce: (text, reply) => (reply.type === 'token' ? text + reply.text : text),
+    batch: 'frame' // one render per frame, however fast tokens arrive
+  });
+  return (
+    <>
+      <button onClick={() => answer.start(prompt)}>Ask</button>
+      <button onClick={answer.abort} disabled={answer.status !== 'streaming'}>
+        Stop
+      </button>
+      <p>{answer.value}</p>
+      {answer.status === 'error' && <p role="alert">The answer stopped. Try again.</p>}
+    </>
+  );
+}
+```
+
+Asking again replaces the answer and stops the one before. Stop, a new question and unmounting each send `stop`, so the server doesn't keep paying for tokens nobody reads. After Stop, the partial answer stays on screen.
+
+Outside React, iterate over the stream. Leaving the loop early, with `break` or a throw, sends `stop` too:
+
+```ts
+let text = '';
+for await (const reply of ask.stream('Summarize this page')) {
+  if (reply.type === 'token') text += reply.text;
+}
+```
+
+If the connection drops mid-answer, the stream throws after the tokens that arrived, and the hook reports `status: 'error'` with the partial answer. The server may still be generating: whether a new connection can pick the answer up again is up to your protocol.
 
 ## Things to watch for
 

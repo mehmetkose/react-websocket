@@ -1,9 +1,17 @@
-import { useEffect, useInsertionEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import {
+  useEffect,
+  useInsertionEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from 'react';
 // Import the client through the `core` entry: the build keeps it external, so both entries
 // share one copy of it (and of `MessageError`).
 import { createWebSocket } from './core';
 import type { Latency, WebSocketLatency } from './latency';
 // Types only: a value import from anything but `./core` would bundle a second copy into this entry.
+import type { RequestOptions, WebSocketRequests } from './requests';
 import type { IncomingRequest, WebSocketResponder } from './responder';
 import type { WebSocketState } from './state';
 import type { WebSocketTopics } from './topics';
@@ -351,4 +359,133 @@ export function useAgentApproval<P, R>(
     const mine = waiting.filter(request => request.method === method);
     return mine.length ? mine : NO_REQUESTS;
   }, [waiting, method]);
+}
+
+/** Options for `useWebSocketStream` that fold replies into one value, e.g. tokens into text. */
+export interface UseWebSocketStreamOptions<In, T> {
+  /** The value before the first reply. `start()` resets to it. */
+  initial: T;
+  /** Fold a reply into the value. Return a new value instead of changing the old one. */
+  reduce: (value: T, reply: In) => T;
+  /**
+   * `'frame'`: re-render at most once per animation frame instead of once per reply. Browsers
+   * pause frames in background tabs; the value catches up when the tab is visible again.
+   */
+  batch?: 'frame';
+}
+
+/** What `useWebSocketStream` returns: the stream's progress plus stable actions. */
+export interface UseWebSocketStreamResult<Req, T> {
+  /** The replies so far, folded with `reduce`, or as an array without it. */
+  readonly value: T;
+  /**
+   * `idle` until `start()`. `done` after the last reply, `error` when the stream failed (see
+   * `error`), `aborted` after `abort()`. The value stays as it was when the stream ended.
+   */
+  readonly status: 'idle' | 'streaming' | 'done' | 'error' | 'aborted';
+  /** Why the stream failed, while `status` is `error`. */
+  readonly error: unknown;
+  /** Reset the value and stream the replies to `message`, aborting the stream before. Stable identity. */
+  start: (message: Req, options?: Omit<RequestOptions, 'signal'>) => void;
+  /** Stop the stream and send the manager's `cancel`. Stable identity. */
+  abort: () => void;
+}
+
+const append = <T>(list: readonly T[], reply: T): readonly T[] => [...list, reply];
+
+// Node and some workers have no animation frames: wait about one instead.
+function nextFrame(callback: () => void) {
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(callback);
+  else setTimeout(callback, 16);
+}
+
+/**
+ * Stream the replies to a request into a value, e.g. a model's tokens into its answer.
+ * `start(message)` sends it with `rpc.stream()` and folds each reply in with `reduce`, or
+ * collects the replies without it. Starting again aborts the stream before; so do `abort()`,
+ * unmounting and a new `rpc`, and each sends the manager's `cancel`. Re-renders on every
+ * reply, or once per frame with `batch: 'frame'`. Keeps the connection open while mounted.
+ *
+ * @example
+ * ```tsx
+ * const answer = useWebSocketStream(ask, {
+ *   initial: '',
+ *   reduce: (text, reply) => text + reply.delta,
+ *   batch: 'frame'
+ * });
+ * return (
+ *   <>
+ *     <button onClick={() => answer.start({ prompt })}>Ask</button>
+ *     <button onClick={answer.abort} disabled={answer.status !== 'streaming'}>Stop</button>
+ *     <p>{answer.value}</p>
+ *   </>
+ * );
+ * ```
+ */
+export function useWebSocketStream<Req, In, T>(
+  rpc: WebSocketRequests<Req, In> | null | undefined,
+  options: UseWebSocketStreamOptions<NoInfer<In>, T>
+): UseWebSocketStreamResult<Req, T>;
+export function useWebSocketStream<Req, In>(
+  rpc: WebSocketRequests<Req, In> | null | undefined,
+  options?: { batch?: 'frame' }
+): UseWebSocketStreamResult<Req, readonly In[]>;
+export function useWebSocketStream<Req, In>(
+  rpc: WebSocketRequests<Req, In> | null | undefined,
+  options: Partial<UseWebSocketStreamOptions<In, any>> = {}
+): UseWebSocketStreamResult<Req, unknown> {
+  type Status = UseWebSocketStreamResult<Req, unknown>['status'];
+  const [state, setState] = useState<{ value: unknown; status: Status; error: unknown }>(() => ({
+    value: options.reduce ? options.initial : NO_REQUESTS,
+    status: 'idle',
+    error: undefined
+  }));
+  const latest = useLatest({ rpc, options });
+  const running = useRef<AbortController | null>(null);
+
+  const actions = useMemo(
+    () => ({
+      abort: () => running.current?.abort(),
+      start(message: Req, requestOptions?: Omit<RequestOptions, 'signal'>) {
+        running.current?.abort();
+        const controller = (running.current = new AbortController());
+        const { reduce, initial, batch } = latest.current.options;
+        const fold = reduce ?? append;
+        let value: unknown = reduce ? initial : NO_REQUESTS;
+        let frame = false;
+        // A stream that was started over no longer shows; ending also skips a pending frame.
+        const show = (status: Status, error?: unknown) => {
+          frame = false;
+          if (running.current === controller) setState({ value, status, error });
+        };
+        show('streaming');
+        void (async () => {
+          try {
+            const replies = latest.current.rpc!.stream(message, {
+              ...requestOptions,
+              signal: controller.signal
+            });
+            for await (const reply of replies) {
+              value = fold(value, reply);
+              if (batch !== 'frame') show('streaming');
+              else if (!frame) {
+                frame = true;
+                nextFrame(() => frame && show('streaming'));
+              }
+            }
+            show('done');
+          } catch (error) {
+            if (controller.signal.aborted) show('aborted');
+            else show('error', error);
+          }
+        })();
+      }
+    }),
+    [latest]
+  );
+  // Unmounting, or replies from another manager: stop this one's stream.
+  useEffect(() => actions.abort, [actions, rpc]);
+  useHold(rpc?.client ?? null, true);
+
+  return { ...state, ...actions };
 }

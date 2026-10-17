@@ -29,6 +29,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`useWebSocketState(store, selector?, isEqual?)`](./use-websocket-state.md) | Read state reduced from messages | The selected value changes |
 | [`useWebSocketLatency(latency)`](./use-websocket-latency.md) | Show round-trip time | A new measurement, about once per ping |
 | [`useAgentApproval(responder, method)`](./use-agent-approval.md) | Render requests from the server that a person answers | A request arrives or goes away |
+| [`useWebSocketStream(rpc, options?)`](./use-websocket-stream.md) | Stream the replies to a request into a value, such as tokens into an answer, with Stop | Every reply, or once per frame |
 
 ## Functions
 
@@ -37,7 +38,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocket(url, options?)`](./create-websocket.md) | Create a client to share across components or use outside React |
 | [`createWebSocketTopics(client, options)`](./create-websocket-topics.md) | Manage reference-counted topic subscriptions, resent after every reconnect |
 | [`createWebSocketState(client, options)`](./create-websocket-state.md) | Keep state reduced from a client's messages |
-| [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies, with timeouts |
+| [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies or stream them, with timeouts and cancellation |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
 | [`createWebSocketSendRate(client, options?)`](./create-websocket-send-rate.md) | Send aim, cursor or position at a rate that adapts to the connection, coalesced per key |
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
@@ -57,6 +58,8 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`WebSocketOptions`](./options.md) | Connection options |
 | [`UseWebSocketOptions`](./use-websocket.md#options) | `WebSocketOptions` plus handlers and `enabled` |
 | [`UseWebSocketResult`](./use-websocket.md#returns) | What `useWebSocket` returns |
+| [`UseWebSocketStreamOptions`](./use-websocket-stream.md#parameters) | `{ initial, reduce, batch? }` |
+| [`UseWebSocketStreamResult`](./use-websocket-stream.md#returns) | `{ value, status, error, start, abort }` from `useWebSocketStream` |
 | [`WebSocketHandlers`](./use-websocket.md#handlers) | `onOpen`, `onMessage`, `onClose`, `onError`, `enabled` |
 | [`WebSocketClient`](./types.md#websocketclient) | The client returned by `createWebSocket` |
 | [`Status`](./types.md#status) | `'idle' \| 'connecting' \| 'open' \| 'reconnecting' \| 'closed'` |
@@ -74,8 +77,8 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`WebSocketState`](./create-websocket-state.md#returns) | The store from `createWebSocketState` |
 | [`WebSocketStateOptions`](./create-websocket-state.md#parameters) | `{ initialState, reduce, batch? }` |
 | [`WebSocketRequests`](./create-websocket-requests.md#returns) | The request manager from `createWebSocketRequests` |
-| [`WebSocketRequestsOptions`](./create-websocket-requests.md#parameters) | `{ send, reply, error?, timeout? }` |
-| [`RequestOptions`](./create-websocket-requests.md#request-options) | `{ timeout?, signal?, volatile?, key?, priority?, maxBuffered? }` for `request()` |
+| [`WebSocketRequestsOptions`](./create-websocket-requests.md#parameters) | `{ send, reply, error?, done?, cancel?, timeout? }` |
+| [`RequestOptions`](./create-websocket-requests.md#request-options) | `{ timeout?, signal?, volatile?, key?, priority?, maxBuffered? }` for `request()` and `stream()` |
 | [`WebSocketLatency`](./create-websocket-latency.md#returns) | The latency tracker from `createWebSocketLatency` |
 | [`WebSocketLatencyOptions`](./create-websocket-latency.md#parameters) | `{ ping, pong, interval?, samples? }` |
 | [`Latency`](./create-websocket-latency.md#latency) | `{ rtt, offset }` |

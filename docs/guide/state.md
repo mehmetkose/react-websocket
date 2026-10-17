@@ -87,6 +87,7 @@ export const priceState = createWebSocketState(prices, {
 - **Reducing doesn't wait.** Every message is still reduced as it arrives, so `getState()` is always current. A render loop reading it in `requestAnimationFrame` sees the latest state.
 - **Local writes don't wait.** `setState` and `reset` notify right away, and bring along any changes still waiting for the frame.
 - **Background tabs.** Browsers pause animation frames in hidden tabs. The store keeps up, and components render the latest state when the tab is visible again. If something must update while hidden, use an unbatched store or a `message` listener for it.
+- **Replies to one request.** For the tokens of one answer, [`useWebSocketStream`](../api/use-websocket-stream.md) folds a request's replies into state with the same `batch: 'frame'`, and stops the server when the user does.
 
 ## Writing to it
 
