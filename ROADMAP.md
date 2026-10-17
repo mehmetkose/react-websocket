@@ -6,12 +6,6 @@ version or an opt-in first.
 
 ## Design fixes
 
-### Honor close code 1013 (Try Again Later)
-
-An overloaded server can close with 1013 to shed load. Today it is retried like any other close.
-
-- Back off further after a 1013, optionally by a delay the server supplies in the close reason.
-
 ### Expire queued messages
 
 The queue holds 100 messages by default, but a message that waited through a long outage can still be stale when it
@@ -54,7 +48,7 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   tab. A separate entry point.
 - **Coordinated reconnects during deploys.** A small protocol where the server tells clients to reconnect over
   a spread of time, optionally to a different URL, and the client follows it. Deploys become gradual
-  migrations instead of reconnect storms. Builds on the 1013 handling above.
+  migrations instead of reconnect storms. Builds on the 1013 handling and `reconnect.retryAfter`.
 - **WebTransport behind the same API.** Volatile sends map to datagrams and everything else to streams, with
   automatic fallback to WebSocket. Large and dependent on browser support, so it comes after the others.
 

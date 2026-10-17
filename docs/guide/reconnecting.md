@@ -74,6 +74,7 @@ export const live = createWebSocket('wss://api.example.com/live', {
 | `jitter` | `1` | Fraction (0–1) randomly shaved off each delay |
 | `minUptime` | `5000` | How long a connection must stay open before the backoff resets, in ms |
 | `shouldReconnect` | `retryableClose` | Return `false` to stop after a given close. The default stops on `1002`, `1003` and `1008` |
+| `retryAfter` | `retryAfter` | How long the server asked to wait after a given close, in ms. The default reads a delay in seconds from a `1013` close |
 
 `reconnect: false` disables reconnecting entirely. The first unexpected close then makes the status `closed`.
 
@@ -82,6 +83,30 @@ export const live = createWebSocket('wss://api.example.com/live', {
 A server can accept a connection and close it at once, for example when it rejects the credentials sent from `onOpen`, or when it is overloaded. If every open reset the backoff, the client would come back about once a second, forever.
 
 So a connection resets the backoff only once it has stayed open for `minUptime`. One that closes sooner counts as a failed attempt: the next delay is longer, and `maxAttempts` still applies. `minUptime: 0` resets on every open.
+
+### Overloaded servers (1013)
+
+A server that is shedding load can close with `1013` (Try Again Later). Coming back after a second, like after any other drop, would only add to the load, so the client waits longer:
+
+- If the close reason is a number of seconds, like an HTTP `Retry-After` header (`ws.close(1013, '30')` on the server), the client waits that long, plus the usual backoff. Clients told the same delay still spread out over the backoff window instead of all coming back at once.
+- Otherwise, its backoff starts at `maxDelay`: with the defaults, a delay picked at random between 0 and 30 seconds.
+
+In both cases, coming back online or to the tab doesn't cut the wait short, and the close counts as a failed attempt, so `attempt` goes up and `maxAttempts` applies. `reconnect()` still connects at once.
+
+Reading the delay is the `retryAfter` option, whose default is the exported `retryAfter` function. If your server says how long to wait in another way, for example with a code of its own and the delay in milliseconds, pass your own and call the default from it:
+
+```ts
+import { createWebSocket, retryAfter } from 'react-websocket';
+
+const live = createWebSocket(url, {
+  reconnect: {
+    // 4429 is our server's "too many connections" code, with the delay in ms as the reason.
+    retryAfter: close => (close.code === 4429 ? Number(close.reason) : retryAfter(close))
+  }
+});
+```
+
+It returns a delay in ms, or `undefined` when the server didn't ask for one. Anything else, such as `NaN` from a reason that isn't a number, is ignored.
 
 ### Giving up
 
@@ -125,7 +150,7 @@ While a retry is scheduled, the client skips the rest of the wait and retries im
 - the browser fires `online` (the network came back), or
 - the tab becomes visible again (`visibilitychange`).
 
-So a laptop that wakes from sleep reconnects as soon as it can, not after a 30-second backoff.
+So a laptop that wakes from sleep reconnects as soon as it can, not after a 30-second backoff. The exception is a wait the server asked for, with a [`1013` close](#overloaded-servers-1013) or your `retryAfter`.
 
 ### Manual control
 

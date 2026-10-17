@@ -134,7 +134,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "3.3 kB",
+      "limit": "3.4 kB",
       "gzip": true
     },
     {
@@ -144,7 +144,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "2.8 kB",
+      "limit": "2.95 kB",
       "gzip": true
     },
     {

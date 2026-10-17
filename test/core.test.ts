@@ -1,4 +1,10 @@
-import { createWebSocket, MessageError, retryableClose, type StandardSchemaV1 } from '../src/core';
+import {
+  createWebSocket,
+  MessageError,
+  retryableClose,
+  retryAfter,
+  type StandardSchemaV1
+} from '../src/core';
 import { MockImpl, MockWebSocket } from './mock';
 
 const noJitter = { jitter: 0, minDelay: 1000, maxDelay: 30_000 };
@@ -581,6 +587,119 @@ describe('reconnecting', () => {
     expect(MockWebSocket.instances).toHaveLength(2);
     vi.advanceTimersByTime(5000);
     expect(MockWebSocket.instances).toHaveLength(2);
+  });
+
+  describe('1013 (Try Again Later)', () => {
+    /** Advance to one ms before `delay` and check nothing reconnected, then to `delay`. */
+    function expectRetryAfter(delay: number) {
+      const sockets = MockWebSocket.instances.length;
+      vi.advanceTimersByTime(delay - 1);
+      expect(MockWebSocket.instances).toHaveLength(sockets);
+      vi.advanceTimersByTime(1);
+      expect(MockWebSocket.instances).toHaveLength(sockets + 1);
+    }
+
+    it('waits the delay in the reason, in seconds, plus the backoff', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+      ws.connect();
+      MockWebSocket.last.open();
+      MockWebSocket.last.finishClose(1013, '5');
+      expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt: 1 });
+      expectRetryAfter(5000 + 1000);
+      MockWebSocket.last.finishClose(1013, '2.5');
+      expectRetryAfter(2500 + 2000);
+      ws.close();
+    });
+
+    it('starts the backoff at maxDelay when the reason names no delay', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+      ws.connect();
+      MockWebSocket.last.open();
+      MockWebSocket.last.finishClose(1013);
+      expectRetryAfter(30_000);
+      MockWebSocket.last.finishClose(1013, 'overloaded');
+      expectRetryAfter(30_000);
+      // Other closes go on with the usual backoff, from the attempt count.
+      MockWebSocket.last.finishClose(1006);
+      expectRetryAfter(4000);
+      ws.close();
+    });
+
+    it('jitters the longest backoff like any other', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+      ws.connect();
+      MockWebSocket.last.finishClose(1013);
+      expectRetryAfter(15_000); // 30000 * (1 - 0.5)
+      MockWebSocket.last.finishClose(1013, '10');
+      expectRetryAfter(10_000 + 1000); // + 4000 * (1 - 0.5)
+      ws.close();
+      vi.restoreAllMocks();
+    });
+
+    it("doesn't retry early when the browser comes back online or the tab becomes visible", () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+      ws.connect();
+      MockWebSocket.last.finishClose(1013, '3');
+      window.dispatchEvent(new Event('online'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      expectRetryAfter(3000 + 1000);
+      // An ordinary close is retried right away again.
+      MockWebSocket.last.finishClose(1006);
+      window.dispatchEvent(new Event('online'));
+      expect(MockWebSocket.instances).toHaveLength(3);
+      ws.close();
+    });
+
+    it('reconnect() still connects at once', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+      ws.connect();
+      MockWebSocket.last.finishClose(1013, '60');
+      ws.reconnect();
+      expect(MockWebSocket.instances).toHaveLength(2);
+      ws.close();
+    });
+
+    it('clamps a delay too long for setTimeout instead of retrying at once', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+      ws.connect();
+      MockWebSocket.last.finishClose(1013, '9999999999');
+      vi.advanceTimersByTime(60_000);
+      expect(MockWebSocket.instances).toHaveLength(1);
+      expectRetryAfter(2 ** 31 - 1 - 60_000);
+      ws.close();
+    });
+
+    it('reads other closes with a custom retryAfter, which replaces the default', () => {
+      const ws = createWebSocket('ws://x', {
+        WebSocket: MockImpl,
+        reconnect: {
+          ...noJitter,
+          retryAfter: close => (close.code === 4429 ? Number(close.reason) : undefined)
+        }
+      });
+      ws.connect();
+      MockWebSocket.last.finishClose(4429, '1500');
+      expectRetryAfter(1500 + 1000);
+      // The default no longer reads 1013's reason, but a 1013 still gets the longest backoff.
+      MockWebSocket.last.finishClose(1013, '5');
+      expectRetryAfter(30_000);
+      // Invalid delays are ignored.
+      MockWebSocket.last.finishClose(4429, 'soon');
+      expectRetryAfter(4000);
+      ws.close();
+    });
+
+    it('retryAfter() reads whole or fractional seconds from a 1013 reason', () => {
+      const close = (code: number, reason: string) => ({ code, reason, wasClean: true });
+      expect(retryAfter(close(1013, '30'))).toBe(30_000);
+      expect(retryAfter(close(1013, ' 0.5 '))).toBe(500);
+      expect(retryAfter(close(1013, '0'))).toBe(0);
+      expect(retryAfter(close(1013, ''))).toBeUndefined();
+      expect(retryAfter(close(1013, '-5'))).toBeUndefined();
+      expect(retryAfter(close(1013, '30s'))).toBeUndefined();
+      expect(retryAfter(close(1006, '30'))).toBeUndefined();
+    });
   });
 
   it('reconnect() replaces the socket immediately and reports the old close', () => {

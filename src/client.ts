@@ -25,6 +25,9 @@ const RECONNECT_DEFAULTS = {
 
 const QUEUE_LIMIT = 100;
 
+// The longest delay `setTimeout` takes; anything longer fires at once.
+const MAX_TIMEOUT = 2 ** 31 - 1;
+
 type Timer = ReturnType<typeof setTimeout> | undefined;
 
 /**
@@ -42,6 +45,25 @@ type Timer = ReturnType<typeof setTimeout> | undefined;
  */
 export function retryableClose(close: CloseInfo): boolean {
   return close.code !== 1002 && close.code !== 1003 && close.code !== 1008;
+}
+
+/**
+ * The default `reconnect.retryAfter`: for a `1013` (Try Again Later) close whose reason is a
+ * number of seconds, like an HTTP `Retry-After` header, that delay in ms. Call it from your own
+ * `retryAfter` to keep reading it.
+ *
+ * @example
+ * ```ts
+ * createWebSocket(url, {
+ *   // Our server also closes with 4429 and the delay in ms as the reason.
+ *   reconnect: { retryAfter: close => (close.code === 4429 ? Number(close.reason) : retryAfter(close)) }
+ * });
+ * ```
+ */
+export function retryAfter(close: CloseInfo): number | undefined {
+  return close.code === 1013 && /^\s*\d+(\.\d+)?\s*$/.test(close.reason)
+    ? Number(close.reason) * 1000
+    : undefined;
 }
 
 // How long a connection opened only by reading `ready` waits for a holder before closing.
@@ -167,6 +189,9 @@ function createClient<In = unknown, Out = unknown>(
   // open, it resets only once a connection stays up for `minUptime`, so a server that accepts
   // and then closes right away (e.g. rejecting the auth sent on open) still gets backed off.
   let failures = 0;
+  // The pending retry waits because the server asked it to (1013 or `retryAfter`), so coming
+  // back online or to the tab doesn't cut it short.
+  let serverWait = false;
   let retryTimer: Timer;
   let teardownTimer: Timer;
   let stableTimer: Timer;
@@ -206,7 +231,7 @@ function createClient<In = unknown, Out = unknown>(
   }
 
   function retryNow() {
-    if (retryTimer !== undefined) {
+    if (retryTimer !== undefined && !serverWait) {
       log('network or visibility change, retrying now');
       open();
     }
@@ -264,15 +289,17 @@ function createClient<In = unknown, Out = unknown>(
       : null;
   }
 
-  function backoff(attempt: number) {
+  /** The delay before attempt `n`; `slow` starts at `maxDelay`, for a server shedding load. */
+  function backoff(attempt: number, slow: boolean) {
     const { minDelay, maxDelay, factor, jitter } = retry!;
-    const base = Math.min(maxDelay, minDelay * factor ** (attempt - 1));
+    const base = slow ? maxDelay : Math.min(maxDelay, minDelay * factor ** (attempt - 1));
     return Math.round(base * (1 - jitter * Math.random()));
   }
 
   function open() {
     clearTimeout(retryTimer);
     retryTimer = undefined;
+    serverWait = false;
     const Impl = getImpl();
     if (!Impl) return;
     const id = ++generation;
@@ -365,7 +392,15 @@ function createClient<In = unknown, Out = unknown>(
       (retry.shouldReconnect ?? retryableClose)(info)
     ) {
       const attempt = ++failures;
-      const delay = backoff(attempt);
+      const asked = (retry.retryAfter ?? retryAfter)(info);
+      const named = asked! >= 0; // not for undefined, NaN or a negative delay
+      // A server that names a delay gets it, plus the usual backoff so clients told the same
+      // delay don't all return at once. An overloaded one (1013) gets the longest backoff.
+      const delay = Math.min(
+        MAX_TIMEOUT,
+        named ? asked! + backoff(attempt, false) : backoff(attempt, info.code === 1013)
+      );
+      serverWait = named || info.code === 1013;
       set({ status: 'reconnecting', attempt });
       log(`reconnecting in ${delay}ms (attempt ${attempt})`);
       retryTimer = setTimeout(open, delay);

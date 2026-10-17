@@ -116,10 +116,13 @@ Reconnect with exponential backoff after an unexpected close or a failed attempt
 | `jitter` | `number` | `1` | Randomly shave up to this fraction (0–1) off each delay |
 | `minUptime` | `number` | `5000` | How long a connection must stay open before the backoff resets, in ms. One that closes sooner counts as a failed attempt. `0` resets on every open |
 | `shouldReconnect` | `(close: CloseInfo) => boolean` | `retryableClose` | Return `false` to stop reconnecting after this close. The default retries every close except `1002`, `1003` and `1008` |
+| `retryAfter` | `(close: CloseInfo) => number \| undefined` | `retryAfter` | How long the server asked to wait before the next attempt, in ms, or `undefined`. The default reads a `1013` close whose reason is a number of seconds |
 
 The delay before attempt *n* is `min(maxDelay, minDelay × factor^(n−1))`, minus up to `jitter` of it at random. With the defaults, each delay is picked at random between 0 and 1 s, 2 s, 4 s, 8 s, … up to 30 s.
 
-While a retry is scheduled, the client also retries immediately when the browser fires `online` or the page becomes visible again.
+When `retryAfter` returns a delay, the client waits that long plus the usual delay. A `1013` (Try Again Later) close that names no delay starts the backoff at `maxDelay` instead. See [Overloaded servers](../guide/reconnecting.md#overloaded-servers-1013).
+
+While a retry is scheduled, the client also retries immediately when the browser fires `online` or the page becomes visible again, unless the server asked it to wait.
 
 A `shouldReconnect` of your own replaces the default. Call the exported `retryableClose` from it to keep the default rule:
 
