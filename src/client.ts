@@ -147,13 +147,9 @@ function createClient<In = unknown, Out = unknown>(
           ...RECONNECT_DEFAULTS,
           ...(typeof options.reconnect === 'object' ? options.reconnect : {})
         };
-  const queueLimit =
-    options.queue === false
-      ? 0
-      : Math.max(
-          0,
-          (typeof options.queue === 'object' ? options.queue.limit : undefined) ?? QUEUE_LIMIT
-        );
+  const queue = typeof options.queue === 'object' ? options.queue : {};
+  const queueLimit = options.queue === false ? 0 : Math.max(0, queue.limit ?? QUEUE_LIMIT);
+  const queueMaxAge = queue.maxAge ?? Infinity;
 
   let snapshot: Snapshot<In> = { status: 'idle', lastMessage: undefined, attempt: 0 };
   const storeListeners = new Set<() => void>();
@@ -179,6 +175,8 @@ function createClient<In = unknown, Out = unknown>(
     key: string | undefined;
     priority: boolean | undefined;
     onDrop: (() => void) | undefined;
+    // `Date.now()`, not `performance.now()`, which can stand still while the computer sleeps.
+    expires: number;
   }[] = [];
   let ready: Deferred | null = null;
   // Opened at least once since the client was last started. `ready` stays resolved through
@@ -416,7 +414,10 @@ function createClient<In = unknown, Out = unknown>(
       if (ws !== socket) return; // a listener closed or replaced it
       const queued = pending;
       pending = [];
-      for (const { data } of queued) socket.send(data);
+      const now = Date.now();
+      for (const entry of queued) if (entry.expires >= now) socket.send(entry.data);
+      // After the rest is sent, so an `onDrop` that sends again doesn't jump ahead of it.
+      for (const entry of queued) if (entry.expires < now) expired(entry);
     };
     socket.onmessage = event => receive(event, socket);
     socket.onerror = event => {
@@ -605,16 +606,25 @@ function createClient<In = unknown, Out = unknown>(
       log('dropped message: no WebSocket implementation available');
       return false;
     }
-    if (key !== undefined) {
-      pending = pending.filter(entry => {
-        if (entry.key !== key) return true;
-        dropped(entry);
-        return false;
-      });
+    const now = Date.now();
+    // Drop what's too old to send, and an older message with the same key. Their `onDrop`s run
+    // once the queue is updated, so one that sends again doesn't lose its message.
+    const before = pending;
+    pending = before.filter(
+      entry => entry.expires >= now && (key === undefined || entry.key !== key)
+    );
+    for (const entry of before) {
+      if (!pending.includes(entry)) (entry.expires < now ? expired : dropped)(entry);
     }
     let head = pending.findIndex(entry => !entry.priority);
     if (head < 0) head = pending.length;
-    const entry = { data, key, priority, onDrop: sendOptions.onDrop };
+    const entry = {
+      data,
+      key,
+      priority,
+      onDrop: sendOptions.onDrop,
+      expires: now + (sendOptions.maxAge ?? queueMaxAge)
+    };
     if (priority) pending.splice(head++, 0, entry);
     else pending.push(entry);
     if (pending.length > queueLimit) {
@@ -623,6 +633,11 @@ function createClient<In = unknown, Out = unknown>(
       log(`dropped oldest queued message: queue limit (${queueLimit}) reached`);
     }
     return false;
+  }
+
+  function expired(entry: (typeof pending)[number]) {
+    log('dropped queued message: older than maxAge');
+    dropped(entry);
   }
 
   function dropped(entry: (typeof pending)[number]) {

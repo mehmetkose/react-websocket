@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `queue.maxAge` and `send(message, { maxAge })` drop a queued message that has waited longer than that many ms
+  instead of sending it, calling its `onDrop`, so a "typing" indicator or a price quote queued during a long outage
+  isn't sent once the connection is back. A message's own `maxAge` overrides the queue's. It's checked when the socket
+  opens, before the queue is sent, and whenever another message is queued. A request from `createWebSocketRequests`
+  dropped this way rejects. See
+  [Expiring stale messages](https://mehmetkose.github.io/react-websocket/guide/reconnecting#expiring-stale-messages).
+
+### Fixed
+
+- A message sent from the `onDrop` of a queued message that a newer message with the same `key` replaced was lost.
+  `onDrop` now runs once the queue is updated.
+
 ## [4.3.0] - 2026-10-17
 
 ### Changed
@@ -274,6 +290,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.3.0...HEAD
 [4.3.0]: https://github.com/mehmetkose/react-websocket/compare/4.2.0...4.3.0
 [4.2.0]: https://github.com/mehmetkose/react-websocket/compare/4.1.0...4.2.0
 [4.1.0]: https://github.com/mehmetkose/react-websocket/compare/4.0.0...4.1.0

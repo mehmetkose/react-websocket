@@ -6,13 +6,6 @@ version or an opt-in first.
 
 ## Design fixes
 
-### Expire queued messages
-
-The queue holds 100 messages by default, but a message that waited through a long outage can still be stale when it
-goes out.
-
-- A per-message or per-queue `maxAge`. Messages dropped by age should call `onDrop`, like key and limit drops do.
-
 ### Create shared URL clients outside render
 
 Hooks with the same URL share one client, and its options come from whichever hook rendered first. A development
@@ -59,8 +52,8 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 ### Business
 
 - **Persistent offline outbox.** Keep the queue in IndexedDB with idempotency keys, so it survives reloads and
-  requests are safe to retry. For POS, field-service and warehouse apps on flaky Wi-Fi. Pairs with the queue
-  `maxAge` above.
+  requests are safe to retry. For POS, field-service and warehouse apps on flaky Wi-Fi. Pairs with
+  `queue.maxAge`.
 
 - **Presence and live cursors** (`createWebSocketPresence`). Per-peer temporary state that expires, throttled
   through keyed sends.

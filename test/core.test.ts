@@ -180,6 +180,72 @@ describe('sending', () => {
     expect(dropped).toEqual(['pos 1', 'pos 2']);
   });
 
+  describe('maxAge', () => {
+    it('drops queued messages older than queue.maxAge when the socket opens', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { maxAge: 1000 } });
+      const dropped: string[] = [];
+      ws.connect();
+      ws.send('stale', { onDrop: () => dropped.push('stale') });
+      vi.advanceTimersByTime(600);
+      ws.send('fresh', { onDrop: () => dropped.push('fresh') });
+      vi.advanceTimersByTime(600);
+      expect(dropped).toEqual([]);
+      MockWebSocket.last.open();
+      expect(MockWebSocket.last.sent).toEqual(['fresh']);
+      expect(dropped).toEqual(['stale']);
+    });
+
+    it("lets a message's own maxAge override the queue's", () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { maxAge: 1000 } });
+      ws.connect();
+      ws.send('patient', { maxAge: 5000 });
+      ws.send('urgent', { maxAge: 100 });
+      ws.send('default');
+      vi.advanceTimersByTime(500);
+      MockWebSocket.last.open();
+      expect(MockWebSocket.last.sent).toEqual(['patient', 'default']);
+    });
+
+    it('applies a per-message maxAge with no queue maxAge, and keeps the rest forever', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+      ws.connect();
+      ws.send('typing', { maxAge: 1000 });
+      ws.send('message');
+      vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+      MockWebSocket.last.open();
+      expect(MockWebSocket.last.sent).toEqual(['message']);
+    });
+
+    it('drops expired messages when another one is queued', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { maxAge: 1000 } });
+      const onDrop = vi.fn();
+      ws.connect();
+      ws.send('stale', { onDrop, priority: true });
+      vi.advanceTimersByTime(1001);
+      ws.send('next');
+      expect(onDrop).toHaveBeenCalledOnce();
+    });
+
+    it('sends the fresh messages before calling onDrop for the stale ones', () => {
+      const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+      ws.connect();
+      ws.send('stale', { maxAge: 100, onDrop: () => ws.send('resent') });
+      ws.send('fresh');
+      vi.advanceTimersByTime(200);
+      MockWebSocket.last.open();
+      expect(MockWebSocket.last.sent).toEqual(['fresh', 'resent']);
+    });
+  });
+
+  it('keeps a message that onDrop sends while a newer keyed message replaces one', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    ws.send('pos 1', { key: 'pos', onDrop: () => ws.send('replaced') });
+    ws.send('pos 2', { key: 'pos' });
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['replaced', 'pos 2']);
+  });
+
   it('drops a send with maxBuffered while the send buffer is above it', () => {
     const logger = vi.fn();
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, logger });

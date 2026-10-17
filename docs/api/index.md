@@ -73,7 +73,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`SendOptions`](./types.md#sendoptions) | `{ volatile?, key?, priority?, maxBuffered?, onDrop? }` for `send()` |
 | [`ReconnectOptions`](./options.md#reconnect) | Backoff settings |
 | [`HeartbeatOptions`](./options.md#heartbeat) | Keep-alive settings |
-| [`QueueOptions`](./options.md#queue) | Send queue limit |
+| [`QueueOptions`](./options.md#queue) | Send queue limit and maximum age |
 | [`WebSocketTopics`](./create-websocket-topics.md#returns) | The topic manager from `createWebSocketTopics` |
 | [`WebSocketTopicsOptions`](./create-websocket-topics.md#parameters) | `{ subscribe, unsubscribe? }` |
 | [`WebSocketState`](./create-websocket-state.md#returns) | The store from `createWebSocketState` |

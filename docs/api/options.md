@@ -167,15 +167,18 @@ Buffer `send()` calls made while not connected, and send them in order when the 
 | --- | --- |
 | `true` (default) | Queue at most 100 messages, like `{ limit: 100 }` |
 | `{ limit: n }` | Queue at most `n` messages. When full, the oldest is dropped (and logged), skipping `priority` messages unless nothing else is queued. `Infinity` keeps every message |
+| `{ maxAge: ms }` | Drop a queued message that has waited longer than `ms` instead of sending it, calling its `onDrop`. Checked when the socket opens and whenever another message is queued. A message's own `maxAge` overrides it. Default `Infinity` |
 | `false` | Don't queue. `send()` while not open drops the message and returns `false` |
 
-To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `send()`: `{ volatile: true }` drops one message, `{ key }` keeps only the newest queued message per key, and `{ priority: true }` queues a message ahead of the others.
+To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `send()`: `{ volatile: true }` drops one message, `{ key }` keeps only the newest queued message per key, and `{ priority: true }` queues a message ahead of the others, and `{ maxAge }` drops one that waited too long.
 
 Queued messages are sent right after `open` listeners run, so a handshake sent from `onOpen` goes out first. See [First-message auth](../guide/authentication.md#first-message-auth). The queue is cleared by `close()` and when the client gives up reconnecting.
 
 ```ts
-{ queue: { limit: 500 } }
+{ queue: { limit: 500, maxAge: 60_000 } }
 ```
+
+See [Expiring stale messages](../guide/reconnecting.md#expiring-stale-messages).
 
 ## Debugging
 

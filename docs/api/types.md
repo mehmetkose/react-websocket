@@ -135,6 +135,8 @@ interface SendOptions {
   priority?: boolean;
   /** While open, drop the message if more than this many bytes are already buffered. */
   maxBuffered?: number;
+  /** Drop the message instead of sending it once it has been queued this many ms. */
+  maxAge?: number;
   /** Called if the message is dropped from the queue without being sent. */
   onDrop?: () => void;
 }
@@ -146,9 +148,10 @@ interface SendOptions {
 | `key` | While not open, replace any queued message with the same key. The new one moves to the back of the queue (or of the priority messages, for a priority one). For state where only the latest value matters, such as an aim angle or a cursor position |
 | `priority` | While not open, queue the message ahead of every message queued without `priority`, after earlier priority messages. Messages sent from `open` listeners still go first. For control messages that must not wait behind a backlog: cancel, interrupt, a token refresh |
 | `maxBuffered` | While open, drop the message and return `false` if more than this many bytes are already waiting in the browser's send buffer (`socket.bufferedAmount`). For high-rate streams on a slow link, where a late message is worse than none |
-| `onDrop` | Called if the queued message is dropped without being sent: replaced by a newer message with the same `key`, or evicted by [`queue.limit`](./options.md#queue). Not called when the queue is cleared because the client closed or gave up, or when `send()` drops the message right away and returns `false` |
+| `maxAge` | Drop the queued message instead of sending it once it has waited this many ms, for messages that go stale during an outage. Overrides [`queue.maxAge`](./options.md#queue). Checked when the socket opens and whenever another message is queued |
+| `onDrop` | Called if the queued message is dropped without being sent: replaced by a newer message with the same `key`, evicted by [`queue.limit`](./options.md#queue), or older than `maxAge`. Not called when the queue is cleared because the client closed or gave up, or when `send()` drops the message right away and returns `false` |
 
-`volatile`, `key` and `priority` only matter while the socket isn't open, and `maxBuffered` only while it is. Once a message is handed to the browser, nothing can overtake it, so `priority` can't jump ahead of data already sent. Keep that buffer short by sending bulky streams with `maxBuffered`.
+`volatile`, `key`, `priority` and `maxAge` only matter while the socket isn't open, and `maxBuffered` only while it is. Once a message is handed to the browser, nothing can overtake it, so `priority` can't jump ahead of data already sent. Keep that buffer short by sending bulky streams with `maxBuffered`.
 
 ```ts
 game.send({ type: 'input', dx, dy }, { volatile: true, maxBuffered: 4096 });
