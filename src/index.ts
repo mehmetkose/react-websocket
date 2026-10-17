@@ -3,6 +3,7 @@ export {
   useAgentApproval,
   useAgentRun,
   useAgUiAgent,
+  useInView,
   useWebSocket,
   useWebSocketEvent,
   useWebSocketLatency,
