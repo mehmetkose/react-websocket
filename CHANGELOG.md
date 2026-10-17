@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.15.0] - 2026-10-17
 
 ### Added
 
@@ -428,7 +428,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.14.0...HEAD
+[4.15.0]: https://github.com/mehmetkose/react-websocket/compare/4.14.0...4.15.0
 [4.14.0]: https://github.com/mehmetkose/react-websocket/compare/4.13.0...4.14.0
 [4.13.0]: https://github.com/mehmetkose/react-websocket/compare/4.12.0...4.13.0
 [4.12.0]: https://github.com/mehmetkose/react-websocket/compare/4.11.0...4.12.0
