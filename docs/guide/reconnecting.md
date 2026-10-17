@@ -156,6 +156,10 @@ const live = createWebSocket('wss://api.example.com/live', {
 
 The heartbeat requires your server to answer pings with some data. Browsers can't send protocol-level ping frames, so this is an application-level ping.
 
+::: tip Try it
+A dead connection is hard to produce on purpose. [`Chaos.stall()`](./chaos.md#trigger-faults-on-demand) makes one in development: the socket stays open but goes silent, so you can watch your `timeout` catch it.
+:::
+
 ## The send queue
 
 `send()` works in any state. While the socket isn't open, messages are queued and sent in order as soon as it opens, including after a reconnect:
@@ -203,4 +207,5 @@ createWebSocket(url, { logger: console.debug });
 
 - Options: [`reconnect`](../api/options.md#reconnect), [`heartbeat`](../api/options.md#heartbeat), [`queue`](../api/options.md#queue), [`logger`](../api/options.md#logger)
 - [Authentication](./authentication.md): fresh tokens on every reconnect
+- [Chaos testing](./chaos.md): drop, stall and delay connections in development
 - [Troubleshooting](../troubleshooting.md)

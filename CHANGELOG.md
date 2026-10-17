@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `react-websocket/chaos`, a new entry point for development. `createChaosWebSocket(options)` returns a `WebSocket`
+  class to pass as the `WebSocket` option. It adds `latency`, lost (`loss`) and `corrupt` messages, and `refuse`d,
+  `drop`ped and `stall`ed (half-open) connections, with a `seed` for repeatable runs. Its static `drop()`, `stall()`,
+  `inject(data)` and `configure(faults)` trigger faults on demand, from a dev panel, the console or a test. See the
+  [Chaos testing](https://mehmetkose.github.io/react-websocket/guide/chaos) guide.
 - A [Hono example](https://github.com/mehmetkose/react-websocket/tree/main/examples/hono): a chat room with
   presence, with a Hono server on Node.js and a Vite + React client that share their message types.
 - An [Astro demo](https://github.com/mehmetkose/react-websocket/tree/main/examples/astro) of every feature,

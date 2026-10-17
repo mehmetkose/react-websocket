@@ -64,11 +64,13 @@ src/
   core.ts      The react-websocket/core entry (no React)
   react.ts     The hooks and the URL-keyed registry of shared clients
   index.ts     The main entry (core + hooks), built with a 'use client' banner
+  chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
   react.test.tsx   The hooks (jsdom)
   ssr.test.tsx     Server rendering (Node environment)
+  chaos.test.ts    The chaos WebSocket, alone and with the client
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

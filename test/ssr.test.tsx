@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { renderToString } from 'react-dom/server';
+import { createChaosWebSocket } from '../src/chaos';
 import {
   createWebSocket,
   createWebSocketResponder,
@@ -34,6 +35,19 @@ it('drops sends on the server instead of queueing them forever', () => {
 
 it('rejects ready on the server', async () => {
   const chat = createWebSocket('ws://example.test/chat');
+  await expect(chat.ready).rejects.toThrow('server render');
+});
+
+it("doesn't wrap Node's global WebSocket with chaos", async () => {
+  const Chaos = createChaosWebSocket({ latency: 100 });
+  expect(() => new Chaos('ws://example.test/chaos')).toThrow('server render');
+
+  const chat = createWebSocket('ws://example.test/chat', { WebSocket: Chaos });
+  const onError = vi.fn();
+  chat.on('error', onError);
+  chat.connect();
+  expect(chat.getSnapshot().status).toBe('closed');
+  expect(onError).toHaveBeenCalled();
   await expect(chat.ready).rejects.toThrow('server render');
 });
 

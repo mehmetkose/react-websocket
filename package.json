@@ -27,6 +27,16 @@
         "default": "./dist/core.cjs"
       }
     },
+    "./chaos": {
+      "import": {
+        "types": "./dist/chaos.d.ts",
+        "default": "./dist/chaos.js"
+      },
+      "require": {
+        "types": "./dist/chaos.d.cts",
+        "default": "./dist/chaos.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -153,6 +163,13 @@
         "react"
       ],
       "limit": "1.2 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/chaos (createChaosWebSocket)",
+      "path": "dist/chaos.js",
+      "import": "{ createChaosWebSocket }",
+      "limit": "2.1 kB",
       "gzip": true
     }
   ],

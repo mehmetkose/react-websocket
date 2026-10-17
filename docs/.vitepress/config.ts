@@ -59,6 +59,7 @@ export default defineConfig({
           { text: 'Authentication', link: '/guide/authentication' },
           { text: 'Performance', link: '/guide/performance' },
           { text: 'Testing', link: '/guide/testing' },
+          { text: 'Chaos testing', link: '/guide/chaos' },
           { text: 'Without React', link: '/guide/without-react' }
         ]
       },
@@ -79,6 +80,7 @@ export default defineConfig({
           { text: 'createWebSocketRequests', link: '/api/create-websocket-requests' },
           { text: 'createWebSocketLatency', link: '/api/create-websocket-latency' },
           { text: 'createWebSocketResponder', link: '/api/create-websocket-responder' },
+          { text: 'createChaosWebSocket', link: '/api/chaos' },
           { text: 'Options', link: '/api/options' },
           { text: 'Types', link: '/api/types' }
         ]
