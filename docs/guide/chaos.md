@@ -173,6 +173,10 @@ Without faults, the chaos class passes everything through synchronously, so `Moc
 - **No bandwidth limit.** Latency is added per message, whatever its size.
 - **No hung handshake.** A connection attempt either opens (after `latency`) or is refused.
 
+## On a recording
+
+Chaos wraps any `WebSocket` class, including a [replay](./replay.md): `createChaosWebSocket({ WebSocket: Replay })` adds faults that never happened in the recorded session.
+
 ## See also
 
 - [`createChaosWebSocket`](../api/chaos.md): every option and method

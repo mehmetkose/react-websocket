@@ -17,10 +17,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 ### Tooling
 
 - **Devtools overlay.** Shows sockets, topics, the queue and RTT.
-- **Session recording and replay.** Record timestamped message logs to a file and replay them through a mock
-  `WebSocket` at real speed, sped up, or with injected failures (through `react-websocket/chaos`). That gives
-  reproducible bug reports ("attach your recording"), offline demos, and deterministic AI UI tests that don't
-  call a model on every CI run.
 
 ### Protocol adapters
 

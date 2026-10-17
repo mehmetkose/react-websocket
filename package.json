@@ -37,6 +37,16 @@
         "default": "./dist/chaos.cjs"
       }
     },
+    "./replay": {
+      "import": {
+        "types": "./dist/replay.d.ts",
+        "default": "./dist/replay.js"
+      },
+      "require": {
+        "types": "./dist/replay.d.cts",
+        "default": "./dist/replay.cjs"
+      }
+    },
     "./tabs": {
       "import": {
         "types": "./dist/tabs.d.ts",
@@ -263,6 +273,13 @@
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",
       "limit": "2.1 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/replay (recording and replay)",
+      "path": "dist/replay.js",
+      "import": "{ createRecordingWebSocket, createReplayWebSocket }",
+      "limit": "1.8 kB",
       "gzip": true
     },
     {
