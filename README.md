@@ -1,6 +1,6 @@
 # react-websocket
 
-**Hooks-first WebSocket client for React 18 and 19.** Shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 2.5 kB with zero dependencies.
+**Hooks-first WebSocket client for React 18 and 19.** Shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 3 kB (min+gzip) with zero dependencies.
 
 [![npm](https://img.shields.io/npm/v/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
 [![CI](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml)

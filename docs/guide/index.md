@@ -14,7 +14,7 @@ The browser's `WebSocket` is a low-level object. Using it well in React takes a 
 - **Types.** `event.data` is `any`. Production code needs parsing and validation.
 - **Server rendering.** Node has a global `WebSocket` too, so a careless hook opens connections from your server.
 
-react-websocket handles all of this in about 2.5 kB.
+react-websocket handles all of this in about 3 kB min+gzip.
 
 ## How it works
 

@@ -53,7 +53,7 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`EventMap`](./types.md#eventmap) | Events and listener signatures |
 | [`UrlSource`](./types.md#urlsource) | A URL string or a function returning one |
 | [`SendData`](./types.md#senddata) | What `WebSocket.send` accepts |
-| [`SendOptions`](./types.md#sendoptions) | `{ volatile?, key? }` for `send()` |
+| [`SendOptions`](./types.md#sendoptions) | `{ volatile?, key?, onDrop? }` for `send()` |
 | [`ReconnectOptions`](./options.md#reconnect) | Backoff settings |
 | [`HeartbeatOptions`](./options.md#heartbeat) | Keep-alive settings |
 | [`QueueOptions`](./options.md#queue) | Send queue limit |

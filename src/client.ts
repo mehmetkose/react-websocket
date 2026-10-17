@@ -24,6 +24,10 @@ const RECONNECT_DEFAULTS = {
 
 type Timer = ReturnType<typeof setTimeout> | undefined;
 
+// How long a connection opened only by reading `ready` waits for a holder before closing.
+// Long enough for React to retry a suspended render and commit its hooks.
+const READY_GRACE = 5000;
+
 // React's `use()` reads `status`/`value`/`reason` off a thenable to skip suspending
 // when it is already settled.
 type TrackedPromise = Promise<void> & {
@@ -121,7 +125,7 @@ function createClient<In = unknown, Out = unknown>(
   let refs = 0;
   // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
   let pinned = false;
-  let pending: { data: SendData; key: string | undefined }[] = [];
+  let pending: { data: SendData; key: string | undefined; onDrop: (() => void) | undefined }[] = [];
   let ready: Deferred | null = null;
   // Opened at least once since the client was last started. `ready` stays resolved through
   // automatic reconnects so `use(client.ready)` doesn't swap content for a fallback on every blip.
@@ -139,7 +143,13 @@ function createClient<In = unknown, Out = unknown>(
 
   function set(patch: Partial<Snapshot<In>>) {
     snapshot = { ...snapshot, ...patch };
-    for (const listener of [...storeListeners]) listener();
+    for (const listener of [...storeListeners]) {
+      try {
+        listener();
+      } catch (error) {
+        rethrowAsync(error);
+      }
+    }
   }
 
   function emit<K extends keyof EventMap<In>>(type: K, ...args: Parameters<EventMap<In>[K]>) {
@@ -283,6 +293,12 @@ function createClient<In = unknown, Out = unknown>(
       set({ status: 'open', attempt: 0 });
       startHeartbeat(socket);
       ready?.resolve();
+      // Nobody holds it (it was started by reading `ready`, or the last holder left while
+      // connecting): close it unless a holder turns up soon.
+      if (refs === 0 && !pinned) {
+        clearTimeout(teardownTimer);
+        teardownTimer = setTimeout(teardown, READY_GRACE);
+      }
       // `open` listeners go first, so a handshake sent from `onOpen` (e.g. auth) precedes
       // whatever was queued while disconnected.
       emit('open', event);
@@ -343,15 +359,19 @@ function createClient<In = unknown, Out = unknown>(
     // Async schema validation must not reorder messages.
     const run = () => decode(event, socket);
     if (inbox) {
-      const next: Promise<void> = inbox.then(run).then(() => {
-        if (inbox === next) inbox = null;
-      });
+      // One failed delivery must not stop the chain, or every later message is dropped.
+      const next: Promise<void> = inbox
+        .then(run)
+        .catch(rethrowAsync)
+        .then(() => {
+          if (inbox === next) inbox = null;
+        });
       inbox = next;
       return;
     }
     const result = run();
     if (result) {
-      const next: Promise<void> = result.then(() => {
+      const next: Promise<void> = result.catch(rethrowAsync).then(() => {
         if (inbox === next) inbox = null;
       });
       inbox = next;
@@ -427,13 +447,27 @@ function createClient<In = unknown, Out = unknown>(
       return false;
     }
     const key = sendOptions?.key;
-    if (key !== undefined) pending = pending.filter(entry => entry.key !== key);
-    pending.push({ data, key });
+    if (key !== undefined) {
+      pending = pending.filter(entry => {
+        if (entry.key !== key) return true;
+        dropped(entry);
+        return false;
+      });
+    }
+    pending.push({ data, key, onDrop: sendOptions?.onDrop });
     if (pending.length > queueLimit) {
-      pending.shift();
+      dropped(pending.shift()!);
       log(`dropped oldest queued message: queue limit (${queueLimit}) reached`);
     }
     return false;
+  }
+
+  function dropped(entry: (typeof pending)[number]) {
+    try {
+      entry.onDrop?.();
+    } catch (error) {
+      rethrowAsync(error);
+    }
   }
 
   function begin() {

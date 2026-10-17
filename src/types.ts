@@ -121,6 +121,12 @@ export interface SendOptions {
    * For state where only the latest value matters, such as "my position is now (x, y)".
    */
   key?: string;
+  /**
+   * Called if the message is dropped from the queue without being sent: replaced by a
+   * newer message with the same `key`, or evicted by `queue.limit`. Not called when the
+   * queue is cleared because the client closed or gave up.
+   */
+  onDrop?: () => void;
 }
 
 /** Bounds for the send queue. */

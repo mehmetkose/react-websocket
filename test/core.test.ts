@@ -139,6 +139,23 @@ describe('sending', () => {
     expect(MockWebSocket.last.sent).toEqual(['a', 'pos 2']);
   });
 
+  it('calls onDrop for a message replaced by key or evicted by queue.limit', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, queue: { limit: 2 } });
+    ws.connect();
+    const dropped: string[] = [];
+    const send = (data: string, key?: string) =>
+      ws.send(data, { key, onDrop: () => dropped.push(data) });
+    send('pos 1', 'pos');
+    send('pos 2', 'pos');
+    expect(dropped).toEqual(['pos 1']);
+    send('a');
+    send('b');
+    expect(dropped).toEqual(['pos 1', 'pos 2']);
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['a', 'b']);
+    expect(dropped).toEqual(['pos 1', 'pos 2']);
+  });
+
   it('serializes with json or a custom serializer', () => {
     const json = createWebSocket<unknown, { n: number }>('ws://x', {
       WebSocket: MockImpl,
@@ -234,6 +251,39 @@ describe('receiving', () => {
     MockWebSocket.last.receive('3');
     await vi.runAllTimersAsync();
     expect(received).toEqual(['1', '2', '3']);
+  });
+
+  it('keeps delivering after a listener throws with an async schema', async () => {
+    const thrown: unknown[] = [];
+    vi.spyOn(globalThis, 'queueMicrotask').mockImplementation(callback => {
+      try {
+        callback();
+      } catch (error) {
+        thrown.push(error);
+      }
+    });
+    const schema: StandardSchemaV1<unknown, string> = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: v => Promise.resolve({ value: v as string })
+      }
+    };
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, schema });
+    const received: string[] = [];
+    ws.on('message', m => received.push(m));
+    ws.subscribe(() => {
+      if (ws.getSnapshot().lastMessage === '1') throw new Error('listener failed');
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.receive('1');
+    MockWebSocket.last.receive('2');
+    MockWebSocket.last.receive('3');
+    await vi.runAllTimersAsync();
+    vi.restoreAllMocks();
+    expect(received).toEqual(['1', '2', '3']);
+    expect(thrown).toEqual([new Error('listener failed')]);
   });
 });
 
@@ -508,6 +558,40 @@ describe('acquire()', () => {
     release();
     vi.runAllTimers();
     expect(ws.getSnapshot().status).toBe('connecting');
+  });
+
+  it('closes a connection nobody holds a few seconds after ready resolves', async () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    void ws.ready; // e.g. a Suspense render that was then abandoned
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(4999);
+    expect(ws.getSnapshot().status).toBe('open');
+    vi.advanceTimersByTime(1);
+    expect(ws.getSnapshot().status).toBe('idle');
+    expect(MockWebSocket.last.closedWith).toBeDefined();
+  });
+
+  it('closes after ready resolves when the last holder left while connecting', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    const release = ws.acquire();
+    void ws.ready;
+    release();
+    vi.runAllTimers();
+    MockWebSocket.last.open();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('idle');
+  });
+
+  it('keeps a ready-opened connection when a holder arrives within the grace period', async () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(1000); // React retries the suspended render and commits
+    ws.acquire();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('open');
   });
 
   it('keeps a connect()ed client open after the last release, until close()', () => {

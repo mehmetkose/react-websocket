@@ -60,7 +60,7 @@ A client is lazy. Creating one opens nothing. It connects when:
 2. `client.ready` is read, or
 3. `client.connect()` is called.
 
-It closes **one tick after the last hook unmounts** (or the last `acquire()` is released), and its status returns to `'idle'`. Calling `connect()` opts out of that: the client then stays connected, reconnecting as needed, until you call `close()`.
+It closes **one tick after the last hook unmounts** (or the last `acquire()` is released), and its status returns to `'idle'`. A connection started by reading `ready` that nothing holds closes a few seconds after it opens. Calling `connect()` opts out of that: the client then stays connected, reconnecting as needed, until you call `close()`.
 
 | From | Event | To |
 | --- | --- | --- |

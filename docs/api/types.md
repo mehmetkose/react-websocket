@@ -124,6 +124,8 @@ interface SendOptions {
   volatile?: boolean;
   /** Keep only the newest queued message with this key. */
   key?: string;
+  /** Called if the message is dropped from the queue without being sent. */
+  onDrop?: () => void;
 }
 ```
 
@@ -131,8 +133,9 @@ interface SendOptions {
 | --- | --- |
 | `volatile` | While not open, drop the message and return `false` instead of queueing it. For data that's stale by the time a reconnect finishes, such as player input |
 | `key` | While not open, replace any queued message with the same key. The new one moves to the back of the queue. For state where only the latest value matters, such as an aim angle or a cursor position |
+| `onDrop` | Called if the queued message is dropped without being sent: replaced by a newer message with the same `key`, or evicted by [`queue.limit`](./options.md#queue). Not called when the queue is cleared because the client closed or gave up |
 
-Both only matter while the socket isn't open. When it's open, the message is sent right away either way.
+All three only matter while the socket isn't open. When it's open, the message is sent right away either way.
 
 ```ts
 game.send({ type: 'input', dx, dy }, { volatile: true });
