@@ -4,6 +4,7 @@ import {
   type EventMap,
   type ReconnectOptions,
   type SendData,
+  type MigrateOptions,
   type SendOptions,
   type Snapshot,
   type StandardSchemaResult,
@@ -48,9 +49,9 @@ export function retryableClose(close: CloseInfo): boolean {
 }
 
 /**
- * The default `reconnect.retryAfter`: for a `1013` (Try Again Later) close whose reason is a
- * number of seconds, like an HTTP `Retry-After` header, that delay in ms. Call it from your own
- * `retryAfter` to keep reading it.
+ * The default `reconnect.retryAfter`: for a `1012` (Service Restart) or `1013` (Try Again Later)
+ * close whose reason is a number of seconds, like an HTTP `Retry-After` header, that delay in ms.
+ * Call it from your own `retryAfter` to keep reading it.
  *
  * @example
  * ```ts
@@ -61,7 +62,7 @@ export function retryableClose(close: CloseInfo): boolean {
  * ```
  */
 export function retryAfter(close: CloseInfo): number | undefined {
-  return close.code === 1013 && /^\s*\d+(\.\d+)?\s*$/.test(close.reason)
+  return (close.code === 1012 || close.code === 1013) && /^\s*\d+(\.\d+)?\s*$/.test(close.reason)
     ? Number(close.reason) * 1000
     : undefined;
 }
@@ -164,6 +165,10 @@ function createClient<In = unknown, Out = unknown>(
   };
 
   let ws: WebSocket | null = null;
+  // The new connection of a `migrate()`, until it opens and replaces `ws`.
+  let incoming: WebSocket | null = null;
+  // Where `migrate()` moved the client, used instead of `url` until it stops.
+  let moved: UrlSource | undefined;
   let wanted = false;
   let refs = 0;
   // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
@@ -193,6 +198,7 @@ function createClient<In = unknown, Out = unknown>(
   // back online or to the tab doesn't cut it short.
   let serverWait = false;
   let retryTimer: Timer;
+  let migrateTimer: Timer;
   let teardownTimer: Timer;
   let stableTimer: Timer;
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
@@ -296,59 +302,94 @@ function createClient<In = unknown, Out = unknown>(
     return Math.round(base * (1 - jitter * Math.random()));
   }
 
-  function open() {
-    clearTimeout(retryTimer);
-    retryTimer = undefined;
-    serverWait = false;
+  /** Stop a `migrate()` that hasn't switched yet. */
+  function dropIncoming() {
+    if (incoming) {
+      detach(incoming, false);
+      incoming.close();
+      incoming = null;
+    }
+  }
+
+  /**
+   * Start a connection attempt. A `handoff` (from `migrate()`) opens beside the current
+   * connection, which keeps working until the new one opens.
+   */
+  function open(handoff?: boolean) {
+    if (!handoff) {
+      clearTimeout(retryTimer);
+      retryTimer = undefined;
+      serverWait = false;
+      dropIncoming();
+    }
     const Impl = getImpl();
     if (!Impl) return;
     const id = ++generation;
-    set({ status: snapshot.attempt === 0 ? 'connecting' : 'reconnecting' });
+    if (!handoff) set({ status: snapshot.attempt === 0 ? 'connecting' : 'reconnecting' });
 
+    const source = moved ?? url;
     let target: string | Promise<string>;
     try {
-      target = typeof url === 'string' ? url : url();
+      target = typeof source === 'string' ? source : source();
     } catch (error) {
-      urlFailed(error);
+      urlFailed(error, handoff);
       return;
     }
     if (typeof target === 'string') {
-      start(Impl, target);
+      start(Impl, target, handoff);
       return;
     }
     Promise.resolve(target).then(
       resolved => {
-        if (id === generation && wanted) start(Impl, resolved);
+        if (id === generation && wanted) start(Impl, resolved, handoff);
       },
       error => {
-        if (id === generation && wanted) urlFailed(error);
+        if (id === generation && wanted) urlFailed(error, handoff);
       }
     );
   }
 
-  /** `url()` threw or rejected (e.g. a token refresh failed): count it as a failed attempt. */
-  function urlFailed(error: unknown) {
+  /**
+   * `url()` threw or rejected (e.g. a token refresh failed): count it as a failed attempt,
+   * unless it was for a handoff, which leaves the current connection in place.
+   */
+  function urlFailed(error: unknown, handoff?: boolean) {
     const reason = error instanceof Error ? error : new Error(String(error));
     log('url() failed', reason);
     emit('error', reason);
-    retryOrFail({ code: 1006, reason: 'url() failed', wasClean: false }, reason);
+    if (!handoff) retryOrFail({ code: 1006, reason: 'url() failed', wasClean: false }, reason);
   }
 
-  function start(Impl: typeof WebSocket, target: string) {
+  function start(Impl: typeof WebSocket, target: string, handoff?: boolean) {
     let socket: WebSocket;
     try {
       socket = new Impl(target, options.protocols);
     } catch (error) {
       // e.g. an invalid URL; retrying won't help.
       emit('error', error as Error);
-      fail(error);
+      if (!handoff) fail(error);
       return;
     }
     if (options.binaryType) socket.binaryType = options.binaryType;
-    ws = socket;
+    if (handoff) incoming = socket;
+    else ws = socket;
     log('connecting', target);
 
     socket.onopen = event => {
+      if (handoff) {
+        // The switch: the new connection takes over, then the old one closes. If the old one
+        // dropped meanwhile, this one replaces the pending retry.
+        incoming = null;
+        clearTimeout(retryTimer);
+        retryTimer = undefined;
+        stopSocketTimers();
+        if (ws) {
+          const old = ws;
+          detach(old, true);
+          old.close(1000, 'migrated');
+        }
+        ws = socket;
+      }
       log('open');
       opened = true;
       set({ status: 'open', attempt: 0 });
@@ -370,8 +411,16 @@ function createClient<In = unknown, Out = unknown>(
       for (const { data } of queued) socket.send(data);
     };
     socket.onmessage = event => receive(event, socket);
-    socket.onerror = event => emit('error', event);
+    socket.onerror = event => {
+      if (ws === socket) emit('error', event);
+    };
     socket.onclose = event => {
+      if (ws !== socket) {
+        // A handoff that never opened: the current connection stays.
+        incoming = null;
+        log('migrate() failed', event.code);
+        return;
+      }
       detach(socket, false);
       handleClose({ code: event.code, reason: event.reason, wasClean: event.wasClean });
     };
@@ -412,10 +461,35 @@ function createClient<In = unknown, Out = unknown>(
     }
   }
 
+  /** Forget `migrate()`: its timer, its connection and the URL it moved to. */
+  function stopMigrating() {
+    clearTimeout(migrateTimer);
+    migrateTimer = undefined;
+    dropIncoming();
+    moved = undefined;
+  }
+
+  function migrate({ url: to, within }: MigrateOptions = {}) {
+    clearTimeout(migrateTimer);
+    dropIncoming();
+    migrateTimer = setTimeout(
+      () => {
+        migrateTimer = undefined;
+        if (!wanted) return;
+        if (to !== undefined) moved = to;
+        // Not connected: the next attempt goes to the new URL.
+        if (snapshot.status === 'open') open(true);
+      },
+      // Each client picks its own moment, so a server's request doesn't move everyone at once.
+      Math.min(MAX_TIMEOUT, Math.random() * (within ?? 0))
+    );
+  }
+
   function fail(reason: unknown) {
     wanted = false;
     opened = false;
     unbindWindow();
+    stopMigrating();
     pending = [];
     // `failures`, not 0: a connection that kept closing right after open was still failing.
     set({ status: 'closed', attempt: failures });
@@ -583,6 +657,7 @@ function createClient<In = unknown, Out = unknown>(
     failures = 0;
     stopSocketTimers();
     unbindWindow();
+    stopMigrating();
     pending = [];
     if (ws) {
       const socket = ws;
@@ -687,6 +762,7 @@ function createClient<In = unknown, Out = unknown>(
     connect,
     close,
     reconnect,
+    migrate,
     acquire
   };
 }

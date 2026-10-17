@@ -720,6 +720,206 @@ describe('reconnecting', () => {
   });
 });
 
+describe('migrate()', () => {
+  function connected(options: Parameters<typeof createWebSocket>[1] = {}) {
+    const ws = createWebSocket('ws://a', { WebSocket: MockImpl, reconnect: noJitter, ...options });
+    ws.connect();
+    MockWebSocket.last.open();
+    return { ws, first: MockWebSocket.last };
+  }
+
+  it('opens the new connection before closing the old one', () => {
+    const { ws, first } = connected();
+    const onOpen = vi.fn();
+    const onClose = vi.fn();
+    const statuses: string[] = [];
+    ws.on('open', onOpen);
+    ws.on('close', onClose);
+    ws.subscribe(() => statuses.push(ws.getSnapshot().status));
+
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    const second = MockWebSocket.last;
+    expect(second.url).toBe('ws://a');
+    // The old connection keeps working until the new one opens.
+    expect(ws.socket).toBe(first);
+    expect(ws.send('during')).toBe(true);
+    expect(first.sent).toEqual(['during']);
+
+    second.open();
+    expect(first.closedWith).toEqual({ code: 1000, reason: 'migrated' });
+    expect(ws.socket).toBe(second);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(ws.send('after')).toBe(true);
+    expect(second.sent).toEqual(['after']);
+    expect(statuses.every(status => status === 'open')).toBe(true);
+    expect(ws.getSnapshot()).toMatchObject({ status: 'open', attempt: 0 });
+
+    // The old connection's close is reported, and doesn't reconnect.
+    first.finishClose(1000, 'migrated');
+    expect(onClose).toHaveBeenCalledWith({ code: 1000, reason: 'migrated', wasClean: true });
+    vi.advanceTimersByTime(60_000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(ws.getSnapshot().status).toBe('open');
+    ws.close();
+  });
+
+  it('runs open listeners on the new connection first, so handshakes move with it', () => {
+    const { ws } = connected();
+    ws.on('open', () => ws.send('auth'));
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual(['auth']);
+    ws.close();
+  });
+
+  it('moves at a random moment within `within`', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.25);
+    const { ws } = connected();
+    ws.migrate({ within: 10_000 });
+    vi.advanceTimersByTime(2499);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    ws.close();
+    vi.restoreAllMocks();
+  });
+
+  it('moves to a new URL, which later reconnects use until the client stops', async () => {
+    const { ws, first } = connected();
+    ws.migrate({ url: 'ws://b' });
+    vi.advanceTimersByTime(0);
+    expect(MockWebSocket.last.url).toBe('ws://b');
+    MockWebSocket.last.open();
+    first.finishClose(1000, 'migrated');
+
+    MockWebSocket.last.finishClose(1006);
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.last.url).toBe('ws://b');
+    ws.reconnect();
+    expect(MockWebSocket.last.url).toBe('ws://b');
+
+    ws.close();
+    ws.connect();
+    expect(MockWebSocket.last.url).toBe('ws://a');
+    ws.close();
+  });
+
+  it('calls a url function before the new connection', async () => {
+    const { ws } = connected();
+    ws.migrate({ url: async () => 'ws://b?token=fresh' });
+    vi.advanceTimersByTime(0);
+    await Promise.resolve();
+    expect(MockWebSocket.last.url).toBe('ws://b?token=fresh');
+    ws.close();
+  });
+
+  it('keeps the current connection when the new one fails', () => {
+    const { ws, first } = connected();
+    const onError = vi.fn();
+    const onClose = vi.fn();
+    ws.on('error', onError);
+    ws.on('close', onClose);
+    ws.migrate({ url: 'ws://b' });
+    vi.advanceTimersByTime(0);
+    MockWebSocket.last.onerror?.(new Event('error'));
+    MockWebSocket.last.finishClose(1006);
+    expect(ws.socket).toBe(first);
+    expect(ws.getSnapshot().status).toBe('open');
+    expect(onError).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(first.closedWith).toBeUndefined();
+
+    // When the current connection drops later, the retry goes to the new URL.
+    first.finishClose(1006);
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.last.url).toBe('ws://b');
+    ws.close();
+  });
+
+  it('takes over when the old connection drops before the new one opens', () => {
+    const { ws, first } = connected();
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    first.finishClose(1012);
+    expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt: 1 });
+    second.open();
+    expect(ws.socket).toBe(second);
+    expect(ws.getSnapshot()).toMatchObject({ status: 'open', attempt: 0 });
+    // The retry the drop scheduled is cancelled.
+    vi.advanceTimersByTime(60_000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    ws.close();
+  });
+
+  it('gives way to a retry that starts before the new connection opens', () => {
+    const { ws, first } = connected();
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    first.finishClose(1006);
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.instances).toHaveLength(3);
+    expect(second.closedWith).toEqual({ code: undefined, reason: undefined });
+    MockWebSocket.last.open();
+    expect(ws.socket).toBe(MockWebSocket.last);
+    ws.close();
+  });
+
+  it('is cancelled by close(), and a later call replaces an earlier one', () => {
+    const { ws } = connected();
+    ws.migrate({ within: 1000 });
+    ws.close();
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    ws.connect();
+    MockWebSocket.last.open();
+    ws.migrate({ url: 'ws://b' });
+    vi.advanceTimersByTime(0);
+    const handoff = MockWebSocket.last;
+    ws.migrate({ url: 'ws://c' });
+    expect(handoff.closedWith).toBeDefined();
+    vi.advanceTimersByTime(0);
+    expect(MockWebSocket.last.url).toBe('ws://c');
+    ws.close();
+    expect(MockWebSocket.last.closedWith).toBeDefined();
+  });
+
+  it('only changes the URL of the next attempt while not open', () => {
+    const { ws } = connected();
+    MockWebSocket.last.finishClose(1006);
+    ws.migrate({ url: 'ws://b' });
+    vi.advanceTimersByTime(0);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(MockWebSocket.last.url).toBe('ws://b');
+    ws.close();
+  });
+
+  it('moves the heartbeat to the new connection', () => {
+    const { ws, first } = connected({ heartbeat: { interval: 1000 } });
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    second.open();
+    first.readyState = 1; // still closing; nothing more may be sent on it
+    vi.advanceTimersByTime(1000);
+    expect(first.sent).toEqual([]);
+    expect(second.sent).toEqual(['ping']);
+    ws.close();
+  });
+
+  it('retryAfter() also reads a 1012 (Service Restart) reason', () => {
+    expect(retryAfter({ code: 1012, reason: '5', wasClean: true })).toBe(5000);
+    expect(retryAfter({ code: 1012, reason: '', wasClean: true })).toBeUndefined();
+  });
+});
+
 describe('close()', () => {
   it('stops reconnecting, reports the close and clears the queue', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });

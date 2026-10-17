@@ -104,6 +104,19 @@ describe('createWebSocketTopics', () => {
     ]);
   });
 
+  it('subscribes on the new connection after migrate(), before the old one closes', () => {
+    const { client, topics } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    topics.acquire('a');
+    const first = MockWebSocket.last;
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([{ type: 'sub', topic: 'a' }]);
+    expect(first.closedWith).toEqual({ code: 1000, reason: 'migrated' });
+  });
+
   it('works without an unsubscribe message', () => {
     const { client, topics } = setup(false);
     client.connect();

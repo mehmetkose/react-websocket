@@ -204,6 +204,25 @@ describe('createWebSocketRequests', () => {
     await expect(request).rejects.toThrow('connection was lost');
   });
 
+  it('rejects requests the old connection had not answered after migrate()', async () => {
+    const { client, rpc } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    const before = rpc.request({ type: 'join', room: 'a' });
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    // Sent while moving: still on the old connection.
+    const during = rpc.request({ type: 'join', room: 'b' });
+    MockWebSocket.last.open();
+    await expect(before).rejects.toThrow('connection was lost');
+    await expect(during).rejects.toThrow('connection was lost');
+
+    const after = rpc.request({ type: 'join', room: 'c' });
+    expect(sent()).toEqual([{ type: 'join', room: 'c', id: 3 }]);
+    reply({ type: 'reply', id: 3 });
+    await expect(after).resolves.toMatchObject({ id: 3 });
+  });
+
   it('rejects everything on close(), and requests on a closed client', async () => {
     const { client, rpc } = setup();
     client.connect();

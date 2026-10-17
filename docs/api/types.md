@@ -51,7 +51,7 @@ interface CloseInfo {
 }
 ```
 
-Passed to `onClose`, the `'close'` event and `shouldReconnect`. Common codes: `1000` normal closure, `1001` going away, `1006` abnormal closure (no close frame, such as a network loss), `1008` policy violation, `1011` server error, `1013` try again later, `4000` heartbeat timeout (from this library), `4000`–`4999` application-defined. By default, `1002`, `1003` and `1008` aren't retried (see [`retryableClose`](../guide/reconnecting.md#giving-up)), and a `1013` is retried after a longer wait (see [Overloaded servers](../guide/reconnecting.md#overloaded-servers-1013)).
+Passed to `onClose`, the `'close'` event and `shouldReconnect`. Common codes: `1000` normal closure, `1001` going away, `1006` abnormal closure (no close frame, such as a network loss), `1008` policy violation, `1011` server error, `1012` service restart, `1013` try again later, `4000` heartbeat timeout (from this library), `4000`–`4999` application-defined. By default, `1002`, `1003` and `1008` aren't retried (see [`retryableClose`](../guide/reconnecting.md#giving-up)), and a `1013` is retried after a longer wait (see [Overloaded servers](../guide/reconnecting.md#overloaded-servers-1013)). A `1012` or `1013` whose reason is a number of seconds is retried after that delay.
 
 ### MessageError
 
@@ -158,6 +158,22 @@ game.send({ type: 'leave' }, { priority: true });
 
 See [Real-time games](../guide/games.md#input-dont-replay-stale-messages).
 
+### MigrateOptions
+
+```ts
+interface MigrateOptions {
+  url?: UrlSource;
+  within?: number; // default 0
+}
+```
+
+Options for [`client.migrate()`](../guide/reconnecting.md#deploys-without-reconnect-storms).
+
+| Field | |
+| --- | --- |
+| `url` | Where to connect instead: a URL, or a function called before the connection. Later reconnects go there too, until the client is closed, gives up or is torn down. Defaults to the client's current URL |
+| `within` | Move at a random moment within this many ms, so clients asked together don't all reconnect at once. Defaults to `0` |
+
 ### StandardSchemaV1
 
 The [Standard Schema](https://standardschema.dev) interface. zod (3.24+), valibot (1.0+), arktype (2.0+) and other libraries implement it, so you can pass their schemas directly to the [`schema`](./options.md#schema) option. You don't need to import this type.
@@ -176,6 +192,7 @@ interface WebSocketClient<In = unknown, Out = unknown> {
   connect(): void;
   close(code?: number, reason?: string): void;
   reconnect(): void;
+  migrate(options?: MigrateOptions): void;
   acquire(): () => void;
 }
 ```
@@ -192,4 +209,5 @@ interface WebSocketClient<In = unknown, Out = unknown> {
 | `connect()` | Start connecting, and stay connected even with no hooks mounted, until `close()`. Does nothing if already connecting or open |
 | `close(code = 1000, reason?)` | Close, stop reconnecting and clear the queue. Status becomes `'closed'` |
 | `reconnect()` | Drop the current socket and connect again now, resetting the backoff. Also restarts a `'closed'` client |
+| `migrate(options?)` | Move to a new connection without a gap: at a random moment within `within` ms, open one (to `url`, if given), then close the current one once it's open. See [`MigrateOptions`](#migrateoptions) and [Deploys](../guide/reconnecting.md#deploys-without-reconnect-storms) |
 | `acquire()` | Hold the connection open until the returned release function is called. The hooks use this; it's useful for non-React integrations. The release function is safe to call more than once |

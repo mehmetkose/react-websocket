@@ -46,9 +46,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 - **One socket across tabs.** Elect a leader tab over `BroadcastChannel` (or use a `SharedWorker`) and
   multiplex topics through it. Users with 10–20 tabs open would cost one server connection instead of one per
   tab. A separate entry point.
-- **Coordinated reconnects during deploys.** A small protocol where the server tells clients to reconnect over
-  a spread of time, optionally to a different URL, and the client follows it. Deploys become gradual
-  migrations instead of reconnect storms. Builds on the 1013 handling and `reconnect.retryAfter`.
 - **WebTransport behind the same API.** Volatile sends map to datagrams and everything else to streams, with
   automatic fallback to WebSocket. Large and dependent on browser support, so it comes after the others.
 
