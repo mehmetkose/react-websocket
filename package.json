@@ -178,6 +178,16 @@
       "gzip": true
     },
     {
+      "name": "react-websocket (adaptive send rate)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketSendRate }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "0.7 kB",
+      "gzip": true
+    },
+    {
       "name": "react-websocket/chaos (createChaosWebSocket)",
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",

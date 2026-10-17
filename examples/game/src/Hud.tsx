@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useWebSocketLatency, useWebSocketState, useWebSocketStatus } from 'react-websocket';
-import { game, latency, roster, timeline } from './net';
+import { game, latency, roster, stream, timeline } from './net';
 
 const ms = (value: number | undefined) => (value === undefined ? '–' : `${Math.round(value)} ms`);
 
@@ -14,6 +14,11 @@ export function Hud() {
   const { rtt, offset } = useWebSocketLatency(latency);
   const ack = useSyncExternalStore(timeline.subscribe, getAck, () => undefined);
   const players = useWebSocketState(roster);
+  const { rate, congested } = useSyncExternalStore(
+    stream.subscribe,
+    stream.getSnapshot,
+    stream.getSnapshot
+  );
 
   return (
     <section className="hud">
@@ -26,6 +31,9 @@ export function Hud() {
           Server clock {offset === undefined ? '–' : `${offset > 0 ? '+' : ''}${ms(offset)}`}
         </span>
         <span className="muted">Confirmed input #{ack ?? '–'}</span>
+        <span className={congested ? 'congested' : 'muted'}>
+          Sending {rate}/s{congested ? ', congested' : ''}
+        </span>
       </p>
       <ul className="row roster">
         {players.map(player => (

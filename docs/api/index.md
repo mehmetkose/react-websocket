@@ -39,6 +39,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketState(client, options)`](./create-websocket-state.md) | Keep state reduced from a client's messages |
 | [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies, with timeouts |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
+| [`createWebSocketSendRate(client, options?)`](./create-websocket-send-rate.md) | Send aim, cursor or position at a rate that adapts to the connection, coalesced per key |
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
 | [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
@@ -78,6 +79,9 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`WebSocketLatency`](./create-websocket-latency.md#returns) | The latency tracker from `createWebSocketLatency` |
 | [`WebSocketLatencyOptions`](./create-websocket-latency.md#parameters) | `{ ping, pong, interval?, samples? }` |
 | [`Latency`](./create-websocket-latency.md#latency) | `{ rtt, offset }` |
+| [`WebSocketSendRate`](./create-websocket-send-rate.md#returns) | The sender from `createWebSocketSendRate` |
+| [`WebSocketSendRateOptions`](./create-websocket-send-rate.md#parameters) | `{ maxRate?, minRate?, maxBuffered?, latency?, maxRttIncrease? }` |
+| [`SendRate`](./create-websocket-send-rate.md#sendrate) | `{ rate, congested }` |
 | [`WebSocketResponder`](./create-websocket-responder.md#returns) | The responder from `createWebSocketResponder` |
 | [`WebSocketResponderOptions`](./create-websocket-responder.md#parameters) | `{ request, respond, error, cancel?, timeout? }` |
 | [`IncomingRequest`](./create-websocket-responder.md#incomingrequest) | `{ id, method, params, signal, respond, reject }` |

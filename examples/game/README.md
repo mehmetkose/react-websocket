@@ -7,7 +7,7 @@ A small multiplayer game: dots in an arena, a Node.js WebSocket server that runs
 npm run example:game
 ```
 
-Then open http://localhost:5180 and move with the arrow keys or WASD.
+Then open http://localhost:5180, move with the arrow keys or WASD, and aim with the mouse.
 
 ## What to try
 
@@ -17,7 +17,8 @@ Then open http://localhost:5180 and move with the arrow keys or WASD.
 4. **Turn off "Interpolate others"**. Other dots jump 20 times a second, unevenly on a bad network.
 5. **Turn on "Lose 5% of my inputs"**. The server never applies the lost ones, so your dot snaps back a little when its confirmations skip past them. That's reconciliation correcting a misprediction.
 6. **Drop the connection**, or **stall** it (the heartbeat notices after three silent seconds). The last frame stays on screen while it reconnects, then the game resumes from a fresh snapshot.
-7. **Set the delay to 0**. Other dots stutter, because there's rarely a newer snapshot to blend toward. "Buffered ahead" under the arena turns red when the render time runs out of snapshots. "Automatic delay" renders just far enough behind for the jitter it measures.
+7. **Watch the send rate** in the HUD on "Bad". Aim is streamed through `createWebSocketSendRate`, which halves the rate when the round trip rises and climbs back when it settles, and inputs follow the same rate as fewer, bigger moves. Turn off "Adaptive send rate" to send an input every frame again.
+8. **Set the delay to 0**. Other dots stutter, because there's rarely a newer snapshot to blend toward. "Buffered ahead" under the arena turns red when the render time runs out of snapshots. "Automatic delay" renders just far enough behind for the jitter it measures.
 
 ## Files
 
@@ -25,9 +26,9 @@ Then open http://localhost:5180 and move with the arrow keys or WASD.
 server.ts          The game server: applies inputs in order on a fixed tick, sends each player a snapshot
 src/sim.ts         The rules, shared by the server and the client: move(), lerpWorld(), the bots
 src/protocol.ts    The messages, shared by the server and the client
-src/net.ts         The client, latency, the timeline, the roster store and the chaos class
-src/Canvas.tsx     The render loop: samples the keys, sends inputs, draws at() and predicted()
-src/Hud.tsx        Status, ping, the last confirmed input and the player list
+src/net.ts         The client, latency, the timeline, the send rate, the roster store and the chaos class
+src/Canvas.tsx     The render loop: samples the keys, batches and sends inputs, streams aim, draws at() and predicted()
+src/Hud.tsx        Status, ping, the last confirmed input, the send rate and the player list
 src/DevPanel.tsx   Network faults and rendering switches
 vite.config.ts     Forwards /ws to the game server in development
 ```
@@ -40,6 +41,6 @@ The timeline needs three things from a server, and `server.ts` shows all of them
 - **An `ack` for each player**: the last input `seq` the server applied from that player. Each player gets their own snapshot, with `you` set to their id.
 - **Inputs applied in `seq` order** with the same `move()` the client predicts with, on a fixed tick. A burst of inputs that arrives at once is spread over the next ticks, so nobody moves faster than real time.
 
-The client sends one input per frame while a key is held, carrying how many 60 Hz steps it covers, so the game moves at the same speed on a 60 Hz or a 120 Hz display.
+The client sends an input while a key is held, carrying how many 60 Hz steps it covers, so the game moves at the same speed on a 60 Hz or a 120 Hz display. With the adaptive send rate, it sends fewer inputs with more steps each, and draws the steps it hasn't sent yet on top of `predicted()`, so your dot stays smooth.
 
-This server is for development only. It has no rooms, authentication or rate limiting, and players don't collide: collisions between players need lag compensation on the server, which is out of scope here.
+This server is for development only. It has no rooms or authentication, it only checks that inputs are well formed and no faster than real time, and players don't collide: collisions between players need lag compensation on the server, which is out of scope here.

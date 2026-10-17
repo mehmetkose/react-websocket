@@ -26,8 +26,14 @@ All notable changes to this project are documented here. The format is based on
   reconnect, keeping the last frame visible. About 0.85 kB min+gzip, with no React dependency. The
   [Real-time games](https://mehmetkose.github.io/react-websocket/guide/games) guide covers interpolation,
   prediction and what the server has to send.
+- `createWebSocketSendRate(client, options)` sends high-rate state such as aim, cursor or position at a rate that
+  adapts to the connection. `send(message, key)` keeps only the newest message per key until the next tick. The
+  rate halves when the send buffer fills up or, with `latency`, when the round trip rises, and climbs back when the
+  link keeps up, so players on a poor connection degrade smoothly instead of building up lag. About 0.65 kB
+  min+gzip, from both `react-websocket` and `react-websocket/core`.
 - A [game example](https://github.com/mehmetkose/react-websocket/tree/main/examples/game): a multiplayer canvas game
-  with a Node.js server at a fixed tick, and a panel that adds lag and packet loss with `react-websocket/chaos`.
+  with a Node.js server at a fixed tick, aim streamed at an adaptive send rate, and a panel that adds lag and packet
+  loss with `react-websocket/chaos`.
 
 ## [3.4.0] - 2026-10-17
 

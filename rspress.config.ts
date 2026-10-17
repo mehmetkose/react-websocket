@@ -122,6 +122,7 @@ export default defineConfig({
             { text: 'createWebSocketState', link: '/api/create-websocket-state' },
             { text: 'createWebSocketRequests', link: '/api/create-websocket-requests' },
             { text: 'createWebSocketLatency', link: '/api/create-websocket-latency' },
+            { text: 'createWebSocketSendRate', link: '/api/create-websocket-send-rate' },
             { text: 'createWebSocketResponder', link: '/api/create-websocket-responder' },
             { text: 'createWebSocketTimeline', link: '/api/create-websocket-timeline' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },

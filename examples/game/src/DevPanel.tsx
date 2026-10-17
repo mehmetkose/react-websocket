@@ -100,6 +100,14 @@ export function DevPanel() {
             />
             Show where the server has me
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={view.adaptive}
+              onChange={e => change({ adaptive: e.target.checked })}
+            />
+            Adaptive send rate
+          </label>
         </div>
         <div className="row">
           <label>

@@ -1,4 +1,9 @@
-import { createWebSocket, createWebSocketLatency, createWebSocketState } from 'react-websocket';
+import {
+  createWebSocket,
+  createWebSocketLatency,
+  createWebSocketSendRate,
+  createWebSocketState
+} from 'react-websocket';
 import { createChaosWebSocket } from 'react-websocket/chaos';
 import { createWebSocketTimeline } from 'react-websocket/timeline';
 import { HEARTBEAT, type ClientMessage, type ServerMessage } from './protocol';
@@ -34,8 +39,15 @@ export const settings = {
   predict: true,
   ghost: true,
   autoDelay: false,
-  delay: 100
+  delay: 100,
+  adaptive: true
 };
+
+/**
+ * Aim, streamed every frame, goes out at up to 30 a second, fewer when the send buffer fills up
+ * or the round trip rises. With `settings.adaptive`, inputs follow the same rate.
+ */
+export const stream = createWebSocketSendRate(game, { latency, maxRate: 30 });
 
 // How unevenly snapshots arrive: arrival time minus server time, over the last two seconds.
 const spread: number[] = [];

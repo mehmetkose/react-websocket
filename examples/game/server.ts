@@ -4,6 +4,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { HEARTBEAT, type ClientMessage, type ServerMessage } from './src/protocol.ts';
 import {
   BOTS,
+  BURST,
   MAX_STEPS,
   STEPS_PER_TICK,
   TICK_MS,
@@ -29,6 +30,8 @@ interface Client {
   received: number;
   /** The last `seq` applied, sent back as `ack`. */
   ack: number;
+  /** Steps this player may still move: refilled every tick, up to `BURST`. */
+  tokens: number;
 }
 
 const clients = new Map<string, Client>();
@@ -44,6 +47,7 @@ function parse(data: string): ClientMessage | undefined {
   try {
     const message = JSON.parse(data) as ClientMessage;
     if (message.type === 'ping' && typeof message.id === 'number') return message;
+    if (message.type === 'aim' && Number.isFinite(message.angle)) return message;
     if (
       message.type === 'input' &&
       Number.isInteger(message.seq) &&
@@ -63,7 +67,14 @@ const server = new WebSocketServer({ port, path: '/ws' });
 
 server.on('connection', socket => {
   const id = `p${++joined}`;
-  const client: Client = { socket, player: spawn(joined), inputs: [], received: 0, ack: 0 };
+  const client: Client = {
+    socket,
+    player: spawn(joined),
+    inputs: [],
+    received: 0,
+    ack: 0,
+    tokens: BURST
+  };
   clients.set(id, client);
 
   socket.on('message', raw => {
@@ -72,6 +83,7 @@ server.on('connection', socket => {
     if (data === HEARTBEAT) return socket.send(HEARTBEAT);
     const message = parse(data);
     if (message?.type === 'ping') send(socket, { type: 'pong', id: message.id, time: now() });
+    else if (message?.type === 'aim') client.player = { ...client.player, angle: message.angle };
     // Sequence numbers only go up; don't assume they start at 1 on a new connection.
     else if (message?.type === 'input' && message.seq > client.received) {
       client.received = message.seq;
@@ -84,12 +96,12 @@ server.on('connection', socket => {
 setInterval(() => {
   const time = now();
   for (const client of clients.values()) {
-    // Apply inputs in order, with the same `move()` the client predicts with. A burst that
-    // arrives at once is spread over the next ticks, so nobody moves faster than real time.
-    let budget = STEPS_PER_TICK;
-    while (client.inputs.length && client.inputs[0]!.steps <= budget) {
+    // Apply inputs in order, with the same `move()` the client predicts with. A burst bigger
+    // than the player's tokens waits for the next ticks, so nobody moves faster than real time.
+    client.tokens = Math.min(BURST, client.tokens + STEPS_PER_TICK);
+    while (client.inputs.length && client.inputs[0]!.steps <= client.tokens) {
       const input = client.inputs.shift()!;
-      budget -= input.steps;
+      client.tokens -= input.steps;
       client.player = move(client.player, input);
       client.ack = input.seq;
     }

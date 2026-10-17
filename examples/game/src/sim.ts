@@ -5,9 +5,14 @@
 export const TICK_MS = 50;
 /** One input step. The client samples the keys 60 times a second. */
 export const STEP_MS = 1000 / 60;
-/** Steps one input may carry, and steps the server applies per tick (more are carried over). */
-export const MAX_STEPS = 5;
-export const STEPS_PER_TICK = 6;
+/** Steps one input may carry: 200 ms, enough for the lowest adaptive send rate (5 a second). */
+export const MAX_STEPS = 12;
+/**
+ * Steps the server allows each player per tick: a little above real time (3), so a late burst of
+ * inputs catches up, up to `BURST` steps at once. Nobody moves much faster than real time.
+ */
+export const STEPS_PER_TICK = 4;
+export const BURST = 24;
 
 export const ARENA = { width: 640, height: 400 };
 export const RADIUS = 12;
@@ -17,6 +22,8 @@ export interface Player {
   x: number;
   y: number;
   color: string;
+  /** Where the player aims, in radians. */
+  angle?: number;
   bot?: boolean;
 }
 

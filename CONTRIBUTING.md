@@ -64,6 +64,7 @@ src/
   client.ts    createWebSocket: connection, reconnect, queue, heartbeat, decoding, ready
   core.ts      The react-websocket/core entry (no React)
   react.ts     The hooks and the URL-keyed registry of shared clients
+  sendrate.ts  createWebSocketSendRate: keyed sends at a rate that adapts to congestion
   index.ts     The main entry (core + hooks), built with a 'use client' banner
   chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
   timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
@@ -74,6 +75,7 @@ test/
   ssr.test.tsx     Server rendering (Node environment)
   chaos.test.ts    The chaos WebSocket, alone and with the client
   timeline.test.ts The timeline, with fake timers standing in for the clock
+  sendrate.test.ts The adaptive send rate, with a settable bufferedAmount and chaos latency
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly
