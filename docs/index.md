@@ -17,23 +17,17 @@ hero:
       link: /api/
 
 features:
-  - icon: 🔌
-    title: Shared connections
-    details: Every component using the same URL shares one socket. StrictMode, <Activity> and route transitions never open duplicates.
-  - icon: 🔁
-    title: Reconnects for you
+  - title: Shared connections
+    details: Every component using the same URL shares one socket. StrictMode, &lt;Activity&gt; and route transitions never open duplicates.
+  - title: Reconnects for you
     details: Exponential backoff with jitter, an immediate retry when the network or tab comes back, and optional heartbeats to detect dead links.
-  - icon: 📬
-    title: Send before you're connected
+  - title: Send before you're connected
     details: Messages sent while connecting or reconnecting are queued and delivered in order once the socket opens.
-  - icon: 🧩
-    title: Typed messages
+  - title: Typed messages
     details: Parse JSON, plug in your own codec, or validate with zod, valibot or arktype through Standard Schema. Types are inferred.
-  - icon: ⏳
-    title: Suspense-ready
+  - title: Suspense-ready
     details: use(client.ready) waits for the first connection, then stays out of the way. Reconnects never flash a fallback.
-  - icon: 🌐
-    title: SSR and Server Components
+  - title: SSR and Server Components
     details: Never connects during a server render, hydrates without mismatches, and ships a 'use client' entry for Next.js.
 ---
 

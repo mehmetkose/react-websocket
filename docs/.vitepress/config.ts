@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import { monochromeDark, monochromeLight } from './monochrome';
 
 const repo = 'https://github.com/mehmetkose/react-websocket';
 
@@ -10,9 +11,13 @@ export default defineConfig({
   base: '/react-websocket/',
   cleanUrls: true,
   lastUpdated: true,
-  head: [['meta', { name: 'theme-color', content: '#3c8772' }]],
+  head: [
+    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: light)', content: '#ffffff' }],
+    ['meta', { name: 'theme-color', media: '(prefers-color-scheme: dark)', content: '#000000' }]
+  ],
   markdown: {
-    theme: { light: 'github-light', dark: 'github-dark' }
+    // Grayscale highlighting to match the black/white theme.
+    theme: { light: monochromeLight, dark: monochromeDark }
   },
   themeConfig: {
     nav: [
