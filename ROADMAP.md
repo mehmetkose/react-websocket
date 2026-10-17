@@ -24,10 +24,7 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
   heard. The library's part is the transport, which ships: `priority` sends for control messages, and
   volatile audio frames with `maxBuffered` dropping stale ones while open. What's left is a guide showing
   `truncate { itemId, heardMs }` from playback position. Audio capture and playback stay in the app.
-- **Dashboards of many runs.** Stream full tokens only for runs on screen and status alone for the rest.
-  `useWebSocketTopic` already resubscribes when its topic changes, so this is a guide recipe plus a small
-  `IntersectionObserver` helper that picks the topic. The same recipe can show a live cost meter from usage
-  events and cancel a run that crosses a client-side budget.
+
 ### Tooling
 
 - **Devtools overlay.** Shows sockets, topics, the queue and RTT.

@@ -263,6 +263,61 @@ The server keeps each run's events while it streams, and a while after, each wit
 
 To follow a run from somewhere else, such as one listed in a chat history from the server, pass its id to `useAgentRun`, or call `runs.attach(runId)`: it's followed from its first event.
 
+## Dashboards of many runs
+
+A page that watches dozens of agents at once can't afford every token of every run: most cards are off screen, and the browser would spend its time on text nobody reads. Stream full tokens only for the runs on screen, and status alone for the rest.
+
+Give each run two [feed](./topics.md#numbered-feeds) topics, one with every token and one with its status, and pick one with [`useInView`](../api/use-in-view.md). [`useWebSocketTopic`](../api/use-websocket-topic.md) switches subscriptions when the topic changes:
+
+```tsx
+import { useRef } from 'react';
+import { useInView, useWebSocketState, useWebSocketTopic } from 'react-websocket';
+import { feeds, runs } from './live';
+
+function RunCard({ id }: { id: string }) {
+  const ref = useRef<HTMLElement>(null);
+  const onScreen = useInView(ref, { rootMargin: '200px' });
+  useWebSocketTopic(feeds, onScreen ? `run:${id}:tokens` : `run:${id}:status`);
+  const run = useWebSocketState(runs, all => all[id]);
+  return (
+    <article ref={ref}>
+      <h3>{run?.title}</h3>
+      <p>{run?.status}</p>
+      {onScreen && <pre>{run?.text}</pre>}
+    </article>
+  );
+}
+```
+
+- A card that scrolls into view subscribes to its tokens. With feeds, the server answers a new subscription with a snapshot of the text so far, then streams from there, so the card shows the whole answer at once.
+- A card that scrolls out unsubscribes from its tokens a tick later, and gets status messages only.
+- `rootMargin` starts streaming a little before a card is visible, so it's already full when it scrolls in.
+
+In Chrome, 30 runs producing 10 tokens a second each in a panel showing 4 cards: 900 messages in 3 seconds with every card subscribed to its tokens, 198 with `useInView` (120 tokens for the 4 visible cards, 78 status messages for all 30).
+
+### A live cost meter
+
+The status topic can carry usage too. Add up what each run has spent, and stop a run that goes over a budget on the client:
+
+```ts
+import { createWebSocketState } from 'react-websocket';
+
+export const spend = createWebSocketState(feeds, {
+  initialState: {} as Record<string, number>,
+  reduce: (totals, message) =>
+    message.type === 'usage' ? { ...totals, [message.runId]: message.costUsd } : totals
+});
+
+const budgetUsd = 0.5;
+spend.subscribe(() => {
+  for (const [runId, cost] of Object.entries(spend.getState())) {
+    if (cost > budgetUsd) agentRuns.abort(runId); // sends `cancel`
+  }
+});
+```
+
+Render the total with `useWebSocketState(spend, totals => Object.values(totals).reduce((a, b) => a + b, 0))`. A client-side budget is a convenience, not a limit: enforce real limits on the server.
+
 ## Things to watch for
 
 - **One responder per client.** Two responders on one client both see every request, and one of them answers `NotFoundError`.

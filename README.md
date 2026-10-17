@@ -125,6 +125,7 @@ function Room() {
 | `useAgentRun(runs, runId)` | A resumable run's value and status, e.g. an AI answer that keeps streaming after a reconnect or a reload |
 | `useAgUiAgent(agent)` | An AG-UI agent's thread: messages, tool calls, shared state and status |
 | `useWebSocketPresence(presence)` | The other peers' shared state, such as live cursors |
+| `useInView(ref, options?)` | Whether an element is on screen, to pick a topic with: full detail only for what's visible |
 | `useWebSocketOutbox(outbox)` | The messages waiting in an outbox, for a "3 orders waiting to sync" banner |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |

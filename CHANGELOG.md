@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `useInView(ref, options?)` says whether an element is on screen, from an `IntersectionObserver`, so a dashboard of
+  many runs can stream full tokens only for the cards on screen and status alone for the rest:
+  `useWebSocketTopic(feeds, useInView(ref) ? tokensTopic : statusTopic)`. Takes `rootMargin`, `threshold` and
+  `initial`.
+- A [Dashboards of many runs](https://mehmetkose.github.io/react-websocket/guide/agents#dashboards-of-many-runs)
+  section in the AI agents guide, with a live cost meter that stops a run over a client-side budget.
+
 ## [4.10.0] - 2026-10-17
 
 ### Added
@@ -373,6 +384,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.10.0...HEAD
 [4.10.0]: https://github.com/mehmetkose/react-websocket/compare/4.9.0...4.10.0
 [4.9.0]: https://github.com/mehmetkose/react-websocket/compare/4.8.0...4.9.0
 [4.8.0]: https://github.com/mehmetkose/react-websocket/compare/4.7.0...4.8.0

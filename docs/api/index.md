@@ -36,6 +36,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`useWebSocketStream(rpc, options?)`](./use-websocket-stream.md) | Stream the replies to a request into a value, such as tokens into an answer, with Stop | Every reply, or once per frame |
 | [`useWebSocketOutbox(outbox)`](./use-websocket-outbox.md) | List the messages waiting in an outbox | A message is added, sent or acknowledged |
 | [`useWebSocketPresence(presence)`](./use-websocket-presence.md) | Render the other peers' shared state, such as live cursors | A peer's state arrives, it leaves or it times out |
+| [`useInView(ref, options?)`](./use-in-view.md) | Pick a topic by whether an element is on screen, to stream full detail only for what's visible | The element enters or leaves the viewport |
 
 ## Functions
 

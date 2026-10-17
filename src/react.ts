@@ -5,7 +5,8 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore
+  useSyncExternalStore,
+  type RefObject
 } from 'react';
 // Import the client through the `core` entry: the build keeps it external, so both entries
 // share one copy of it (and of `MessageError`).
@@ -482,6 +483,38 @@ export function useWebSocketOutbox<M>(
 }
 
 const noRun = () => undefined;
+
+/**
+ * Whether an element is on screen, from an `IntersectionObserver`, for dashboards that stream
+ * full detail only for what's visible: pick a topic with it and pass it to `useWebSocketTopic`,
+ * which switches subscriptions when it changes. `initial` until the first observation, on the
+ * server, and where `IntersectionObserver` doesn't exist.
+ *
+ * @example
+ * ```tsx
+ * const ref = useRef<HTMLElement>(null);
+ * useWebSocketTopic(feeds, useInView(ref) ? `run:${id}:tokens` : `run:${id}:status`);
+ * return <article ref={ref}>…</article>;
+ * ```
+ */
+export function useInView(
+  ref: RefObject<Element | null>,
+  options: { rootMargin?: string; threshold?: number; initial?: boolean } = {}
+): boolean {
+  const { rootMargin, threshold } = options;
+  const [inView, setInView] = useState(options.initial ?? false);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      entries => setInView(entries.at(-1)!.isIntersecting),
+      { rootMargin, threshold }
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, rootMargin, threshold]);
+  return inView;
+}
 
 /**
  * The other peers' shared state from `createWebSocketPresence`, such as their cursors.

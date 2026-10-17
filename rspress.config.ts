@@ -127,6 +127,7 @@ export default defineConfig({
             { text: 'useWebSocketStream', link: '/api/use-websocket-stream' },
             { text: 'useWebSocketOutbox', link: '/api/use-websocket-outbox' },
             { text: 'useWebSocketPresence', link: '/api/use-websocket-presence' },
+            { text: 'useInView', link: '/api/use-in-view' },
             { text: 'createWebSocket', link: '/api/create-websocket' },
             { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
             { text: 'createWebSocketFeeds', link: '/api/create-websocket-feeds' },
