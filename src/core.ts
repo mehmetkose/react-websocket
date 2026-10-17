@@ -3,6 +3,13 @@ export { createWebSocketLatency } from './latency';
 export type { Latency, WebSocketLatency, WebSocketLatencyOptions } from './latency';
 export { createWebSocketRequests } from './requests';
 export type { RequestOptions, WebSocketRequests, WebSocketRequestsOptions } from './requests';
+export { createWebSocketResponder } from './responder';
+export type {
+  IncomingRequest,
+  RequestHandler,
+  WebSocketResponder,
+  WebSocketResponderOptions
+} from './responder';
 export { createWebSocketState } from './state';
 export type { WebSocketState, WebSocketStateOptions } from './state';
 export { createWebSocketTopics } from './topics';

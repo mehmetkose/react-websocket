@@ -3,6 +3,8 @@ import { useEffect, useInsertionEffect, useMemo, useRef, useSyncExternalStore } 
 // share one copy of it (and of `MessageError`).
 import { createWebSocket } from './core';
 import type { Latency, WebSocketLatency } from './latency';
+// Types only: a value import from anything but `./core` would bundle a second copy into this entry.
+import type { IncomingRequest, WebSocketResponder } from './responder';
 import type { WebSocketState } from './state';
 import type { WebSocketTopics } from './topics';
 import type {
@@ -60,6 +62,9 @@ const idleSnapshot = () => IDLE;
 const idleStatus = (): Status => 'idle';
 const NO_LATENCY: Latency = Object.freeze({ rtt: undefined, offset: undefined });
 const noLatency = () => NO_LATENCY;
+// Not frozen: a call would keep it in bundles that never use the hook.
+const NO_REQUESTS: readonly never[] = [];
+const noRequests = () => NO_REQUESTS;
 const noopSubscribe = () => () => {};
 const noopSend = () => false;
 const noop = () => {};
@@ -305,4 +310,45 @@ export function useWebSocketLatency(latency: WebSocketLatency): Latency {
   const snapshot = useSyncExternalStore(latency.subscribe, latency.getSnapshot, noLatency);
   useHold(latency.client, true);
   return snapshot;
+}
+
+/**
+ * Requests for `method` that a person answers, e.g. an agent asking to run a tool. While mounted,
+ * it registers `method` on the responder without a handler, so new requests wait here instead of
+ * getting a `NotFoundError` reply. Call `respond` or `reject` on one to answer it. Re-renders
+ * when the list changes. Keeps the connection open while mounted. `null` holds nothing.
+ *
+ * Requests stay listed after unmount until they are answered, time out, are cancelled or lose
+ * their connection, so a remounted dialog shows them again. On the server the list is empty.
+ *
+ * @example
+ * ```tsx
+ * const [request] = useAgentApproval(tools, 'approve');
+ * if (!request) return null;
+ * return (
+ *   <dialog open>
+ *     {request.params.summary}
+ *     <button onClick={() => request.respond({ approved: true })}>Approve</button>
+ *     <button onClick={() => request.respond({ approved: false })}>Deny</button>
+ *   </dialog>
+ * );
+ * ```
+ */
+export function useAgentApproval<P, R>(
+  responder: WebSocketResponder<P, R> | null | undefined,
+  method: string | null | undefined
+): readonly IncomingRequest<P, R>[] {
+  const waiting = useSyncExternalStore(
+    responder ? responder.subscribe : noopSubscribe,
+    responder ? responder.getSnapshot : noRequests,
+    noRequests
+  );
+  useEffect(() => {
+    if (responder && method != null) return responder.onRequest(method);
+  }, [responder, method]);
+  useHold(responder?.client ?? null, method != null);
+  return useMemo(() => {
+    const mine = waiting.filter(request => request.method === method);
+    return mine.length ? mine : NO_REQUESTS;
+  }, [waiting, method]);
 }

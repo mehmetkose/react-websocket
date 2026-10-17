@@ -140,6 +140,16 @@
       ],
       "limit": "1.5 kB",
       "gzip": true
+    },
+    {
+      "name": "react-websocket (responder + approval hook)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketResponder, useAgentApproval }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1.2 kB",
+      "gzip": true
     }
   ],
   "overrides": {

@@ -52,6 +52,7 @@ export default defineConfig({
           { text: 'Topic subscriptions', link: '/guide/topics' },
           { text: 'Message state', link: '/guide/state' },
           { text: 'Real-time games', link: '/guide/games' },
+          { text: 'AI agents', link: '/guide/agents' },
           { text: 'Suspense', link: '/guide/suspense' },
           { text: 'Server rendering and Next.js', link: '/guide/ssr' },
           { text: 'StrictMode, Activity and lifecycle', link: '/guide/lifecycle' },
@@ -71,11 +72,13 @@ export default defineConfig({
           { text: 'useWebSocketTopic', link: '/api/use-websocket-topic' },
           { text: 'useWebSocketState', link: '/api/use-websocket-state' },
           { text: 'useWebSocketLatency', link: '/api/use-websocket-latency' },
+          { text: 'useAgentApproval', link: '/api/use-agent-approval' },
           { text: 'createWebSocket', link: '/api/create-websocket' },
           { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
           { text: 'createWebSocketState', link: '/api/create-websocket-state' },
           { text: 'createWebSocketRequests', link: '/api/create-websocket-requests' },
           { text: 'createWebSocketLatency', link: '/api/create-websocket-latency' },
+          { text: 'createWebSocketResponder', link: '/api/create-websocket-responder' },
           { text: 'Options', link: '/api/options' },
           { text: 'Types', link: '/api/types' }
         ]

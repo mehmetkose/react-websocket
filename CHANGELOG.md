@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- `createWebSocketResponder(client, { request, respond, error, cancel, timeout })` answers requests the server
+  sends, the reverse of `createWebSocketRequests`. `onRequest(method, handler)` answers them in code, for tools
+  that only exist in the browser, and `useAgentApproval(responder, method)` renders the ones a person answers.
+  Every request gets exactly one reply, including `NotFoundError` when nothing is registered and `TimeoutError`
+  after an optional `timeout`. Its `signal` aborts when the server cancels it or its connection closes, and a
+  reply is never sent on a newer connection.
+- An [AI agents](https://mehmetkose.github.io/react-websocket/guide/agents) guide: browser tools, approvals,
+  tools that need a click, cancellation and reconnects.
 - `send(message, { onDrop })`: called when a queued message is dropped without being sent, because a newer
   message with the same `key` replaced it or `queue.limit` evicted it.
 
