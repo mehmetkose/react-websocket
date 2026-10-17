@@ -37,23 +37,24 @@
     "access": "public"
   },
   "scripts": {
-    "build": "rm -rf dist && tsup",
-    "dev": "tsup --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "build": "rm -rf dist && vp pack",
+    "dev": "vp pack --watch",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:coverage": "vp test run --coverage",
+    "check": "vp check",
+    "typecheck": "vp check --no-fmt --no-lint",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
     "check:package": "npm run build && publint --strict && attw --pack . --profile node16",
     "size": "npm run build && size-limit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "example": "vite example",
+    "example": "vp dev example",
     "example:server": "python3 example/server.py",
-    "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run check:package"
+    "prepublishOnly": "npm run check && npm test && npm run check:package"
   },
   "repository": {
     "type": "git",
@@ -81,29 +82,23 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "@eslint/js": "^10.0.1",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@size-limit/preset-small-lib": "^14.2.0",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/coverage-v8": "^5.0.3",
-    "eslint": "^10.12.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "globals": "^17.13.0",
+    "@vitest/coverage-v8": "5.0.3",
     "jsdom": "^30.1.2",
-    "prettier": "^3.9.9",
     "publint": "^0.3.25",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "size-limit": "^14.2.0",
-    "tsup": "^8.5.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.1",
-    "vite": "^8.3.4",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+    "vite-plus": "1.1.0",
     "vitepress": "^1.6.4",
-    "vitest": "^5.0.3"
+    "vitest": "5.0.3"
   },
   "size-limit": [
     {
@@ -148,6 +143,11 @@
       "react": "$react",
       "react-dom": "$react-dom",
       "@types/react": "$@types/react"
+    },
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+    "vitest": "5.0.3",
+    "vitepress": {
+      "vite": "^5.4.21"
     }
   }
 }
