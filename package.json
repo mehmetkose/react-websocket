@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "3.6.0",
+  "version": "4.0.0",
   "description": "Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready",
   "type": "module",
   "main": "./dist/index.cjs",

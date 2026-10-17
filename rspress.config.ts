@@ -69,7 +69,7 @@ export default defineConfig({
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       { text: 'Recipes', link: '/recipes', activeMatch: '/recipes' },
       {
-        text: 'v3',
+        text: 'v4',
         items: [
           { text: 'Changelog', link: `${repo}/blob/main/CHANGELOG.md` },
           { text: 'Migrating from v3', link: '/migration-v3' },

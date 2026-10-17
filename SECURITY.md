@@ -4,10 +4,10 @@
 
 | Version | Supported |
 | --- | --- |
-| 3.x | Yes |
-| < 3.0 | No |
+| 4.x | Yes |
+| < 4.0 | No |
 
-Security fixes are released for the latest 3.x version. Please upgrade to it before reporting.
+Security fixes are released for the latest 4.x version. Please upgrade to it before reporting.
 
 ## Reporting a vulnerability
 
