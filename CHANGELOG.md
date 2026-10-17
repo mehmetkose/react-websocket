@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `createWebSocketFeeds(client, { subscribe, sequence, snapshot })` subscribes to topics whose messages carry a
+  sequence number, and delivers each message once and in order across reconnects. Every new connection subscribes
+  with `after`, the last number received, so the server sends only what was missed. A message numbered at or below
+  the last is dropped as a duplicate. One that skips numbers is held back, and the feed asks once for what's missing
+  (`resume`, `onGap`). A `snapshot` resets the numbering when the server can't replay. It's a `WebSocketTopics`, so
+  `useWebSocketTopic` takes it. See
+  [Numbered feeds](https://mehmetkose.github.io/react-websocket/guide/topics#numbered-feeds).
+- `createWebSocketState` takes feeds in place of the client, through the new `MessageSource` type, to reduce their
+  in-order messages.
+
 ## [4.6.0] - 2026-10-17
 
 ### Fixed
@@ -316,6 +330,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.6.0...HEAD
 [4.6.0]: https://github.com/mehmetkose/react-websocket/compare/4.5.0...4.6.0
 [4.5.0]: https://github.com/mehmetkose/react-websocket/compare/4.4.0...4.5.0
 [4.4.0]: https://github.com/mehmetkose/react-websocket/compare/4.3.0...4.4.0

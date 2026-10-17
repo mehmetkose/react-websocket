@@ -88,6 +88,65 @@ The one-tick delay before `unsubscribe` is the same trick the client uses for co
 `open` listeners run in the order they were added, and topics subscribe from one. If your server needs an auth message before anything else, add your auth listener (`live.on('open', …)`) **before** calling `createWebSocketTopics`. See [First-message auth](./authentication.md#first-message-auth).
 :::
 
+## Numbered feeds
+
+Resubscribing fixes the frozen dashboard, but it can't say what happened while the connection was down. A chat room, a scoreboard or an order book needs more: every message, exactly once, in order. If the server numbers the messages on each topic, `createWebSocketFeeds` gives you that. It's a topics manager whose subscribe message says where you left off:
+
+```ts
+// live.ts
+import { createWebSocket, createWebSocketFeeds, createWebSocketState } from 'react-websocket';
+
+type LiveIn =
+  | { type: 'event'; topic: string; seq: number; message: ChatMessage }
+  | { type: 'snapshot'; topic: string; seq: number; messages: ChatMessage[] };
+type LiveOut =
+  | { type: 'subscribe'; topic: string; after?: number }
+  | { type: 'unsubscribe'; topic: string };
+
+export const live = createWebSocket<LiveIn, LiveOut>('wss://chat.example.com', { json: true });
+
+export const feeds = createWebSocketFeeds(live, {
+  subscribe: (topic, after) => ({ type: 'subscribe', topic, after }),
+  unsubscribe: topic => ({ type: 'unsubscribe', topic }),
+  sequence: message => (message.type === 'event' ? message : undefined),
+  snapshot: message => (message.type === 'snapshot' ? message : undefined)
+});
+
+// Reduce the feed's messages, not the client's: each once, in order.
+export const room = createWebSocketState(feeds, {
+  initialState: [] as ChatMessage[],
+  reduce: (list, message) => (message.type === 'snapshot' ? message.messages : [...list, message.message])
+});
+```
+
+Components hold topics exactly as before, with `useWebSocketTopic(feeds, 'room:42')`. What changes is what reaches `room`:
+
+- **After a reconnect**, each held topic is subscribed with `after`, the number of the last message received, so the server sends only what was missed.
+- **Duplicates are dropped.** A message numbered at or below the last one never reaches your reducer, even if the server replays more than it needs to.
+- **Gaps are filled.** A message that skips numbers is held back, and the feed asks the server once for what's missing (`resume`, which defaults to subscribing again with `after`). Nothing is delivered out of order.
+- **Snapshots are the fallback.** When the server no longer has the messages after `after`, it sends the topic's whole state with its current number. The snapshot is always delivered, and numbering goes on from it.
+
+Messages that aren't numbered, and those on topics the feed doesn't hold, pass through untouched, so `feeds` can stand in for the client wherever you listen to messages: `feeds.on('message', …)` or `createWebSocketState(feeds, …)`.
+
+The server keeps a short history per topic. With the [`ws`](https://github.com/websockets/ws) package, the subscribe handler looks like this:
+
+```ts
+function subscribe(socket: WebSocket, topic: string, after: number | undefined) {
+  const feed = feeds.get(topic)!; // { seq, history: { seq, message }[] }
+  const oldest = feed.history[0]?.seq ?? feed.seq + 1;
+  if (after === undefined || after < oldest - 1) {
+    send(socket, { type: 'snapshot', topic, seq: feed.seq, messages: currentState(topic) });
+  } else {
+    for (const entry of feed.history) {
+      if (entry.seq > after) send(socket, { type: 'event', topic, seq: entry.seq, message: entry.message });
+    }
+  }
+  subscribers(topic).add(socket);
+}
+```
+
+See [`createWebSocketFeeds`](../api/create-websocket-feeds.md) for every option.
+
 ## Outside React
 
 `topics.acquire(topic)` does what the hook does and returns a release function:
@@ -102,6 +161,6 @@ release();
 
 ## See also
 
-- [`createWebSocketTopics`](../api/create-websocket-topics.md) and [`useWebSocketTopic`](../api/use-websocket-topic.md)
+- [`createWebSocketTopics`](../api/create-websocket-topics.md), [`createWebSocketFeeds`](../api/create-websocket-feeds.md) and [`useWebSocketTopic`](../api/use-websocket-topic.md)
 - [Message state](./state.md)
 - [Reconnecting and heartbeats](./reconnecting.md)
