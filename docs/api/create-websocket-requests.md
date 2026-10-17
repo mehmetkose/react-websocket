@@ -36,7 +36,7 @@ export const rpc = createWebSocketRequests(game, {
 const reply = await rpc.request({ type: 'join', room: 'lobby' }, { timeout: 5000 });
 ```
 
-The guide is [Real-time games](../guide/games.md#requests-await-the-server-s-answer).
+The guide is [Real-time games](../guide/games.md#requests-await-the-servers-answer).
 
 ## Parameters
 

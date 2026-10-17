@@ -153,7 +153,7 @@ game.send({ type: 'aim', angle }, { key: 'aim' });
 game.send({ type: 'leave' }, { priority: true });
 ```
 
-See [Real-time games](../guide/games.md#input-don-t-replay-stale-messages).
+See [Real-time games](../guide/games.md#input-dont-replay-stale-messages).
 
 ### StandardSchemaV1
 
