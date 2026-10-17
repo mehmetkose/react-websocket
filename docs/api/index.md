@@ -18,12 +18,16 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`useWebSocket(url \| client, options?)`](./use-websocket.md) | Connect and read status and the latest message | Status changes and every message |
 | [`useWebSocketEvent(client, type, listener)`](./use-websocket-event.md) | Handle events without re-rendering | Never |
 | [`useWebSocketStatus(client)`](./use-websocket-status.md) | Show connection status | Status changes only |
+| [`useWebSocketTopic(topics, topic)`](./use-websocket-topic.md) | Hold topic subscriptions that survive reconnects | Never |
+| [`useWebSocketState(store, selector?, isEqual?)`](./use-websocket-state.md) | Read state reduced from messages | The selected value changes |
 
 ## Functions
 
 | Function | |
 | --- | --- |
 | [`createWebSocket(url, options?)`](./create-websocket.md) | Create a client to share across components or use outside React |
+| [`createWebSocketTopics(client, options)`](./create-websocket-topics.md) | Manage reference-counted topic subscriptions, resent after every reconnect |
+| [`createWebSocketState(client, options)`](./create-websocket-state.md) | Keep state reduced from a client's messages |
 
 ## Classes
 
@@ -49,4 +53,8 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`ReconnectOptions`](./options.md#reconnect) | Backoff settings |
 | [`HeartbeatOptions`](./options.md#heartbeat) | Keep-alive settings |
 | [`QueueOptions`](./options.md#queue) | Send queue limit |
+| [`WebSocketTopics`](./create-websocket-topics.md#returns) | The topic manager from `createWebSocketTopics` |
+| [`WebSocketTopicsOptions`](./create-websocket-topics.md#parameters) | `{ subscribe, unsubscribe? }` |
+| [`WebSocketState`](./create-websocket-state.md#returns) | The store from `createWebSocketState` |
+| [`WebSocketStateOptions`](./create-websocket-state.md#parameters) | `{ initialState, reduce }` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |

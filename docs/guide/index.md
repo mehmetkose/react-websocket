@@ -53,7 +53,7 @@ You get clients in two ways:
 | --- | --- |
 | React | 18 or 19. `use(client.ready)` needs React 19. `<Activity>` support is automatic on React 19.2+. |
 | Browsers | Every browser with `WebSocket` and ES2022 support. |
-| TypeScript | Optional. Types ship with the package; TypeScript 5+ is recommended. |
+| TypeScript | Optional. Types ship with the package; TypeScript 5.4+ is recommended. |
 | Server rendering | Supported. See [Server rendering and Next.js](./ssr.md). |
 
 Ready? [Get started](./getting-started.md).

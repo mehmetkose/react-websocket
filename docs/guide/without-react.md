@@ -140,33 +140,63 @@ Connect a client to a store by forwarding events. Because the client is created 
 
 ### Zustand
 
+Let the client own the connection and Zustand own your data. You don't need to copy `status` into the store: `useWebSocketStatus(client)` already reads it.
+
 ```ts
+// chat.ts
 import { create } from 'zustand';
-import { createWebSocket } from 'react-websocket/core';
+import { createWebSocket } from 'react-websocket';
 
-type Notification = { id: string; text: string };
+type In = { type: 'message'; id: string; text: string } | { type: 'ack'; id: string };
+type Out = { type: 'send'; id: string; text: string };
+type Message = { id: string; text: string; pending: boolean };
 
-type NotificationState = {
-  status: string;
-  items: Notification[];
+export const chat = createWebSocket<In, Out>('wss://api.example.com/chat', { json: true });
+
+type ChatState = {
+  messages: Message[];
+  send(text: string): void;
+  receive(message: In): void;
 };
 
-export const useNotifications = create<NotificationState>(() => ({ status: 'idle', items: [] }));
-
-const notifications = createWebSocket<Notification>('wss://api.example.com/notifications', {
-  json: true
-});
-
-notifications.subscribe(() => {
-  const { status } = notifications.getSnapshot();
-  // `subscribe` also fires for every message; only push real status changes.
-  if (status !== useNotifications.getState().status) useNotifications.setState({ status });
-});
-notifications.on('message', item =>
-  useNotifications.setState(state => ({ items: [item, ...state.items] }))
-);
-notifications.connect();
+export const useChat = create<ChatState>()(set => ({
+  messages: [],
+  send(text) {
+    const id = crypto.randomUUID();
+    set(state => ({ messages: [...state.messages, { id, text, pending: true }] })); // optimistic
+    chat.send({ type: 'send', id, text }); // queued while offline
+  },
+  receive(message) {
+    if (message.type === 'ack') {
+      set(state => ({
+        messages: state.messages.map(m => (m.id === message.id ? { ...m, pending: false } : m))
+      }));
+    } else {
+      set(state => ({ messages: [...state.messages, { ...message, pending: false }] }));
+    }
+  }
+}));
 ```
+
+Forward messages from one component mounted high in the tree. The socket is then open only while that part of the UI exists:
+
+```tsx
+import { useWebSocketEvent } from 'react-websocket';
+import { chat, useChat } from './chat';
+
+export function ChatConnection() {
+  useWebSocketEvent(chat, 'message', message => useChat.getState().receive(message));
+  return null;
+}
+```
+
+Components read data with `useChat(state => state.messages)` and status with `useWebSocketStatus(chat)`, and send through store actions.
+
+To keep the connection open for the whole session instead, forward with `chat.on('message', …)` at module level and call `chat.connect()`.
+
+::: tip Do you need Zustand for this?
+If the store only accumulates socket data, [`createWebSocketState`](./state.md) does the same with a reducer and per-component selectors, with no extra dependency. Reach for Zustand when many app actions also change the same data.
+:::
 
 ### Redux Toolkit
 

@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { renderToString } from 'react-dom/server';
-import { createWebSocket, useWebSocket, useWebSocketStatus } from '../src';
+import {
+  createWebSocket,
+  createWebSocketState,
+  useWebSocket,
+  useWebSocketState,
+  useWebSocketStatus
+} from '../src';
 
 it('renders idle on the server without opening a socket', () => {
   // Node ships a global WebSocket; make sure we never reach for it during SSR.
@@ -27,4 +33,16 @@ it('drops sends on the server instead of queueing them forever', () => {
 it('rejects ready on the server', async () => {
   const chat = createWebSocket('ws://example.test/chat');
   await expect(chat.ready).rejects.toThrow('server render');
+});
+
+it('renders useWebSocketState from initialState on the server', () => {
+  const prices = createWebSocket<{ price: number }>('ws://example.test/prices');
+  const store = createWebSocketState(prices, {
+    initialState: { price: 0 },
+    reduce: (_, message) => message
+  });
+  function Price() {
+    return <p>{useWebSocketState(store, state => state.price)}</p>;
+  }
+  expect(renderToString(<Price />)).toBe('<p>0</p>');
 });

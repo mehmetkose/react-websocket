@@ -47,6 +47,8 @@ export default defineConfig({
           { text: 'Shared clients', link: '/guide/shared-clients' },
           { text: 'Messages and types', link: '/guide/messages' },
           { text: 'Reconnecting and heartbeats', link: '/guide/reconnecting' },
+          { text: 'Topic subscriptions', link: '/guide/topics' },
+          { text: 'Message state', link: '/guide/state' },
           { text: 'Suspense', link: '/guide/suspense' },
           { text: 'Server rendering and Next.js', link: '/guide/ssr' },
           { text: 'StrictMode, Activity and lifecycle', link: '/guide/lifecycle' },
@@ -63,7 +65,11 @@ export default defineConfig({
           { text: 'useWebSocket', link: '/api/use-websocket' },
           { text: 'useWebSocketEvent', link: '/api/use-websocket-event' },
           { text: 'useWebSocketStatus', link: '/api/use-websocket-status' },
+          { text: 'useWebSocketTopic', link: '/api/use-websocket-topic' },
+          { text: 'useWebSocketState', link: '/api/use-websocket-state' },
           { text: 'createWebSocket', link: '/api/create-websocket' },
+          { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
+          { text: 'createWebSocketState', link: '/api/create-websocket-state' },
           { text: 'Options', link: '/api/options' },
           { text: 'Types', link: '/api/types' }
         ]

@@ -16,6 +16,8 @@
 - **Send queue.** `send()` before the socket is open just works. The message goes out on connect.
 - **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
 - **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
+- **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
+- **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
 
@@ -108,7 +110,11 @@ function Room() {
 | `useWebSocket(url \| client, options?)` | Connect; returns `{ status, lastMessage, attempt, send, close, reconnect, client }` |
 | `useWebSocketEvent(client, type, listener)` | Handle `'open'`, `'message'`, `'close'` or `'error'` without re-rendering |
 | `useWebSocketStatus(client)` | The status; re-renders only when it changes |
+| `useWebSocketTopic(topics, topic)` | Hold topic subscriptions that survive reconnects |
+| `useWebSocketState(store, selector?)` | Read state reduced from messages; re-renders only when the selection changes |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
+| `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
+| `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 
 | Option | Default | |

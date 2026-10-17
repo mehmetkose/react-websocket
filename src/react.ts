@@ -1,7 +1,9 @@
-import { useEffect, useInsertionEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useInsertionEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 // Import the client through the `core` entry: the build keeps it external, so both entries
 // share one copy of it (and of `MessageError`).
 import { createWebSocket } from './core';
+import type { WebSocketState } from './state';
+import type { WebSocketTopics } from './topics';
 import type {
   CloseInfo,
   EventMap,
@@ -205,4 +207,78 @@ export function useWebSocketStatus(client: WebSocketClient<any, any> | null | un
   );
   useHold(client ?? null, true);
   return status;
+}
+
+const identity = <T>(value: T) => value;
+
+/**
+ * Read state built from messages by `createWebSocketState`. Re-renders only when the
+ * selected value changes (by `isEqual`, default `Object.is`), however often messages
+ * arrive. Keeps the connection open while mounted.
+ *
+ * On the server, and during hydration, it reads from `initialState`.
+ *
+ * @example
+ * ```tsx
+ * const acme = useWebSocketState(priceState, state => state.ACME);
+ * ```
+ */
+export function useWebSocketState<S>(store: WebSocketState<S>): S;
+export function useWebSocketState<S, T>(
+  store: WebSocketState<S>,
+  selector: (state: S) => T,
+  isEqual?: (a: T, b: T) => boolean
+): T;
+export function useWebSocketState<S, T>(
+  store: WebSocketState<S>,
+  selector: (state: S) => T = identity as (state: S) => T,
+  isEqual: (a: T, b: T) => boolean = Object.is
+): T {
+  const [getSelection, getServerSelection] = useMemo(() => {
+    // Return the previous selection while the state is unchanged or the result is equal,
+    // so inline selectors that build objects don't re-render (or loop) on every message.
+    const memoized = (read: () => S) => {
+      let memo: { state: S; selection: T } | undefined;
+      return () => {
+        const state = read();
+        if (memo && Object.is(memo.state, state)) return memo.selection;
+        const selection = selector(state);
+        if (memo && isEqual(memo.selection, selection)) {
+          memo = { state, selection: memo.selection };
+          return memo.selection;
+        }
+        memo = { state, selection };
+        return selection;
+      };
+    };
+    return [memoized(store.getState), memoized(() => store.initialState)] as const;
+  }, [store, selector, isEqual]);
+
+  const selection = useSyncExternalStore(store.subscribe, getSelection, getServerSelection);
+  useHold(store.client, true);
+  return selection;
+}
+
+/**
+ * Subscribe to one topic (or several) while mounted, through a `createWebSocketTopics`
+ * manager. Components holding the same topic share one subscription, and it is sent again
+ * after every reconnect. Keeps the connection open while mounted. `null` holds nothing.
+ *
+ * @example
+ * ```tsx
+ * useWebSocketTopic(topics, `prices:${symbol}`);
+ * useWebSocketTopic(topics, watchlist.map(symbol => `prices:${symbol}`));
+ * ```
+ */
+export function useWebSocketTopic(
+  topics: WebSocketTopics | null | undefined,
+  topic: string | readonly string[] | null | undefined
+): void {
+  // A stable key, so a new array with the same topics doesn't resubscribe.
+  const key = topic == null ? null : JSON.stringify(typeof topic === 'string' ? [topic] : topic);
+  useEffect(() => {
+    if (!topics || key === null) return;
+    const releases = (JSON.parse(key) as string[]).map(t => topics.acquire(t));
+    return () => releases.forEach(release => release());
+  }, [topics, key]);
 }

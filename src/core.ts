@@ -1,4 +1,8 @@
 export { createWebSocket } from './client';
+export { createWebSocketState } from './state';
+export type { WebSocketState, WebSocketStateOptions } from './state';
+export { createWebSocketTopics } from './topics';
+export type { WebSocketTopics, WebSocketTopicsOptions } from './topics';
 export { MessageError } from './types';
 export type {
   CloseInfo,

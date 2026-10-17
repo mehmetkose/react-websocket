@@ -9,11 +9,13 @@ This page explains when components re-render, how to handle high-frequency strea
 | [`useWebSocket`](../api/use-websocket.md) | Every status change **and every message** (`lastMessage` changes) |
 | [`useWebSocketStatus`](../api/use-websocket-status.md) | Status changes only |
 | [`useWebSocketEvent`](../api/use-websocket-event.md) | Never. It calls your listener instead |
+| [`useWebSocketState`](../api/use-websocket-state.md) | Only when its selected value changes |
 
 `useWebSocket` is the convenient choice for chat, notifications and other streams of a few messages per second. For market data, telemetry, cursors or anything that can send dozens of messages per second, split the work:
 
 - `useWebSocketStatus(client)` for the connection indicator.
 - `useWebSocketEvent(client, 'message', listener)` to receive messages without rendering, and update state on your own schedule.
+- Or reduce messages into a store with [`createWebSocketState`](./state.md), and let each component select only its slice with `useWebSocketState`. With 500 symbols streaming, a `<Price symbol="ACME" />` re-renders only when ACME changes.
 
 ## Batching a fast stream
 
