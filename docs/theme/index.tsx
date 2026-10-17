@@ -9,8 +9,11 @@ import '@fontsource-variable/geist-mono/wght.css';
 import '@fontsource-variable/geist-mono/wght-italic.css';
 import './index.css';
 import { ServerRingHero } from './components/ServerRingHero';
+import { SocialLinks } from './components/SocialLinks';
+import { SwitchAppearance } from './components/SwitchAppearance';
 
-// The layouts import these from the theme, so overriding them here changes the built-in home page.
+// The built-in layouts import their components from the theme, so the exports below replace them:
+// the home page's hero and layout, and accessible versions of the theme toggle and social links.
 
 // The animation goes in the hero's image slot, beside the headline.
 function HomeHero(props: ComponentProps<typeof BasicHomeHero>) {
@@ -36,4 +39,4 @@ function HomeLayout(props: ComponentProps<typeof BasicHomeLayout>) {
 }
 
 export * from '@rspress/core/theme-original';
-export { HomeHero, HomeLayout };
+export { HomeHero, HomeLayout, SocialLinks, SwitchAppearance };
