@@ -117,6 +117,7 @@ export default defineConfig({
             { text: 'useWebSocketState', link: '/api/use-websocket-state' },
             { text: 'useWebSocketLatency', link: '/api/use-websocket-latency' },
             { text: 'useAgentApproval', link: '/api/use-agent-approval' },
+            { text: 'useWebSocketStream', link: '/api/use-websocket-stream' },
             { text: 'createWebSocket', link: '/api/create-websocket' },
             { text: 'createWebSocketTopics', link: '/api/create-websocket-topics' },
             { text: 'createWebSocketState', link: '/api/create-websocket-state' },

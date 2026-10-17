@@ -72,14 +72,11 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 ### AI agents
 
-- **Streaming RPC** (`rpc.stream(message)` and a `useWebSocketStream` hook). An async iterable of partial
-  replies, with an `AbortSignal` that sends a cancel message. Realtime LLM and voice APIs work this way.
-  Extends `createWebSocketRequests`.
 - **Resumable agent runs** (`useAgentRun(runId)`). A refresh, a Wi-Fi to cellular switch or a sleeping laptop
   drops a streaming answer halfway, and the tokens are paid for anyway. Events carry an offset, the run id is
   kept in `sessionStorage`, and on reconnect or reload the client sends `resume { runId, offset }` and drops
   duplicates. A per-run disconnect policy chooses `keep` (background agents keep working) or `cancel` (chat
-  stops spending). This is sequenced streams (above) applied to runs, so it ships after them.
+  stops spending). This is sequenced streams (above) applied to `rpc.stream` runs, so it ships after them.
 - **Voice sessions with interruption.** On interruption the client must stop audio, discard queued frames,
   cancel generation and report how much the user actually heard, or the transcript includes words they never
   heard. The library's part is the transport, which ships: `priority` sends for control messages, and
@@ -121,7 +118,7 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 - **Incremental markdown rendering for token streams.** Re-parsing only the last open block is real work
   worth doing, but it belongs to the markdown renderer, not the transport. `batch: 'frame'` on
-  `createWebSocketState` covers the part that is the library's job.
+  `createWebSocketState` and `useWebSocketStream` covers the part that is the library's job.
 - **Typed partial objects from streamed JSON** (`usePartialObject`). Useful, but it parses text from any
   transport, and AI SDKs already offer partial-object hooks. Worth revisiting as an option on `rpc.stream`
-  (final value validated with the existing Standard Schema support) once streaming RPC exists.
+  (final value validated with the existing Standard Schema support).

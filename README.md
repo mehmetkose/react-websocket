@@ -18,7 +18,7 @@
 - **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
 - **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop.
 - **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
-- **Requests and latency.** Await replies with timeouts and cancellation, and measure round-trip time and the server's clock for ping displays and synchronized countdowns.
+- **Requests, streams and latency.** Await a reply, or iterate over streamed ones such as an LLM's tokens, with timeouts and a cancel that tells the server to stop. Measure round-trip time and the server's clock for ping displays and synchronized countdowns.
 - **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
@@ -117,10 +117,11 @@ function Room() {
 | `useWebSocketState(store, selector?)` | Read state reduced from messages; re-renders only when the selection changes |
 | `useWebSocketLatency(latency)` | Round-trip time and server clock offset |
 | `useAgentApproval(responder, method)` | Requests from the server waiting for a person to answer |
+| `useWebSocketStream(rpc, options?)` | Stream the replies to a request into a value, e.g. tokens into an answer; returns `{ value, status, error, start, abort }` |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
 | `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
-| `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, with timeouts |
+| `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, and `stream(message)` an async iterator of replies, with timeouts and `cancel` |
 | `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
 | `createWebSocketSendRate(client, options?)` | `send(message, key)` coalesced per key at a rate that drops on a congested link |
 | `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |

@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `rpc.stream(message, options?)` on `createWebSocketRequests` sends a request and returns an async iterator of its
+  replies, for servers that answer one request with many messages, such as an LLM's tokens. The new `done` option
+  recognizes the last reply, which is yielded too. `timeout` is the time to wait for each reply. Replies are buffered
+  until the loop reads them, and a failure (an error reply, a timeout, a lost connection) is thrown after them.
+- A `cancel` option on `createWebSocketRequests` builds the message that tells the server to stop request `id`. It's
+  sent when a request or stream is aborted, times out or is disposed, and when a loop over a stream exits early, but
+  not after the last reply or a lost connection. A cancel for a request still in the send queue is queued behind it.
+- `useWebSocketStream(rpc, options?)` folds the replies to a request into state with `initial` and `reduce`, for a
+  chat answer with a Stop button. `start(message)` replaces the running stream, and `abort()`, unmounting and a new
+  `rpc` stop it and send `cancel`. `status` is `idle`, `streaming`, `done`, `error` or `aborted`, and `batch: 'frame'`
+  renders at most once per animation frame. The
+  [AI agents](https://mehmetkose.github.io/react-websocket/guide/agents#streaming-the-answer) guide has a new
+  section on streaming the answer.
+
 ## [3.5.0] - 2026-10-17
 
 ### Added
@@ -187,6 +205,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/3.5.0...HEAD
 [3.5.0]: https://github.com/mehmetkose/react-websocket/compare/3.4.0...3.5.0
 [3.4.0]: https://github.com/mehmetkose/react-websocket/compare/3.3.0...3.4.0
 [3.3.0]: https://github.com/mehmetkose/react-websocket/compare/3.2.0...3.3.0

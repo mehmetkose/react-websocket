@@ -164,7 +164,17 @@
       "ignore": [
         "react"
       ],
-      "limit": "1.5 kB",
+      "limit": "1.8 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket (requests + stream hook)",
+      "path": "dist/index.js",
+      "import": "{ createWebSocketRequests, useWebSocketStream }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1.7 kB",
       "gzip": true
     },
     {
