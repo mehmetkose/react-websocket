@@ -111,8 +111,9 @@ export interface ReconnectOptions {
    * backoff, so clients told the same delay still spread out, and the `online` and
    * `visibilitychange` events don't cut the wait short.
    *
-   * The default, `retryAfter`, reads a `1013` (Try Again Later) close whose reason is a number
-   * of seconds, like an HTTP `Retry-After` header. Your own function replaces it.
+   * The default, `retryAfter`, reads a `1012` (Service Restart) or `1013` (Try Again Later)
+   * close whose reason is a number of seconds, like an HTTP `Retry-After` header. Your own
+   * function replaces it.
    *
    * A `1013` close that names no delay still waits longer than other closes: its backoff starts
    * at `maxDelay`.
@@ -127,6 +128,23 @@ export interface ReconnectOptions {
    * @default retryAfter
    */
   retryAfter?: (close: CloseInfo) => number | undefined;
+}
+
+/** Options for `client.migrate()`. */
+export interface MigrateOptions {
+  /**
+   * Where to connect instead: a URL, or a function called before the connection, like the
+   * client's own `url`. Later reconnects go there too, until the client is closed, gives up or
+   * is torn down.
+   * @default the client's current URL
+   */
+  url?: UrlSource;
+  /**
+   * Move at a random moment within this many ms, so that clients asked to move together don't
+   * all reconnect at once.
+   * @default 0
+   */
+  within?: number;
 }
 
 /** Application-level keep-alive. Useful behind proxies that drop idle connections. */
@@ -416,6 +434,28 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
    * backoff. Also restarts a `closed` client.
    */
   reconnect(): void;
+  /**
+   * Move to a new connection without a gap, for example when the server asks its clients to
+   * before a deploy. At a random moment within `options.within` ms, it opens a new connection
+   * (to `options.url`, if given) and, once that one is open, closes the current one with code
+   * `1000`. Until then the current connection keeps working, so the status stays `open` and
+   * `send()` doesn't queue.
+   *
+   * `open` listeners run for the new connection, as after any reconnect, so handshakes and
+   * topic subscriptions are sent again. Requests the old connection hadn't answered fail as on
+   * a lost connection. If the new connection fails before opening, the current one stays. If
+   * the client isn't open when the moment comes, only the URL changes, for the next attempt.
+   * A later call replaces one that hasn't moved yet.
+   *
+   * @example
+   * ```ts
+   * // The server sends { type: 'reconnect', within: 30000 } before it shuts down.
+   * live.on('message', message => {
+   *   if (message.type === 'reconnect') live.migrate({ within: message.within, url: message.url });
+   * });
+   * ```
+   */
+  migrate(options?: MigrateOptions): void;
   /**
    * Hold the connection open until the returned function is called. This is what the
    * hooks use; call it yourself to integrate with non-React code.

@@ -141,4 +141,6 @@ onTokenChanged(() => live.reconnect());
 
 `reconnect()` also restarts a client that gave up or was closed.
 
+For a token that is only being renewed, call `live.migrate()` instead. It opens the new connection, with a new URL from your function, and closes the old one only once the new one is open, so the status stays `open` throughout. See [Deploys](./reconnecting.md#deploys-without-reconnect-storms).
+
 After the user logs out, call `live.close()`. That closes the socket, stops reconnecting and clears the send queue. Mounted components stay mounted; the status stays `closed` until `connect()` or `reconnect()` is called.

@@ -45,7 +45,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
 | [`retryableClose(close)`](../guide/reconnecting.md#giving-up) | The default `reconnect.shouldReconnect`: `false` for close codes `1002`, `1003` and `1008`. Call it from your own to keep that rule |
-| [`retryAfter(close)`](../guide/reconnecting.md#overloaded-servers-1013) | The default `reconnect.retryAfter`: the delay in ms from a `1013` close whose reason is a number of seconds. Call it from your own to keep reading it |
+| [`retryAfter(close)`](../guide/reconnecting.md#overloaded-servers-1013) | The default `reconnect.retryAfter`: the delay in ms from a `1012` or `1013` close whose reason is a number of seconds. Call it from your own to keep reading it |
 
 ## Classes
 

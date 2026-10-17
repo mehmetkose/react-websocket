@@ -83,6 +83,7 @@ The full picture, including backoff and heartbeats, is in [Reconnecting and hear
 | `connect()` | Connect, and stay connected until `close()` even with no hooks mounted |
 | `close(code?, reason?)` | Close, stop reconnecting, clear the queue. Status becomes `'closed'` |
 | `reconnect()` | Drop the socket and connect again now, resetting the backoff. Also restarts a `'closed'` client |
+| `migrate({ url?, within? })` | Move to a new connection without a gap, at a random moment within `within` ms, for example when the server asks before a deploy. See [Deploys](../guide/reconnecting.md#deploys-without-reconnect-storms) |
 | `ready` | Promise that resolves once connected. See [Suspense](../guide/suspense.md) |
 | `getSnapshot()` | Current `{ status, lastMessage, attempt }` |
 | `subscribe(listener)` | Get notified when the snapshot changes. Returns an unsubscribe function |

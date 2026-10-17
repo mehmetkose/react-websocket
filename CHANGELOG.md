@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `client.migrate({ url?, within? })` moves to a new connection without a gap, for deploys. At a random moment within
+  `within` ms, it opens a new connection (to `url`, if given) and closes the current one once the new one is open, so
+  the status stays `open` and nothing is queued. `open` listeners run for the new connection, so handshakes and topic
+  subscriptions move with it. If the new connection fails, the current one stays. A server can ask its clients to
+  move before it restarts, and they spread out over the window instead of reconnecting all at once. See
+  [Deploys without reconnect storms](https://mehmetkose.github.io/react-websocket/guide/reconnecting#deploys-without-reconnect-storms).
+- The default `retryAfter` also reads a `1012` (Service Restart) close whose reason is a number of seconds, so a
+  restarting server can say when to come back.
+- The `MigrateOptions` type.
+
 ## [4.1.0] - 2026-10-17
 
 ### Added
@@ -251,6 +265,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.1.0...HEAD
 [4.1.0]: https://github.com/mehmetkose/react-websocket/compare/4.0.0...4.1.0
 [4.0.0]: https://github.com/mehmetkose/react-websocket/compare/3.6.0...4.0.0
 [3.6.0]: https://github.com/mehmetkose/react-websocket/compare/3.5.0...3.6.0

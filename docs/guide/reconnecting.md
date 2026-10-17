@@ -74,7 +74,7 @@ export const live = createWebSocket('wss://api.example.com/live', {
 | `jitter` | `1` | Fraction (0–1) randomly shaved off each delay |
 | `minUptime` | `5000` | How long a connection must stay open before the backoff resets, in ms |
 | `shouldReconnect` | `retryableClose` | Return `false` to stop after a given close. The default stops on `1002`, `1003` and `1008` |
-| `retryAfter` | `retryAfter` | How long the server asked to wait after a given close, in ms. The default reads a delay in seconds from a `1013` close |
+| `retryAfter` | `retryAfter` | How long the server asked to wait after a given close, in ms. The default reads a delay in seconds from a `1012` or `1013` close |
 
 `reconnect: false` disables reconnecting entirely. The first unexpected close then makes the status `closed`.
 
@@ -93,7 +93,7 @@ A server that is shedding load can close with `1013` (Try Again Later). Coming b
 
 In both cases, coming back online or to the tab doesn't cut the wait short, and the close counts as a failed attempt, so `attempt` goes up and `maxAttempts` applies. `reconnect()` still connects at once.
 
-Reading the delay is the `retryAfter` option, whose default is the exported `retryAfter` function. If your server says how long to wait in another way, for example with a code of its own and the delay in milliseconds, pass your own and call the default from it:
+Reading the delay is the `retryAfter` option, whose default is the exported `retryAfter` function. It reads a `1012` (Service Restart) close the same way, without the longer backoff: see [Deploys](#deploys-without-reconnect-storms). If your server says how long to wait in another way, for example with a code of its own and the delay in milliseconds, pass your own and call the default from it:
 
 ```ts
 import { createWebSocket, retryAfter } from 'react-websocket';
@@ -107,6 +107,41 @@ const live = createWebSocket(url, {
 ```
 
 It returns a delay in ms, or `undefined` when the server didn't ask for one. Anything else, such as `NaN` from a reason that isn't a number, is ignored.
+
+### Deploys without reconnect storms
+
+When a server restarts, every client it served reconnects at once, often to a new server that is still warming up, and each user's connection drops for a moment. Instead, the server can ask its clients to move before it stops, each at a random moment within a window, and `client.migrate()` follows:
+
+```ts
+const live = createWebSocket<Message>(url, { json: true });
+
+// The server sends { type: 'reconnect', within: 30000 } before it shuts down.
+live.on('message', message => {
+  if (message.type === 'reconnect') live.migrate({ within: message.within, url: message.url });
+});
+```
+
+`migrate()` waits a random time up to `within` ms, then opens a new connection and closes the current one once the new one is open. Until then the current connection keeps working, so there is no gap: the status stays `open`, `send()` doesn't queue, and messages keep arriving. `open` listeners run for the new connection as after any reconnect, so an auth handshake and [topic](./topics.md) subscriptions are sent on it. A request the old connection hadn't answered fails as on a lost connection.
+
+- **`url`** moves the client to another server, for example from a blue to a green deployment. It can be a string, or a function called before the connection, like the client's own `url`. Later reconnects go there too, until the client is closed, gives up or is torn down. Without it, the new connection uses the client's current URL, and a load balancer can route it to a new instance.
+- **If the new connection fails**, the current one stays. When the server stops, the client reconnects as after any other drop.
+- **If the client isn't open** when its moment comes, only the URL changes, for its next attempt.
+
+On the server, send the notice, wait for the window to pass, then close whoever is left with `1012` (Service Restart). Its reason can say, in seconds, when to come back: the default `retryAfter` reads it like a `1013`'s, so those clients wait that long plus the usual backoff instead of retrying within a second. With the [`ws`](https://github.com/websockets/ws) package:
+
+```ts
+process.on('SIGTERM', () => {
+  for (const socket of wss.clients) {
+    socket.send(JSON.stringify({ type: 'reconnect', within: 30_000 }));
+  }
+  setTimeout(() => {
+    for (const socket of wss.clients) socket.close(1012, '5'); // back in 5 s
+    wss.close();
+  }, 35_000);
+});
+```
+
+`migrate()` is also a gap-free `reconnect()`. Call it with no options to open a fresh connection, for example to pick up a refreshed token in a [`url` function](./authentication.md#refreshing-credentials), without the status leaving `open`.
 
 ### Giving up
 
