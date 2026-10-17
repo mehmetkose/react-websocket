@@ -61,7 +61,8 @@ export default defineConfig({
         'react-websocket/timeline': './src/timeline.ts',
         'react-websocket/outbox': './src/outbox.ts',
         'react-websocket/ag-ui': './src/ag-ui.ts',
-        'react-websocket/tabs': './src/tabs.ts'
+        'react-websocket/tabs': './src/tabs.ts',
+        'react-websocket/replay': './src/replay.ts'
       }
     }
   },
@@ -112,6 +113,7 @@ export default defineConfig({
             { text: 'Performance', link: '/guide/performance' },
             { text: 'Testing', link: '/guide/testing' },
             { text: 'Chaos testing', link: '/guide/chaos' },
+            { text: 'Recording and replay', link: '/guide/replay' },
             { text: 'Without React', link: '/guide/without-react' }
           ]
         },
@@ -146,6 +148,7 @@ export default defineConfig({
             { text: 'react-websocket/ag-ui', link: '/api/ag-ui' },
             { text: 'createTabsWebSocket', link: '/api/tabs' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },
+            { text: 'react-websocket/replay', link: '/api/replay' },
             { text: 'Options', link: '/api/options' },
             { text: 'Types', link: '/api/types' }
           ]

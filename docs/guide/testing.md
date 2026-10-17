@@ -201,6 +201,10 @@ it('reconnects after a drop', () => {
 
 See [Chaos testing](./chaos.md#in-tests) for stalls, latency and seeds.
 
+## Recorded sessions
+
+To test a UI against what a real server sends, such as an AI model's answer, record a session once and replay it in your tests, without the server and without paying for the model on every run. See [Recording and replay](./replay.md#in-a-test).
+
 ## Isolating tests
 
 Hooks given the same URL share one client, and a client is forgotten only a tick after its last component unmounts. Under fake timers that tick may never run, so a client, and its `lastMessage`, can leak into the next test. Either:

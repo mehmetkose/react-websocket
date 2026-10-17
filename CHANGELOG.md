@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `react-websocket/replay`, a new entry point. `createRecordingWebSocket()` returns a `WebSocket` class that records
+  each connection's open, sends, messages, errors and closes with their times; `recording()` returns them as plain
+  JSON and `save()` downloads it. `createReplayWebSocket(recording, { speed })` plays a recording back without a
+  server, one recorded connection per connection the client opens, at the recorded timing or faster. By default it
+  waits for the app to send before replaying what came after a send, so the replay follows the app. `sent`, `done`
+  and `reset()` help in tests, and chaos can wrap it to add faults. For bug reports, offline demos, and UI tests that
+  don't call an AI model on every run. About 1.7 kB min+gzip, with no imports. See
+  [Recording and replay](https://mehmetkose.github.io/react-websocket/guide/replay).
+
 ## [4.13.0] - 2026-10-17
 
 ### Added
@@ -405,6 +418,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.13.0...HEAD
 [4.13.0]: https://github.com/mehmetkose/react-websocket/compare/4.12.0...4.13.0
 [4.12.0]: https://github.com/mehmetkose/react-websocket/compare/4.11.0...4.12.0
 [4.11.0]: https://github.com/mehmetkose/react-websocket/compare/4.10.0...4.11.0
