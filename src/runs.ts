@@ -70,14 +70,15 @@ export interface WebSocketRuns<Req, T> {
   readonly client: WebSocketClient<any, any>;
   /**
    * Start a run and return its `runId`. The start message is sent as soon as the socket is
-   * open, and the run is remembered until it ends.
+   * open, and the run is remembered until it ends. `initial` overrides the `initial` option for
+   * this run.
    */
-  start(request: Req, options?: { runId?: string; policy?: RunPolicy }): string;
+  start(request: Req, options?: { runId?: string; policy?: RunPolicy; initial?: T }): string;
   /**
    * Follow a run started elsewhere, such as in another tab or before a reload, from its first
    * event. Does nothing for a run it already knows.
    */
-  attach(runId: string, options?: { policy?: RunPolicy }): void;
+  attach(runId: string, options?: { policy?: RunPolicy; initial?: T }): void;
   /** Stop a streaming run: send `cancel`, and make it `'aborted'`. */
   abort(runId: string): void;
   /** A run's state, or `undefined` for one it doesn't know. The same object until it changes. */
@@ -208,10 +209,10 @@ export function createWebSocketRuns<Req, T, In, const Out>(
     set(runId, patch);
   }
 
-  function follow(runId: string, policy: RunPolicy) {
+  function follow(runId: string, policy: RunPolicy, value = options.initial) {
     policies.set(runId, policy);
     remember(runId, policy);
-    set(runId, {});
+    set(runId, { value });
     releases.set(runId, feeds.acquire(runId));
   }
 
@@ -266,13 +267,13 @@ export function createWebSocketRuns<Req, T, In, const Out>(
 
   return {
     client,
-    start(request, { runId = randomId(), policy = options.policy ?? 'keep' } = {}) {
+    start(request, { runId = randomId(), policy = options.policy ?? 'keep', initial } = {}) {
       starting.set(runId, request);
-      follow(runId, policy);
+      follow(runId, policy, initial);
       return runId;
     },
-    attach(runId, { policy = options.policy ?? 'keep' } = {}) {
-      if (!runs.has(runId)) follow(runId, policy);
+    attach(runId, { policy = options.policy ?? 'keep', initial } = {}) {
+      if (!runs.has(runId)) follow(runId, policy, initial);
     },
     abort,
     get: runId => runs.get(runId),

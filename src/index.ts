@@ -2,6 +2,7 @@ export * from './core';
 export {
   useAgentApproval,
   useAgentRun,
+  useAgUiAgent,
   useWebSocket,
   useWebSocketEvent,
   useWebSocketLatency,
