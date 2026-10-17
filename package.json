@@ -47,6 +47,16 @@
         "default": "./dist/timeline.cjs"
       }
     },
+    "./ag-ui": {
+      "import": {
+        "types": "./dist/ag-ui.d.ts",
+        "default": "./dist/ag-ui.js"
+      },
+      "require": {
+        "types": "./dist/ag-ui.d.cts",
+        "default": "./dist/ag-ui.cjs"
+      }
+    },
     "./outbox": {
       "import": {
         "types": "./dist/outbox.d.ts",
@@ -240,6 +250,13 @@
       "path": "dist/timeline.js",
       "import": "{ createWebSocketTimeline }",
       "limit": "1 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/ag-ui (createAgUiAgent)",
+      "path": "dist/ag-ui.js",
+      "import": "{ createAgUiAgent }",
+      "limit": "3.6 kB",
       "gzip": true
     },
     {

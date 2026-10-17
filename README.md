@@ -22,6 +22,7 @@
 - **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
 - **Offline outbox.** Messages kept in IndexedDB until the server acknowledges them, from `react-websocket/outbox`, so an order taken on flaky Wi-Fi survives reconnects and page reloads, and retries are safe with idempotency keys.
 - **Resumable runs.** An AI agent's streamed answer that survives a refresh, a network switch or a sleeping laptop: it resumes from the last event received, or is cancelled so the server stops spending.
+- **AG-UI.** Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket with `react-websocket/ag-ui`: messages, tool calls and JSON Patch shared state, with a snapshot when a patch fails, and runs that resume after a reconnect or a reload.
 - **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
 - **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
 - **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
@@ -121,6 +122,7 @@ function Room() {
 | `useAgentApproval(responder, method)` | Requests from the server waiting for a person to answer |
 | `useWebSocketStream(rpc, options?)` | Stream the replies to a request into a value, e.g. tokens into an answer; returns `{ value, status, error, start, abort }` |
 | `useAgentRun(runs, runId)` | A resumable run's value and status, e.g. an AI answer that keeps streaming after a reconnect or a reload |
+| `useAgUiAgent(agent)` | An AG-UI agent's thread: messages, tool calls, shared state and status |
 | `useWebSocketOutbox(outbox)` | The messages waiting in an outbox, for a "3 orders waiting to sync" banner |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
 | `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
@@ -136,6 +138,7 @@ function Room() {
 | `retryAfter(close)` | The default `reconnect.retryAfter`: the delay a `1012` (Service Restart) or `1013` (Try Again Later) close asks for, in seconds in its reason |
 | `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
 | `createWebSocketOutbox(client, { name, send, ack })` | From `react-websocket/outbox`: `add(message)` keeps a message in IndexedDB and sends it until the server acknowledges it, across reconnects and reloads |
+| `createAgUiAgent(client, options?)` | From `react-websocket/ag-ui`: `run({ messages })` an AG-UI agent over a WebSocket; also `applyAgUiEvent` and `applyPatch` |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
 
 | Option | Default | |

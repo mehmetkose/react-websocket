@@ -59,7 +59,8 @@ export default defineConfig({
         'react-websocket/core': './src/core.ts',
         'react-websocket/chaos': './src/chaos.ts',
         'react-websocket/timeline': './src/timeline.ts',
-        'react-websocket/outbox': './src/outbox.ts'
+        'react-websocket/outbox': './src/outbox.ts',
+        'react-websocket/ag-ui': './src/ag-ui.ts'
       }
     }
   },
@@ -99,6 +100,7 @@ export default defineConfig({
             { text: 'Message state', link: '/guide/state' },
             { text: 'Real-time games', link: '/guide/games' },
             { text: 'AI agents', link: '/guide/agents' },
+            { text: 'AG-UI', link: '/guide/ag-ui' },
             { text: 'Suspense', link: '/guide/suspense' },
             { text: 'Server rendering and Next.js', link: '/guide/ssr' },
             { text: 'StrictMode, Activity and lifecycle', link: '/guide/lifecycle' },
@@ -134,6 +136,7 @@ export default defineConfig({
             { text: 'createWebSocketRuns', link: '/api/create-websocket-runs' },
             { text: 'createWebSocketTimeline', link: '/api/create-websocket-timeline' },
             { text: 'createWebSocketOutbox', link: '/api/create-websocket-outbox' },
+            { text: 'react-websocket/ag-ui', link: '/api/ag-ui' },
             { text: 'createChaosWebSocket', link: '/api/chaos' },
             { text: 'Options', link: '/api/options' },
             { text: 'Types', link: '/api/types' }

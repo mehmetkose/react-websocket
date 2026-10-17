@@ -71,6 +71,7 @@ src/
   chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
   timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
   outbox.ts    The react-websocket/outbox entry: messages stored until acknowledged
+  ag-ui.ts     The react-websocket/ag-ui entry: AG-UI events, JSON Patch, and agents on runs
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
@@ -82,6 +83,7 @@ test/
   outbox.test.tsx  The outbox, with memory storage and fake-indexeddb
   feeds.test.tsx   Numbered feeds: duplicates, gaps, snapshots and resuming
   runs.test.tsx    Resumable runs: reconnects, reloads, policies, and useAgentRun
+  ag-ui.test.tsx   JSON Patch, the AG-UI reducer, and agents over the mock socket
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly

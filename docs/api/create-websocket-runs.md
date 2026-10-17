@@ -83,8 +83,8 @@ A `WebSocketRuns<Req, T>`:
 
 | Member | |
 | --- | --- |
-| `start(request, options?)` | Start a run and return its id. `options.runId` sets the id; `options.policy` overrides the default policy |
-| `attach(runId, options?)` | Follow a run started elsewhere, from its first event. Does nothing for a run it already knows |
+| `start(request, options?)` | Start a run and return its id. `options.runId` sets the id, `options.policy` overrides the default policy, and `options.initial` the initial value |
+| `attach(runId, options?)` | Follow a run started elsewhere, from its first event. Does nothing for a run it already knows. Takes `policy` and `initial` too |
 | `abort(runId)` | Stop a streaming run: send `cancel`, and make it `'aborted'` |
 | `get(runId)` | The run's [`AgentRun<T>`](#agentrun), or `undefined`. The same object until it changes |
 | `list()` | Every run it knows, oldest first, including the ones remembered from before a reload. A new array on every change |

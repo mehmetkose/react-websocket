@@ -10,6 +10,7 @@ import {
 // Import the client through the `core` entry: the build keeps it external, so both entries
 // share one copy of it (and of `MessageError`).
 import { createWebSocket } from './core';
+import type { AgUiAgent, AgUiThread } from './ag-ui';
 import type { Latency, WebSocketLatency } from './latency';
 import type { OutboxEntry, WebSocketOutbox } from './outbox';
 // Types only: a value import from anything but `./core` would bundle a second copy into this entry.
@@ -480,6 +481,20 @@ export function useWebSocketOutbox<M>(
 }
 
 const noRun = () => undefined;
+
+/**
+ * The thread of an AG-UI agent from `react-websocket/ag-ui`: its messages, shared state and
+ * status, re-rendering on every event.
+ *
+ * @example
+ * ```tsx
+ * const thread = useAgUiAgent(agent);
+ * return thread.messages.map(message => <Message key={message.id} message={message} />);
+ * ```
+ */
+export function useAgUiAgent<S>(agent: AgUiAgent<S>): AgUiThread<S> {
+  return useSyncExternalStore(agent.subscribe, agent.getSnapshot, agent.getSnapshot);
+}
 
 /**
  * A run from `createWebSocketRuns`, such as an agent's answer: its `value` reduced from the

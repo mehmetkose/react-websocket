@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `react-websocket/ag-ui`, a new entry point for [AG-UI](https://docs.ag-ui.com) agents over a WebSocket.
+  `createAgUiAgent(client, options?)` starts runs with `run({ messages, tools, context })`, sending AG-UI's
+  `RunAgentInput`, and folds their events into a thread: messages (text, tool calls and their results, reasoning,
+  activity), shared state from `STATE_SNAPSHOT` and JSON Patch `STATE_DELTA`, steps and status. A delta that can't be
+  applied keeps the last good state, marks the thread `stale`, and sends `resync` to ask for a snapshot. Runs are built
+  on `createWebSocketRuns`, so they resume after a reconnect or a reload. The wire format is small and replaceable:
+  `{ type: 'run' | 'resume' | 'cancel', runId, … }` out, `{ runId, offset, event }` in. Also exports
+  `applyAgUiEvent(thread, event)` and `applyPatch(document, operations)`. About 3.5 kB min+gzip with the runs it uses,
+  with no React dependency. See [AG-UI over WebSockets](https://mehmetkose.github.io/react-websocket/guide/ag-ui).
+- `useAgUiAgent(agent)` renders an agent's thread.
+- `runs.start()` and `runs.attach()` take an `initial` value for that run.
+
 ## [4.8.0] - 2026-10-17
 
 ### Added
@@ -344,6 +360,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.8.0...HEAD
 [4.8.0]: https://github.com/mehmetkose/react-websocket/compare/4.7.0...4.8.0
 [4.7.0]: https://github.com/mehmetkose/react-websocket/compare/4.6.0...4.7.0
 [4.6.0]: https://github.com/mehmetkose/react-websocket/compare/4.5.0...4.6.0

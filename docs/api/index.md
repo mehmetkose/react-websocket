@@ -14,6 +14,7 @@ Everything the package exports. All exports are typed, and every type has inline
 | `react-websocket` | Hooks, `createWebSocket`, `MessageError`, types | Marked `'use client'` for Server Components frameworks |
 | `react-websocket/core` | `createWebSocket`, the other `create*` functions, `MessageError`, types | No React dependency. Use it in workers, Node, or other frameworks |
 | `react-websocket/timeline` | `createWebSocketTimeline`, its types | For multiplayer games. No React dependency |
+| `react-websocket/ag-ui` | `createAgUiAgent`, `applyAgUiEvent`, `applyPatch`, their types | AG-UI agents over a WebSocket. No React dependency |
 | `react-websocket/outbox` | `createWebSocketOutbox`, `indexedDBStorage`, `memoryStorage`, their types | Messages kept until acknowledged, across reloads. No React dependency |
 | `react-websocket/chaos` | `createChaosWebSocket`, its types | A development tool. No React dependency |
 
@@ -31,6 +32,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`useWebSocketLatency(latency)`](./use-websocket-latency.md) | Show round-trip time | A new measurement, about once per ping |
 | [`useAgentApproval(responder, method)`](./use-agent-approval.md) | Render requests from the server that a person answers | A request arrives or goes away |
 | [`useAgentRun(runs, runId)`](./use-agent-run.md) | Render a resumable run, such as an agent's answer that survives reconnects and reloads | Every event of the run |
+| [`useAgUiAgent(agent)`](./ag-ui.md#useaguiagent) | Render an AG-UI agent's thread: messages, tool calls, shared state | Every event |
 | [`useWebSocketStream(rpc, options?)`](./use-websocket-stream.md) | Stream the replies to a request into a value, such as tokens into an answer, with Stop | Every reply, or once per frame |
 | [`useWebSocketOutbox(outbox)`](./use-websocket-outbox.md) | List the messages waiting in an outbox | A message is added, sent or acknowledged |
 
@@ -49,6 +51,9 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketRuns(client, options)`](./create-websocket-runs.md) | Stream runs, such as an agent's answer, that resume after a reconnect or a reload, with a `keep` or `cancel` policy |
 | [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
 | [`createWebSocketOutbox(client, options)`](./create-websocket-outbox.md) | Keep messages in IndexedDB until the server acknowledges them, across reconnects and reloads. From `react-websocket/outbox` |
+| [`createAgUiAgent(client, options?)`](./ag-ui.md#createaguiagent) | Run an AG-UI agent over a WebSocket, with resumable runs and JSON Patch state. From `react-websocket/ag-ui` |
+| [`applyAgUiEvent(thread, event)`](./ag-ui.md#applyaguievent) | Fold an AG-UI event into a thread. From `react-websocket/ag-ui` |
+| [`applyPatch(document, operations)`](./ag-ui.md#applypatch) | Apply a JSON Patch without changing the document. From `react-websocket/ag-ui` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
 | [`retryableClose(close)`](../guide/reconnecting.md#giving-up) | The default `reconnect.shouldReconnect`: `false` for close codes `1002`, `1003` and `1008`. Call it from your own to keep that rule |
 | [`retryAfter(close)`](../guide/reconnecting.md#overloaded-servers-1013) | The default `reconnect.retryAfter`: the delay in ms from a `1012` or `1013` close whose reason is a number of seconds. Call it from your own to keep reading it |
@@ -116,6 +121,10 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`OutboxEntry`](./create-websocket-outbox.md#outboxentry) | `{ id, message, createdAt, sent }` |
 | [`OutboxStorage`](./create-websocket-outbox.md#outboxstorage) | `{ load, put, delete }`, where an outbox keeps its messages |
 | [`OutboxRecord`](./create-websocket-outbox.md#outboxstorage) | `{ id, message, createdAt }`, what an outbox stores |
+| [`AgUiAgent`](./ag-ui.md#createaguiagent) | The agent from `createAgUiAgent` |
+| [`AgUiAgentOptions`](./ag-ui.md#createaguiagent) | `{ threadId?, state?, name?, run?, resume?, cancel?, resync?, event?, policy?, storage? }` |
+| [`AgUiThread`](./ag-ui.md#aguithread) | `{ messages, state, status, step?, error?, result?, stale }` |
+| [`AgUiMessage`](./ag-ui.md#aguithread), [`AgUiToolCall`](./ag-ui.md#aguithread), [`AgUiEvent`](./ag-ui.md#applyaguievent), [`AgUiEnvelope`](./ag-ui.md#createaguiagent), [`RunAgentInput`](./ag-ui.md#createaguiagent), [`JsonPatchOperation`](./ag-ui.md#applypatch) | AG-UI's shapes, from `react-websocket/ag-ui` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |
 | [`ChaosWebSocket`](./chaos.md#returns) | The class from `createChaosWebSocket`: `typeof WebSocket` plus its controls |
 | [`ChaosOptions`](./chaos.md#parameters) | `{ WebSocket?, seed?, logger? }` plus the faults |

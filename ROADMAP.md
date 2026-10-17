@@ -43,11 +43,6 @@ keyed sends, and topics. Large ones should ship as separate entry points so the 
 
 ### Protocol adapters
 
-- **AG-UI** (`react-websocket/ag-ui`). AG-UI's standard agent events (run lifecycle, text messages, tool calls,
-  state snapshots and JSON Patch deltas) are transport-agnostic and list WebSockets as an option, but its
-  standard client ships SSE and an HTTP binary protocol. An adapter would apply state deltas through
-  `createWebSocketState`, falling back to a snapshot when a patch fails, and resume runs with
-  `createWebSocketRuns`.
 - **MCP over WebSocket.** SEP-1288 proposes a WebSocket transport for server-initiated notifications. It is
   still in review, and since browsers can't set headers on a WebSocket, it passes the auth token in the
   subprotocol list. The existing `url` function and `protocols` option already support that flow, so a

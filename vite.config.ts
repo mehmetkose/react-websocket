@@ -39,6 +39,15 @@ export default defineConfig({
         cjs: { plugins: [coreAsExternal('./core.cjs')] }
       }
     },
+    // Uses runs from `core` at runtime, without React, so no client directive either.
+    {
+      ...shared,
+      entry: { 'ag-ui': 'src/ag-ui.ts' },
+      format: {
+        esm: { plugins: [coreAsExternal('./core.js')] },
+        cjs: { plugins: [coreAsExternal('./core.cjs')] }
+      }
+    },
     // The hooks are client-only; mark them so Server Components frameworks bundle them correctly.
     {
       ...shared,
