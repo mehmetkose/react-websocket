@@ -61,6 +61,8 @@ import WebSocket from 'ws';
 createWebSocket(url, { WebSocket: WebSocket as unknown as typeof globalThis.WebSocket });
 ```
 
+In development, pass a class from [`createChaosWebSocket`](./chaos.md) to add latency, lost messages and dropped connections. See [Chaos testing](../guide/chaos.md).
+
 ## Messages
 
 ### json

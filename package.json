@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -25,6 +25,16 @@
       "require": {
         "types": "./dist/core.d.cts",
         "default": "./dist/core.cjs"
+      }
+    },
+    "./chaos": {
+      "import": {
+        "types": "./dist/chaos.d.ts",
+        "default": "./dist/chaos.js"
+      },
+      "require": {
+        "types": "./dist/chaos.d.cts",
+        "default": "./dist/chaos.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -153,6 +163,13 @@
         "react"
       ],
       "limit": "1.2 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/chaos (createChaosWebSocket)",
+      "path": "dist/chaos.js",
+      "import": "{ createChaosWebSocket }",
+      "limit": "2.1 kB",
       "gzip": true
     }
   ],

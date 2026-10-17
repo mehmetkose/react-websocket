@@ -8,8 +8,9 @@ Everything the package exports. All exports are typed, and every type has inline
 | --- | --- | --- |
 | `react-websocket` | Hooks, `createWebSocket`, `MessageError`, types | Marked `'use client'` for Server Components frameworks |
 | `react-websocket/core` | `createWebSocket`, the other `create*` functions, `MessageError`, types | No React dependency. Use it in workers, Node, or other frameworks |
+| `react-websocket/chaos` | `createChaosWebSocket`, its types | A development tool. No React dependency |
 
-Both entry points ship as ESM and CommonJS with type declarations for each.
+Every entry point ships as ESM and CommonJS with type declarations for each.
 
 ## Hooks
 
@@ -33,6 +34,7 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`createWebSocketRequests(client, options)`](./create-websocket-requests.md) | Send requests and await their replies, with timeouts |
 | [`createWebSocketLatency(client, options)`](./create-websocket-latency.md) | Measure round-trip time and estimate the server's clock |
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
+| [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
 
 ## Classes
 
@@ -74,3 +76,8 @@ Both entry points ship as ESM and CommonJS with type declarations for each.
 | [`IncomingRequest`](./create-websocket-responder.md#incomingrequest) | `{ id, method, params, signal, respond, reject }` |
 | [`RequestHandler`](./create-websocket-responder.md#onrequest) | `(params, request) => result \| Promise<result>` for `onRequest` |
 | [`StandardSchemaV1`](./types.md#standardschemav1) | The schema interface zod, valibot and arktype implement |
+| [`ChaosWebSocket`](./chaos.md#returns) | The class from `createChaosWebSocket`: `typeof WebSocket` plus its controls |
+| [`ChaosOptions`](./chaos.md#parameters) | `{ WebSocket?, seed?, logger? }` plus the faults |
+| [`ChaosFaults`](./chaos.md#types) | `{ enabled?, latency?, loss?, refuse?, drop?, stall?, corrupt? }` for `configure()` |
+| [`ChaosControls`](./chaos.md#returns) | `configure`, `drop`, `stall` and `inject` |
+| [`ChaosRange`](./chaos.md#types) | A duration in ms, or `[min, max]` |

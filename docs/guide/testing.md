@@ -172,6 +172,30 @@ it('backs off exponentially', () => {
 React schedules Suspense retries on its own timers. For tests that use `use(client.ready)`, switch to real timers (`vi.useRealTimers()`) and wait with `await screen.findBy…`.
 :::
 
+## Flaky networks
+
+To test how your app recovers, wrap the mock in a [chaos class](./chaos.md). It drops, stalls or delays connections on a schedule, or when you call its methods:
+
+```ts
+import { createWebSocket } from 'react-websocket/core';
+import { createChaosWebSocket } from 'react-websocket/chaos';
+import { MockImpl, MockWebSocket } from './mock-websocket';
+
+it('reconnects after a drop', () => {
+  const Chaos = createChaosWebSocket({ WebSocket: MockImpl });
+  const client = createWebSocket('ws://test/x', { WebSocket: Chaos, reconnect: { jitter: 0 } });
+  client.connect();
+  MockWebSocket.last.open();
+
+  Chaos.drop(); // error, then close 1006
+  expect(client.getSnapshot().status).toBe('reconnecting');
+  vi.advanceTimersByTime(1000);
+  expect(MockWebSocket.instances).toHaveLength(2);
+});
+```
+
+See [Chaos testing](./chaos.md#in-tests) for stalls, latency and seeds.
+
 ## Isolating tests
 
 Hooks given the same URL share one client, and a client is forgotten only a tick after its last component unmounts. Under fake timers that tick may never run, so a client, and its `lastMessage`, can leak into the next test. Either:
