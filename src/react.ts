@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useInsertionEffect,
   useMemo,
   useRef,
@@ -83,7 +84,72 @@ const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 // Hooks given the same URL (and protocols) share one connection.
 const registry = new Map<string, WebSocketClient<any, any>>();
 
-function sharedClient<In, Out>(url: string, options: WebSocketOptions<In, Out>) {
+// Development only: the options (and `useId` of the component) each URL client was created with,
+// to warn when another component passes different ones for the same URL.
+const origins = new WeakMap<
+  WebSocketClient<any, any>,
+  { options: WebSocketOptions<any, any>; id: string }
+>();
+const warned = new Set<string>();
+
+// The options that shape a shared connection, with what leaving one out means.
+const CONNECTION_OPTIONS: { [K in keyof WebSocketOptions]-?: unknown } = {
+  protocols: undefined, // part of the registry key
+  binaryType: 'blob',
+  json: false,
+  parse: undefined,
+  serialize: undefined,
+  schema: undefined,
+  reconnect: true,
+  heartbeat: undefined,
+  queue: true,
+  logger: undefined, // debugging only
+  WebSocket: undefined
+};
+const IGNORED_OPTIONS = new Set(['protocols', 'logger']);
+
+// Inline functions and objects are new on every render: compare them by source and by field.
+const sameValue = (a: unknown, b: unknown) =>
+  Object.is(a, b) ||
+  (typeof a === 'function' && typeof b === 'function' && String(a) === String(b));
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype;
+
+function sameOption(a: unknown, b: unknown) {
+  if (sameValue(a, b)) return true;
+  if (!isPlainObject(a) || !isPlainObject(b)) return false;
+  return [...Object.keys(a), ...Object.keys(b)].every(key => sameValue(a[key], b[key]));
+}
+
+function warnOnConflict(
+  url: string,
+  key: string,
+  client: WebSocketClient<any, any>,
+  options: WebSocketOptions<any, any>,
+  id: string
+) {
+  const origin = origins.get(client);
+  if (!origin || origin.id === id || warned.has(`${key}\u0000${id}`)) return;
+  const differing = (Object.keys(CONNECTION_OPTIONS) as (keyof WebSocketOptions)[]).filter(
+    name =>
+      !IGNORED_OPTIONS.has(name) &&
+      !sameOption(
+        origin.options[name] ?? CONNECTION_OPTIONS[name],
+        options[name] ?? CONNECTION_OPTIONS[name]
+      )
+  );
+  if (!differing.length) return;
+  warned.add(`${key}\u0000${id}`);
+  console.warn(
+    `react-websocket: useWebSocket("${url}") was given different ${differing.join(', ')} than ` +
+      `the component that opened this shared connection. They are ignored: every component ` +
+      `using the URL gets the first one's options. Pass the same options, or define the ` +
+      `connection once with createWebSocket().`
+  );
+}
+
+function sharedClient<In, Out>(url: string, options: WebSocketOptions<In, Out>, id: string) {
   // Don't let server renders accumulate clients that can never be torn down.
   if (typeof window === 'undefined') return createWebSocket(url, options);
   const key = `${url}\u0000${JSON.stringify(options.protocols ?? null)}`;
@@ -97,6 +163,9 @@ function sharedClient<In, Out>(url: string, options: WebSocketOptions<In, Out>) 
     } as WebSocketOptions<In, Out>);
     registry.set(key, created);
     client = created;
+    if (process.env.NODE_ENV !== 'production') origins.set(created, { options, id });
+  } else if (process.env.NODE_ENV !== 'production') {
+    warnOnConflict(url, key, client, options, id);
   }
   return client;
 }
@@ -120,7 +189,8 @@ function useHold(client: WebSocketClient<any, any> | null, enabled: boolean) {
  * Connect to a WebSocket and re-render with its status and latest message.
  *
  * - With a URL, every component using the same URL (and `protocols`) shares one
- *   connection. Its options come from whichever component created it first.
+ *   connection. Its options come from whichever component created it first; in
+ *   development, a component passing different ones gets a console warning.
  * - With a client from `createWebSocket()`, options are the client's; only handlers
  *   and `enabled` apply here.
  * - With `null` or `undefined`, nothing connects and the status stays `idle`.
@@ -151,8 +221,9 @@ export function useWebSocket<In, Out>(
   target: string | WebSocketClient<In, Out> | null | undefined,
   options: UseWebSocketOptions<In, Out> = {}
 ): UseWebSocketResult<In, Out> {
+  const id = useId();
   const client =
-    target == null ? null : typeof target === 'string' ? sharedClient(target, options) : target;
+    target == null ? null : typeof target === 'string' ? sharedClient(target, options, id) : target;
   const enabled = options.enabled ?? true;
 
   const snapshot = useSyncExternalStore<Snapshot<In>>(

@@ -104,21 +104,28 @@ If your server needs time to verify the credentials before it accepts other mess
 
 ## Stop retrying when credentials are rejected
 
-Retrying with a rejected token is pointless. Have the server close with a dedicated code (in the `4000`–`4999` range) and stop reconnecting on it:
+Retrying with a rejected token is pointless. The simplest way to stop is to have the server close with `1008` (policy violation), which the client doesn't retry by default.
+
+If your server uses a code of its own (in the `4000`–`4999` range), stop on that too. Combine it with `retryableClose`, the default rule, to keep stopping on `1008`:
 
 ```ts
+import { createWebSocket, retryableClose } from 'react-websocket';
+
 const live = createWebSocket(getUrl, {
   reconnect: {
-    shouldReconnect: close => close.code !== 4001 // 4001: unauthorized, by your server's convention
+    // 4001: unauthorized, by your server's convention
+    shouldReconnect: close => close.code !== 4001 && retryableClose(close)
   }
 });
 
 live.on('close', close => {
-  if (close.code === 4001) redirectToLogin();
+  if (close.code === 4001 || close.code === 1008) redirectToLogin();
 });
 ```
 
 When `shouldReconnect` returns `false`, the status becomes `closed` and [`ready`](./suspense.md) rejects, which a Suspense error boundary can catch.
+
+A server that rejects [first-message auth](#first-message-auth) with some other close is still backed off: a connection counts as successful only once it stays open for [`minUptime`](./reconnecting.md#servers-that-close-right-after-accepting) (5 seconds by default), so each retry waits longer than the last.
 
 :::tip
 Code `4000` is used by this library for a [heartbeat timeout](./reconnecting.md). Pick other codes for your own meanings.

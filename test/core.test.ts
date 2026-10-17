@@ -1,4 +1,4 @@
-import { createWebSocket, MessageError, type StandardSchemaV1 } from '../src/core';
+import { createWebSocket, MessageError, retryableClose, type StandardSchemaV1 } from '../src/core';
 import { MockImpl, MockWebSocket } from './mock';
 
 const noJitter = { jitter: 0, minDelay: 1000, maxDelay: 30_000 };
@@ -105,6 +105,24 @@ describe('sending', () => {
     expect(logger).toHaveBeenCalledWith(expect.stringContaining('queue limit (2)'));
     MockWebSocket.last.open();
     expect(MockWebSocket.last.sent).toEqual(['b', 'c']);
+  });
+
+  it('holds at most 100 messages by default', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    for (let i = 0; i < 150; i++) ws.send(i);
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toHaveLength(100);
+    expect(MockWebSocket.last.sent[0]).toBe(50);
+
+    const unbounded = createWebSocket('ws://y', {
+      WebSocket: MockImpl,
+      queue: { limit: Infinity }
+    });
+    unbounded.connect();
+    for (let i = 0; i < 150; i++) unbounded.send(i);
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toHaveLength(150);
   });
 
   it('drops volatile messages while not open, and sends them when open', () => {
@@ -443,6 +461,117 @@ describe('reconnecting', () => {
     expect(b.getSnapshot().status).toBe('closed');
   });
 
+  it('keeps backing off while connections close within minUptime', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
+    ws.connect();
+    // The server accepts, then closes at once (e.g. rejecting the auth sent on open).
+    const flap = () => {
+      MockWebSocket.last.open();
+      expect(ws.getSnapshot()).toMatchObject({ status: 'open', attempt: 0 });
+      MockWebSocket.last.finishClose(4001);
+    };
+    for (const [attempt, delay] of [
+      [1, 1000],
+      [2, 2000],
+      [3, 4000]
+    ] as const) {
+      flap();
+      expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt });
+      const sockets = MockWebSocket.instances.length;
+      vi.advanceTimersByTime(delay - 1);
+      expect(MockWebSocket.instances).toHaveLength(sockets);
+      vi.advanceTimersByTime(1);
+      expect(MockWebSocket.instances).toHaveLength(sockets + 1);
+    }
+
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(4999);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().attempt).toBe(4); // one ms short of stable
+    vi.advanceTimersByTime(8000);
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(5000);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().attempt).toBe(1);
+    ws.close();
+  });
+
+  it('gives up on a server that keeps closing right after open', async () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 3 }
+    });
+    ws.connect();
+    const ready = ws.ready;
+    for (let i = 0; i < 4; i++) {
+      MockWebSocket.last.open();
+      MockWebSocket.last.finishClose(4001);
+      vi.runOnlyPendingTimers();
+    }
+    expect(MockWebSocket.instances).toHaveLength(4);
+    expect(ws.getSnapshot()).toMatchObject({ status: 'closed', attempt: 3 });
+    // It had opened, so `ready` stayed resolved; a later read sees the failure.
+    await expect(ready).resolves.toBeUndefined();
+    await expect(ws.ready).rejects.toThrow('code 4001');
+  });
+
+  it('minUptime: 0 resets the backoff on every open', () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, minUptime: 0 }
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(0);
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(0);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().attempt).toBe(1);
+    ws.close();
+  });
+
+  it("doesn't retry 1002, 1003 or 1008 by default", () => {
+    for (const code of [1002, 1003, 1008]) {
+      const ws = createWebSocket(`ws://${code}`, { WebSocket: MockImpl });
+      ws.connect();
+      MockWebSocket.last.open();
+      MockWebSocket.last.finishClose(code, 'rejected');
+      expect(ws.getSnapshot().status).toBe('closed');
+    }
+    vi.advanceTimersByTime(60_000);
+    expect(MockWebSocket.instances).toHaveLength(3);
+
+    expect(retryableClose({ code: 1008, reason: '', wasClean: true })).toBe(false);
+    expect(retryableClose({ code: 1006, reason: '', wasClean: false })).toBe(true);
+    expect(retryableClose({ code: 4000, reason: '', wasClean: false })).toBe(true);
+  });
+
+  it('replaces the default with a custom shouldReconnect', () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, shouldReconnect: () => true }
+    });
+    ws.connect();
+    MockWebSocket.last.finishClose(1008);
+    expect(ws.getSnapshot().status).toBe('reconnecting');
+    ws.close();
+  });
+
+  it('picks each delay at random up to the backoff by default (full jitter)', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.75);
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(249); // 1000 * (1 - 0.75) = 250
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    ws.close();
+    vi.restoreAllMocks();
+  });
+
   it('retries immediately when the browser comes back online', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
     ws.connect();
@@ -712,6 +841,7 @@ describe('reported issues', () => {
     expect(MockWebSocket.instances).toHaveLength(4);
 
     MockWebSocket.last.open();
+    vi.advanceTimersByTime(5000); // stayed up for minUptime
     MockWebSocket.last.finishClose();
     expect(ws.getSnapshot().attempt).toBe(1);
     vi.advanceTimersByTime(1000); // back to minDelay, not 8000

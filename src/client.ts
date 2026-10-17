@@ -19,10 +19,30 @@ const RECONNECT_DEFAULTS = {
   minDelay: 1000,
   maxDelay: 30_000,
   factor: 2,
-  jitter: 0.5
+  jitter: 1,
+  minUptime: 5000
 } satisfies ReconnectOptions;
 
+const QUEUE_LIMIT = 100;
+
 type Timer = ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * The default `reconnect.shouldReconnect`: retry every close except `1002` (protocol error),
+ * `1003` (unsupported data) and `1008` (policy violation, often a rejected login), which
+ * retrying the same way can't fix. Call it from your own `shouldReconnect` to keep that rule.
+ *
+ * @example
+ * ```ts
+ * createWebSocket(url, {
+ *   // Also stop on our server's "invalid token" code.
+ *   reconnect: { shouldReconnect: close => close.code !== 4001 && retryableClose(close) }
+ * });
+ * ```
+ */
+export function retryableClose(close: CloseInfo): boolean {
+  return close.code !== 1002 && close.code !== 1003 && close.code !== 1008;
+}
 
 // How long a connection opened only by reading `ready` waits for a holder before closing.
 // Long enough for React to retry a suspended render and commit its hooks.
@@ -107,9 +127,10 @@ function createClient<In = unknown, Out = unknown>(
   const queueLimit =
     options.queue === false
       ? 0
-      : typeof options.queue === 'object'
-        ? Math.max(0, options.queue.limit ?? Infinity)
-        : Infinity;
+      : Math.max(
+          0,
+          (typeof options.queue === 'object' ? options.queue.limit : undefined) ?? QUEUE_LIMIT
+        );
 
   let snapshot: Snapshot<In> = { status: 'idle', lastMessage: undefined, attempt: 0 };
   const storeListeners = new Set<() => void>();
@@ -142,8 +163,13 @@ function createClient<In = unknown, Out = unknown>(
   // Bumped per connection attempt so a slow `url()` can't resurrect a cancelled one.
   let generation = 0;
   let windowBound = false;
+  // Consecutive failed attempts, for the backoff. Unlike `snapshot.attempt`, which reads 0 while
+  // open, it resets only once a connection stays up for `minUptime`, so a server that accepts
+  // and then closes right away (e.g. rejecting the auth sent on open) still gets backed off.
+  let failures = 0;
   let retryTimer: Timer;
   let teardownTimer: Timer;
+  let stableTimer: Timer;
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
   let pongTimer: Timer;
 
@@ -221,10 +247,12 @@ function createClient<In = unknown, Out = unknown>(
     }, heartbeat.interval);
   }
 
-  function stopHeartbeat() {
+  /** Stop the timers that belong to the current open socket. */
+  function stopSocketTimers() {
     clearInterval(heartbeatTimer);
     clearTimeout(pongTimer);
-    heartbeatTimer = pongTimer = undefined;
+    clearTimeout(stableTimer);
+    heartbeatTimer = pongTimer = stableTimer = undefined;
   }
 
   /** Stop tracking `socket`. Its eventual close event is still reported unless `reportClose` is false. */
@@ -297,6 +325,7 @@ function createClient<In = unknown, Out = unknown>(
       log('open');
       opened = true;
       set({ status: 'open', attempt: 0 });
+      if (retry) stableTimer = setTimeout(() => (failures = 0), retry.minUptime);
       startHeartbeat(socket);
       ready?.resolve();
       // Nobody holds it (it was started by reading `ready`, or the last holder left while
@@ -322,7 +351,7 @@ function createClient<In = unknown, Out = unknown>(
   }
 
   function handleClose(info: CloseInfo) {
-    stopHeartbeat();
+    stopSocketTimers();
     log('closed', info);
     retryOrFail(info);
     emit('close', info);
@@ -332,10 +361,10 @@ function createClient<In = unknown, Out = unknown>(
     if (
       wanted &&
       retry &&
-      snapshot.attempt < retry.maxAttempts &&
-      (retry.shouldReconnect?.(info) ?? true)
+      failures < retry.maxAttempts &&
+      (retry.shouldReconnect ?? retryableClose)(info)
     ) {
-      const attempt = snapshot.attempt + 1;
+      const attempt = ++failures;
       const delay = backoff(attempt);
       set({ status: 'reconnecting', attempt });
       log(`reconnecting in ${delay}ms (attempt ${attempt})`);
@@ -353,7 +382,8 @@ function createClient<In = unknown, Out = unknown>(
     opened = false;
     unbindWindow();
     pending = [];
-    set({ status: 'closed' });
+    // `failures`, not 0: a connection that kept closing right after open was still failing.
+    set({ status: 'closed', attempt: failures });
     rejectReady(reason);
   }
 
@@ -493,6 +523,7 @@ function createClient<In = unknown, Out = unknown>(
       opened = false;
       if (ready?.settled) ready = null;
     }
+    failures = 0;
     snapshot = { ...snapshot, attempt: 0 }; // open() notifies
     bindWindow();
     open();
@@ -514,7 +545,8 @@ function createClient<In = unknown, Out = unknown>(
     generation++;
     clearTimeout(retryTimer);
     retryTimer = undefined;
-    stopHeartbeat();
+    failures = 0;
+    stopSocketTimers();
     unbindWindow();
     pending = [];
     if (ws) {
@@ -536,7 +568,7 @@ function createClient<In = unknown, Out = unknown>(
     if (!getImpl()) return;
     clearTimeout(retryTimer);
     retryTimer = undefined;
-    stopHeartbeat();
+    stopSocketTimers();
     if (ws) {
       const socket = ws;
       detach(socket, true);

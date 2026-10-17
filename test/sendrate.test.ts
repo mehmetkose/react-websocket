@@ -191,9 +191,10 @@ describe('createWebSocketSendRate', () => {
     expect(vi.getTimerCount()).toBe(0);
     client.connect();
     MockWebSocket.last.open();
-    expect(vi.getTimerCount()).toBe(1);
+    // The stream's tick, and the client's own `minUptime` timer.
+    expect(vi.getTimerCount()).toBe(2);
     stream.dispose();
-    expect(vi.getTimerCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(1);
     stream.send(aim(2), 'aim');
     vi.advanceTimersByTime(100);
     expect(sent()).toEqual([]);

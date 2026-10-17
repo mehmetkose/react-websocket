@@ -44,6 +44,7 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`createWebSocketResponder(client, options)`](./create-websocket-responder.md) | Answer requests the server sends, in code or from the UI |
 | [`createWebSocketTimeline(client, options)`](./create-websocket-timeline.md) | Interpolate server snapshots and predict your own inputs, for multiplayer games. From `react-websocket/timeline` |
 | [`createChaosWebSocket(options?)`](./chaos.md) | A `WebSocket` class that injects network faults in development. From `react-websocket/chaos` |
+| [`retryableClose(close)`](../guide/reconnecting.md#giving-up) | The default `reconnect.shouldReconnect`: `false` for close codes `1002`, `1003` and `1008`. Call it from your own to keep that rule |
 
 ## Classes
 

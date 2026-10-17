@@ -7,6 +7,7 @@ import {
   useWebSocket,
   useWebSocketEvent,
   useWebSocketStatus,
+  type UseWebSocketOptions,
   type WebSocketClient
 } from '../src';
 import { MockImpl, MockWebSocket } from './mock';
@@ -224,6 +225,94 @@ describe('useWebSocket(url)', () => {
     act(() => MockWebSocket.last.open());
     act(() => MockWebSocket.last.receive('x'));
     expect(sends.size).toBe(1);
+  });
+});
+
+describe('conflicting options for a shared URL', () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warn.mockRestore();
+  });
+
+  type Options = UseWebSocketOptions<unknown, unknown>;
+
+  // A new schema object on every call.
+  const inlineSchema = () => ({
+    '~standard': { version: 1 as const, vendor: 'test', validate: (value: unknown) => ({ value }) }
+  });
+
+  // `options` runs on every render, like options written inline in a component.
+  function Hook({ url, options }: { url: string; options: () => Options }) {
+    useWebSocket(url, { WebSocket: MockImpl, ...options() });
+    return null;
+  }
+
+  it('warns once when a component passes different options than the one that opened it', () => {
+    const url = uniqueUrl();
+    const view = () => (
+      <>
+        <Hook url={url} options={() => ({ json: true })} />
+        <Hook url={url} options={() => ({ reconnect: { maxAttempts: 3 } })} />
+      </>
+    );
+    const { rerender } = render(view());
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn.mock.calls[0]![0]).toContain(
+      `useWebSocket("${url}") was given different json, reconnect than the component`
+    );
+    rerender(view());
+    expect(warn).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't warn for the same options written inline, or left at their defaults", () => {
+    const url = uniqueUrl();
+    const options = (): Options => ({
+      parse: data => JSON.parse(String(data)),
+      reconnect: { maxAttempts: 3, shouldReconnect: close => close.code !== 4001 },
+      queue: { limit: 10 },
+      onMessage: () => {}
+    });
+    render(
+      <>
+        <Hook url={url} options={options} />
+        <Hook url={url} options={() => ({ ...options(), json: false, binaryType: 'blob' })} />
+        <Hook url={url} options={() => ({ ...options(), onMessage: undefined, enabled: false })} />
+      </>
+    );
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("doesn't warn when the component that opened it re-renders with new inline values", () => {
+    const url = uniqueUrl();
+    const view = () => <Hook url={url} options={() => ({ json: true, schema: inlineSchema() })} />;
+    const { rerender } = render(view());
+    rerender(view());
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("doesn't warn under StrictMode", () => {
+    render(
+      <StrictMode>
+        <Hook url={uniqueUrl()} options={() => ({ json: true, reconnect: { maxAttempts: 3 } })} />
+      </StrictMode>
+    );
+    act(() => vi.runAllTimers());
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // React 18 gives StrictMode's second render a new `useId`, so there it compares the two
+  // renders' options, and a schema created during render differs between them.
+  itReact19("doesn't warn under StrictMode with a schema created during render", () => {
+    render(
+      <StrictMode>
+        <Hook url={uniqueUrl()} options={() => ({ json: true, schema: inlineSchema() })} />
+      </StrictMode>
+    );
+    act(() => vi.runAllTimers());
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 

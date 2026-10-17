@@ -33,7 +33,10 @@ interface Snapshot<In> {
   readonly status: Status;
   /** Most recent message (after parse/json and schema), kept across reconnects. */
   readonly lastMessage: In | undefined;
-  /** Consecutive failed attempts since the last successful open. 0 while open. */
+  /**
+   * Consecutive failed attempts since the last stable connection. A connection that closes
+   * within `reconnect.minUptime` of opening counts as failed. 0 while open.
+   */
   readonly attempt: number;
 }
 ```
@@ -48,7 +51,7 @@ interface CloseInfo {
 }
 ```
 
-Passed to `onClose`, the `'close'` event and `shouldReconnect`. Common codes: `1000` normal closure, `1001` going away, `1006` abnormal closure (no close frame, such as a network loss), `1008` policy violation, `1011` server error, `4000` heartbeat timeout (from this library), `4000`–`4999` application-defined.
+Passed to `onClose`, the `'close'` event and `shouldReconnect`. Common codes: `1000` normal closure, `1001` going away, `1006` abnormal closure (no close frame, such as a network loss), `1008` policy violation, `1011` server error, `4000` heartbeat timeout (from this library), `4000`–`4999` application-defined. By default, `1002`, `1003` and `1008` aren't retried (see [`retryableClose`](../guide/reconnecting.md#giving-up)).
 
 ### MessageError
 
