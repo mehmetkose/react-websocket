@@ -162,6 +162,10 @@ The docs source lives in [`docs/`](docs). Run `npm run docs:dev` to browse it lo
 | Runtimes | Modern browsers; Node via the `WebSocket` option |
 | Frameworks | Vite, Next.js (App and Pages Router), Remix/React Router, Astro islands, and any React setup |
 
+## Migrating from v3
+
+v4 changes no APIs, only four defaults: the backoff resets once a connection has stayed open for 5 seconds, close codes `1002`, `1003` and `1008` aren't retried, jitter is full, and the send queue holds 100 messages. Each has a one-line opt-out. See [Migrating from v3](https://mehmetkose.github.io/react-websocket/migration-v3).
+
 ## Migrating from v2
 
 v2 was a `<Websocket>` class component. v3 replaces it with hooks: `<Websocket url onMessage />` becomes `useWebSocket(url, { onMessage })`, and `ref.sendMessage(msg)` becomes `send(msg)`. See the [migration guide](https://mehmetkose.github.io/react-websocket/migration) for the full mapping.
