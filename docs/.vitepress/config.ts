@@ -12,6 +12,8 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   head: [
+    // `head` links aren't rewritten with `base`, so the icon path includes it.
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/react-websocket/favicon.svg' }],
     ['meta', { name: 'theme-color', media: '(prefers-color-scheme: light)', content: '#ffffff' }],
     ['meta', { name: 'theme-color', media: '(prefers-color-scheme: dark)', content: '#000000' }]
   ],
