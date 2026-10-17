@@ -16,7 +16,7 @@ The fastest way to move things along is to help each other: reviewing open pull 
 
 ## Setup
 
-You need Node.js 22 or later.
+You need Node.js 22.18 or later. The toolchain is [Vite+](https://viteplus.dev/), installed as a dev dependency, so `npm ci` is all the setup it needs.
 
 ```sh
 git clone https://github.com/mehmetkose/react-websocket.git
@@ -32,10 +32,11 @@ npm test
 | `npm test` | Run the test suite once |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with a coverage report (and enforce the thresholds) |
-| `npm run lint` | ESLint, including `eslint-plugin-react-hooks` |
-| `npm run format` / `format:check` | Format with Prettier / check formatting |
+| `npm run check` | Format check, lint and type-check in one pass (`vp check`) |
+| `npm run lint` | Oxlint, including the React hooks and React Compiler rules |
+| `npm run format` / `format:check` | Format with Oxfmt / check formatting |
 | `npm run typecheck` | Type-check `src`, `test` and `example` |
-| `npm run build` | Build `dist/` (ESM, CJS and type definitions) with tsup |
+| `npm run build` | Build `dist/` (ESM, CJS and type definitions) with `vp pack` |
 | `npm run check:package` | Build, then validate the package with publint and Are the Types Wrong |
 | `npm run size` | Build, then check bundle sizes against the size-limit budgets |
 | `npm run docs:dev` | Run the documentation site locally |
@@ -45,7 +46,7 @@ npm test
 Before opening a pull request, run:
 
 ```sh
-npm run lint && npm run format:check && npm run typecheck && npm test && npm run check:package && npm run size
+npm run check && npm test && npm run check:package && npm run size
 ```
 
 CI runs the same checks, plus the tests against React 18.
@@ -95,7 +96,7 @@ Keep pull requests focused: one fix or feature per PR is much quicker to review.
 
 ## Code style
 
-Prettier and ESLint enforce formatting and the hooks rules. Beyond that:
+Oxfmt and Oxlint enforce formatting and the hooks rules. All the tool settings live in `vite.config.ts`. Beyond that:
 
 - Keep the library dependency-free and the bundles small; the size budgets will tell you.
 - Match the existing comment style: short comments that explain *why*, not *what*.

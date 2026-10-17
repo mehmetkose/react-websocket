@@ -23,9 +23,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm run format:check
-      - run: npm run typecheck
+      # Format check, lint and type-check (vp check).
+      - run: npm run check
       - run: npm run check:package
       - run: npx size-limit
 

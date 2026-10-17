@@ -42,6 +42,7 @@
     "test": "vp test run",
     "test:watch": "vp test",
     "test:coverage": "vp test run --coverage",
+    "check": "vp check",
     "typecheck": "vp check --no-fmt --no-lint",
     "lint": "vp lint",
     "format": "vp fmt",
@@ -53,8 +54,7 @@
     "docs:preview": "vitepress preview docs",
     "example": "vp dev example",
     "example:server": "python3 example/server.py",
-    "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run check:package",
-    "check": "vp check"
+    "prepublishOnly": "npm run check && npm test && npm run check:package"
   },
   "repository": {
     "type": "git",
