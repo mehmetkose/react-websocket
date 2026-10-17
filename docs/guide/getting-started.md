@@ -46,7 +46,7 @@ export function Echo() {
 }
 ```
 
-`status` moves through `'connecting'` → `'open'`, and to `'reconnecting'` if the connection drops. `lastMessage` is the most recent message. You can call `send` at any time: if the socket isn't open yet, the message is queued and sent as soon as it opens.
+`status` moves through `'connecting'` → `'open'`, and to `'reconnecting'` if the connection drops. Two more values bookend it: `'idle'` means nothing is trying to connect (for example with a `null` URL), and `'closed'` means the client stopped for good, after `close()` or after giving up on reconnecting. See [`Status`](../api/types.md) for the full list. `lastMessage` is the most recent message. You can call `send` at any time: if the socket isn't open yet, the message is queued and sent as soon as it opens.
 
 ## Handle every message
 
@@ -114,7 +114,13 @@ Type parameters describe what you expect; they don't check it at runtime. To val
 
 ## Share one connection across components
 
-Components that call `useWebSocket` with the same URL already share one socket. When several parts of your app use the same feed, it's clearer to define the connection once, at module level, with `createWebSocket`:
+Components that call `useWebSocket` with the same URL already share one socket.
+
+::: warning Options come from the first component
+A shared socket keeps the options of whichever component connected first. Later components with the same URL reuse it as-is, so their connection options (`json`, `reconnect`, `schema`, …) are ignored; only their handlers and `enabled` apply. See [Shared clients](./shared-clients.md#by-url).
+:::
+
+When several parts of your app use the same feed, define the connection once, at module level, with `createWebSocket`. Its options then live in one place:
 
 ```ts
 // chat.ts
@@ -167,7 +173,7 @@ Changing the URL closes the old connection and opens the new one.
 Before you ship, consider:
 
 - [ ] **Validate messages** with a `schema`. See [Messages and types](./messages.md#validating-with-a-schema).
-- [ ] **Authenticate** with a URL function so reconnects get a fresh token. See [Authentication](./authentication.md).
+- [ ] **Authenticate** with a URL function so reconnects get a fresh token. URL functions need a client from `createWebSocket`; `useWebSocket` only accepts string URLs. See [Authentication](./authentication.md).
 - [ ] **Decide when to give up.** Set `reconnect.maxAttempts` or `shouldReconnect` for close codes that mean "don't retry". See [Reconnecting](./reconnecting.md).
 - [ ] **Detect dead connections** behind proxies and load balancers with a `heartbeat`. See [Heartbeats](./reconnecting.md#heartbeats).
 - [ ] **Bound the queue** with `queue: { limit }` if users can stay offline for long.
