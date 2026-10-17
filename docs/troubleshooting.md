@@ -13,6 +13,8 @@ Answers to the questions that come up most. If yours isn't here, [open a discuss
 ```ts
 useWebSocket(url, { logger: console.debug });
 ```
+
+To watch it instead, render [`<WebSocketDevtools />`](./api/devtools.md) in development: a panel with each client's status, attempts, queue, send buffer, messages, round-trip time and topics.
 :::
 
 ## I see two sockets in development

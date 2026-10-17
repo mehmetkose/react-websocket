@@ -37,6 +37,16 @@
         "default": "./dist/chaos.cjs"
       }
     },
+    "./devtools": {
+      "import": {
+        "types": "./dist/devtools.d.ts",
+        "default": "./dist/devtools.js"
+      },
+      "require": {
+        "types": "./dist/devtools.d.cts",
+        "default": "./dist/devtools.cjs"
+      }
+    },
     "./replay": {
       "import": {
         "types": "./dist/replay.d.ts",
@@ -175,7 +185,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "3.9 kB",
+      "limit": "4 kB",
       "gzip": true
     },
     {
@@ -273,6 +283,16 @@
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",
       "limit": "2.1 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/devtools (WebSocketDevtools)",
+      "path": "dist/devtools.js",
+      "import": "{ WebSocketDevtools }",
+      "ignore": [
+        "react"
+      ],
+      "limit": "1.8 kB",
       "gzip": true
     },
     {

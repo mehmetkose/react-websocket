@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `react-websocket/devtools`, a new entry point. `<WebSocketDevtools sources={[live, topics, latency]} />` renders a
+  panel in a corner of the page with each client's status and attempts, queued messages, send buffer and messages
+  received, and the round-trip time, topics, feeds, outbox, presence and runs of the `sources` that use it. In
+  development, it also lists the clients `useWebSocket(url)` shares by itself. About 1.8 kB min+gzip, for development:
+  load it lazily behind your dev flag. See [WebSocketDevtools](https://mehmetkose.github.io/react-websocket/api/devtools).
+
 ## [4.14.0] - 2026-10-17
 
 ### Added
@@ -418,6 +428,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.14.0...HEAD
 [4.14.0]: https://github.com/mehmetkose/react-websocket/compare/4.13.0...4.14.0
 [4.13.0]: https://github.com/mehmetkose/react-websocket/compare/4.12.0...4.13.0
 [4.12.0]: https://github.com/mehmetkose/react-websocket/compare/4.11.0...4.12.0

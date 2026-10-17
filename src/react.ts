@@ -90,6 +90,10 @@ const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 // component to commit. It's registered from an effect, never during render, so a render React
 // throws away can't decide the connection's options or leave a client behind.
 const registry = new Map<string, WebSocketClient<any, any>>();
+// Development only: where `react-websocket/devtools` finds the clients hooks share by URL.
+if (process.env.NODE_ENV !== 'production') {
+  (globalThis as Record<symbol, unknown>)[Symbol.for('react-websocket.registry')] = registry;
+}
 const registryListeners = new Set<() => void>();
 
 function subscribeRegistry(listener: () => void) {

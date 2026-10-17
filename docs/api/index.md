@@ -17,6 +17,7 @@ Everything the package exports. All exports are typed, and every type has inline
 | `react-websocket/ag-ui` | `createAgUiAgent`, `applyAgUiEvent`, `applyPatch`, their types | AG-UI agents over a WebSocket. No React dependency |
 | `react-websocket/outbox` | `createWebSocketOutbox`, `indexedDBStorage`, `memoryStorage`, their types | Messages kept until acknowledged, across reloads. No React dependency |
 | `react-websocket/tabs` | `createTabsWebSocket`, its types | One connection shared by every tab. No React dependency |
+| `react-websocket/devtools` | `WebSocketDevtools`, its props | A development panel showing every client. Marked `'use client'` |
 | `react-websocket/replay` | `createRecordingWebSocket`, `createReplayWebSocket`, their types | Record sessions and replay them without a server. No React dependency |
 | `react-websocket/chaos` | `createChaosWebSocket`, its types | A development tool. No React dependency |
 
@@ -39,6 +40,12 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`useWebSocketOutbox(outbox)`](./use-websocket-outbox.md) | List the messages waiting in an outbox | A message is added, sent or acknowledged |
 | [`useWebSocketPresence(presence)`](./use-websocket-presence.md) | Render the other peers' shared state, such as live cursors | A peer's state arrives, it leaves or it times out |
 | [`useInView(ref, options?)`](./use-in-view.md) | Pick a topic by whether an element is on screen, to stream full detail only for what's visible | The element enters or leaves the viewport |
+
+## Components
+
+| Component | |
+| --- | --- |
+| [`<WebSocketDevtools sources? open? position? />`](./devtools.md) | A development panel with each client's status, queue, buffer, messages, round-trip time, topics, feeds, outbox, presence and runs. From `react-websocket/devtools` |
 
 ## Functions
 

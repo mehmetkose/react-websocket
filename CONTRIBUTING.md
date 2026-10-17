@@ -75,6 +75,7 @@ src/
   ag-ui.ts     The react-websocket/ag-ui entry: AG-UI events, JSON Patch, and agents on runs
   tabs.ts      The react-websocket/tabs entry: one WebSocket shared by every tab
   replay.ts    The react-websocket/replay entry: record sessions and replay them
+  devtools.ts  The react-websocket/devtools entry: a development panel for every client
 test/
   mock.ts          MockWebSocket: a controllable fake WebSocket
   core.test.ts     The client, without React
@@ -90,6 +91,7 @@ test/
   presence.test.tsx  Presence: throttling, refresh, expiry and the hook
   tabs.test.ts       Shared tabs, with Node's BroadcastChannel and a fake Web Locks API
   replay.test.ts     Recording through the mock socket, and replaying through the client
+  devtools.test.tsx  The devtools panel, with every kind of source
 docs/          The VitePress documentation site
 examples/
   tornado/     Vite + React chat against a Tornado server, using src/ directly
