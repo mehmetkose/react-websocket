@@ -141,10 +141,15 @@ Oxfmt and Oxlint enforce formatting and the hooks rules. All the tool settings l
 
 For maintainers:
 
-1. Update `version` in `package.json` (`npm version <major|minor|patch> --no-git-tag-version`).
-2. Move the `Unreleased` entries in `CHANGELOG.md` under the new version and date.
+1. Pick the version from the `Unreleased` entries, following semver: a patch when they only fix things, a minor when
+   they add something, a major when they break something. Update `version` in `package.json`
+   (`npm version <major|minor|patch> --no-git-tag-version`).
+2. Move the `Unreleased` entries in `CHANGELOG.md` under the new version and date, and update its compare links.
 3. Commit, push, and make sure CI is green on `main`.
 4. Create a GitHub release with a tag matching the version (for example `3.0.0`), using the changelog entry as notes.
+
+Only number a version you're about to publish. A version the changelog lists but npm never got can't be installed, and
+its compare link has no tag to point at: until a release, changes stay under `Unreleased`.
 
 Publishing the release runs `.github/workflows/release.yml`, which runs every check (`prepublishOnly`) and publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements) through npm trusted publishing. No npm token is stored in the repository. One-time setup: on npmjs.com, add a trusted publisher for this repository with the workflow `release.yml` and environment `npm`, and create the `npm` environment in the GitHub repository settings.
 
