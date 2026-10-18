@@ -1,6 +1,6 @@
 # react-websocket
 
-**Hooks-first WebSocket client for React 18 and 19.** Shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 3 kB (min+gzip) with zero dependencies.
+**The real-time toolkit for React 18 and 19.** Start with one hook, `useWebSocket`: shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 4 kB (min+gzip) with zero dependencies. Add topics, state, requests, presence, games and AI agents on the same connection when you need them. Each is a separate import, so you only ship what you use.
 
 [![npm](https://img.shields.io/npm/v/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
 [![CI](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml)
@@ -11,28 +11,6 @@
 
 **[Documentation](https://mehmetkose.github.io/react-websocket/)** · [Getting started](https://mehmetkose.github.io/react-websocket/guide/getting-started) · [API](https://mehmetkose.github.io/react-websocket/api/) · [Recipes](https://mehmetkose.github.io/react-websocket/recipes) · [Changelog](CHANGELOG.md)
 
-- **Shared connections.** Components using the same URL share one socket. StrictMode, `<Activity>` and route transitions never open duplicates.
-- **Auto-reconnect.** Exponential backoff with full jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. It backs off from a server that closes right after accepting, and stops on close codes that retrying can't fix. Optional heartbeats detect dead links.
-- **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent. Put control messages first with `priority`, and drop stream data on a slow link with `maxBuffered`.
-- **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
-- **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
-- **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop. With numbered messages, each arrives once and in order: duplicates are dropped, gaps are filled, and a reconnect resumes where it left off.
-- **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
-- **Requests, streams and latency.** Await a reply, or iterate over streamed ones such as an LLM's tokens, with timeouts and a cancel that tells the server to stop. Measure round-trip time and the server's clock for ping displays and synchronized countdowns.
-- **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
-- **Presence and live cursors.** Share per-peer state such as cursors: throttled, refreshed while idle, never replayed stale, and expired when a peer vanishes without saying goodbye.
-- **Offline outbox.** Messages kept in IndexedDB until the server acknowledges them, from `react-websocket/outbox`, so an order taken on flaky Wi-Fi survives reconnects and page reloads, and retries are safe with idempotency keys.
-- **Resumable runs.** An AI agent's streamed answer that survives a refresh, a network switch or a sleeping laptop: it resumes from the last event received, or is cancelled so the server stops spending.
-- **Voice.** Microphone frames that never replay stale or build up lag, control messages that jump the queue, and a [guide](https://mehmetkose.github.io/react-websocket/guide/voice) to interruptions that truncate the transcript to what the user heard.
-- **AG-UI.** Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket with `react-websocket/ag-ui`: messages, tool calls and JSON Patch shared state, with a snapshot when a patch fails, and runs that resume after a reconnect or a reload.
-- **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
-- **WebTransport.** `react-websocket/webtransport` connects over WebTransport behind the same API, with `volatile` sends as datagrams and a WebSocket fallback where it can't connect.
-- **One connection across tabs.** `react-websocket/tabs` lets every tab of an app share one connection, with a leader tab elected over the Web Locks API, and topics that one tab can't unsubscribe from under another.
-- **Recording and replay.** Record a session to a file and replay it without a server, for bug reports, offline demos, and UI tests that don't call an AI model on every run. Add faults on top with `react-websocket/chaos`.
-- **Devtools.** A development panel, `react-websocket/devtools`, with each client's status, queue, send buffer, messages, round-trip time and topics.
-- **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
-- **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
-
 ## Install
 
 ```sh
@@ -40,6 +18,26 @@ npm install react-websocket
 ```
 
 ## Quick start
+
+```tsx
+import { useWebSocket } from 'react-websocket';
+
+function Echo() {
+  const { status, lastMessage, send } = useWebSocket('wss://echo.websocket.org');
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <p>Last message: {String(lastMessage ?? '—')}</p>
+      <button onClick={() => send('hello')}>Send</button>
+    </div>
+  );
+}
+```
+
+No provider, no setup and no `useEffect`. That component already shares one socket with every component that uses the same URL, reconnects with backoff when the connection drops, queues messages sent before the socket opens, and never connects during a server render.
+
+Most servers send JSON. Turn on `json` and name what you receive and what you send:
 
 ```tsx
 import { useState } from 'react';
@@ -72,6 +70,52 @@ function Chat() {
 ```
 
 Handlers always see your latest props and state, and changing them never reconnects. `send`, `close` and `reconnect` keep the same identity between renders.
+
+## The toolkit
+
+Everything builds on the client that `useWebSocket` uses. Each piece is a separate import, and none of them imposes a wire protocol: you describe your server's messages, and they do the bookkeeping.
+
+### Connect
+
+- **Shared connections.** Components using the same URL share one socket. StrictMode, `<Activity>` and route transitions never open duplicates.
+- **Auto-reconnect.** Exponential backoff with full jitter, plus an immediate retry when the browser comes back online or the tab becomes visible. It backs off from a server that closes right after accepting, and stops on close codes that retrying can't fix. Optional heartbeats detect dead links.
+- **Send queue.** `send()` before the socket is open just works. The message goes out on connect. Mark input `volatile` so it's never replayed late, or `key` it so only the newest is sent. Put control messages first with `priority`, and drop stream data on a slow link with `maxBuffered`.
+- **Typed messages.** `json: true`, your own codec, or validation with any [Standard Schema](https://standardschema.dev) library (zod, valibot, arktype), with inferred types.
+- **Suspense.** `use(client.ready)` waits for the first connection, and reconnects never flash a fallback.
+- **SSR-safe.** Never connects during a server render, hydrates cleanly, and ships a `'use client'` entry for Next.js and other Server Components frameworks.
+- **Small and typed.** Zero dependencies, ESM + CJS, TypeScript declarations with inline docs, plus a React-free `react-websocket/core` entry.
+
+### Live data
+
+- **Topic subscriptions.** Reference-counted `subscribe`/`unsubscribe` messages that are sent again after every reconnect, so feeds don't silently stop. With numbered messages, each arrives once and in order: duplicates are dropped, gaps are filled, and a reconnect resumes where it left off.
+- **Message state.** Reduce messages into a store, and let each component re-render only when its slice changes, at most once per frame if you like.
+
+### Requests and streams
+
+- **Requests, streams and latency.** Await a reply, or iterate over streamed ones such as an LLM's tokens, with timeouts and a cancel that tells the server to stop. Measure round-trip time and the server's clock for ping displays and synchronized countdowns.
+
+### AI agents
+
+- **Server requests.** Answer requests from the server, such as an AI agent's, in code for browser-only tools, or from a dialog for human approval. Every request gets exactly one reply, and none is sent to the wrong connection.
+- **Resumable runs.** An AI agent's streamed answer that survives a refresh, a network switch or a sleeping laptop: it resumes from the last event received, or is cancelled so the server stops spending.
+- **AG-UI.** Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket with `react-websocket/ag-ui`: messages, tool calls and JSON Patch shared state, with a snapshot when a patch fails, and runs that resume after a reconnect or a reload.
+- **Voice.** Microphone frames that never replay stale or build up lag, control messages that jump the queue, and a [guide](https://mehmetkose.github.io/react-websocket/guide/voice) to interruptions that truncate the transcript to what the user heard.
+
+### Multiplayer and presence
+
+- **Presence and live cursors.** Share per-peer state such as cursors: throttled, refreshed while idle, never replayed stale, and expired when a peer vanishes without saying goodbye.
+- **Games.** Snapshot interpolation and client-side prediction with server reconciliation, from `react-websocket/timeline`, so other players move smoothly and your own controls respond at once. A send rate that adapts to the connection keeps players on a poor link from building up lag.
+
+### Transports and offline
+
+- **One connection across tabs.** `react-websocket/tabs` lets every tab of an app share one connection, with a leader tab elected over the Web Locks API, and topics that one tab can't unsubscribe from under another.
+- **WebTransport.** `react-websocket/webtransport` connects over WebTransport behind the same API, with `volatile` sends as datagrams and a WebSocket fallback where it can't connect.
+- **Offline outbox.** Messages kept in IndexedDB until the server acknowledges them, from `react-websocket/outbox`, so an order taken on flaky Wi-Fi survives reconnects and page reloads, and retries are safe with idempotency keys.
+
+### Debug and test
+
+- **Devtools.** A development panel, `react-websocket/devtools`, with each client's status, queue, send buffer, messages, round-trip time and topics.
+- **Recording and replay.** Record a session to a file and replay it without a server, for bug reports, offline demos, and UI tests that don't call an AI model on every run. Add faults on top with `react-websocket/chaos`.
 
 ## Shared clients
 
@@ -119,40 +163,47 @@ function Room() {
 
 | Export | |
 | --- | --- |
+| **Connect** | |
 | `useWebSocket(url \| client, options?)` | Connect; returns `{ status, lastMessage, attempt, send, close, reconnect, client }` |
 | `useWebSocketEvent(client, type, listener)` | Handle `'open'`, `'message'`, `'close'` or `'error'` without re-rendering |
 | `useWebSocketStatus(client)` | The status; re-renders only when it changes |
-| `useWebSocketTopic(topics, topic)` | Hold topic subscriptions that survive reconnects |
-| `useWebSocketState(store, selector?)` | Read state reduced from messages; re-renders only when the selection changes |
-| `useWebSocketLatency(latency)` | Round-trip time and server clock offset |
-| `useAgentApproval(responder, method)` | Requests from the server waiting for a person to answer |
-| `useWebSocketStream(rpc, options?)` | Stream the replies to a request into a value, e.g. tokens into an answer; returns `{ value, status, error, start, abort }` |
-| `useAgentRun(runs, runId)` | A resumable run's value and status, e.g. an AI answer that keeps streaming after a reconnect or a reload |
-| `useAgUiAgent(agent)` | An AG-UI agent's thread: messages, tool calls, shared state and status |
-| `useWebSocketPresence(presence)` | The other peers' shared state, such as live cursors |
-| `useInView(ref, options?)` | Whether an element is on screen, to pick a topic with: full detail only for what's visible |
-| `useWebSocketOutbox(outbox)` | The messages waiting in an outbox, for a "3 orders waiting to sync" banner |
 | `createWebSocket(url, options?)` | A shareable client: `send`, `on`, `connect`, `close`, `reconnect`, `ready`, `getSnapshot`, `subscribe` |
-| `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
-| `createWebSocketFeeds(client, { subscribe, sequence, snapshot })` | Topics with numbered messages, each delivered once and in order across reconnects; pass it to `createWebSocketState` |
-| `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
-| `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, and `stream(message)` an async iterator of replies, with timeouts and `cancel` |
-| `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
-| `createWebSocketSendRate(client, options?)` | `send(message, key)` coalesced per key at a rate that drops on a congested link |
-| `createWebSocketPresence(client, { send, receive })` | `set(state)` shares this client's state, throttled and refreshed; peers expire after `timeout` |
-| `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
-| `createWebSocketRuns(client, { start, resume, event, reduce })` | Runs that resume after a reconnect or a reload: `start(request)`, `abort(runId)`, a `keep` or `cancel` policy |
 | `MessageError` | Reported to `onError` when a message fails `parse` or `schema` |
 | `retryableClose(close)` | The default `reconnect.shouldReconnect`: retries every close except `1002`, `1003` and `1008` |
 | `retryAfter(close)` | The default `reconnect.retryAfter`: the delay a `1012` (Service Restart) or `1013` (Try Again Later) close asks for, in seconds in its reason |
-| `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
-| `createWebSocketOutbox(client, { name, send, ack })` | From `react-websocket/outbox`: `add(message)` keeps a message in IndexedDB and sends it until the server acknowledges it, across reconnects and reloads |
+| **Live data** | |
+| `createWebSocketTopics(client, { subscribe, unsubscribe })` | Topic subscription manager for `useWebSocketTopic` |
+| `useWebSocketTopic(topics, topic)` | Hold topic subscriptions that survive reconnects |
+| `createWebSocketFeeds(client, { subscribe, sequence, snapshot })` | Topics with numbered messages, each delivered once and in order across reconnects; pass it to `createWebSocketState` |
+| `createWebSocketState(client, { initialState, reduce })` | Message-state store for `useWebSocketState` |
+| `useWebSocketState(store, selector?)` | Read state reduced from messages; re-renders only when the selection changes |
+| `useInView(ref, options?)` | Whether an element is on screen, to pick a topic with: full detail only for what's visible |
+| **Requests and streams** | |
+| `createWebSocketRequests(client, { send, reply })` | `request(message)` returns a promise of the reply, and `stream(message)` an async iterator of replies, with timeouts and `cancel` |
+| `useWebSocketStream(rpc, options?)` | Stream the replies to a request into a value, e.g. tokens into an answer; returns `{ value, status, error, start, abort }` |
+| `createWebSocketLatency(client, { ping, pong })` | Ping tracker for `useWebSocketLatency`, plus `serverNow()` |
+| `useWebSocketLatency(latency)` | Round-trip time and server clock offset |
+| **AI agents** | |
+| `createWebSocketResponder(client, { request, respond, error })` | Answer the server's requests: `onRequest(method, handler)`, or a person through `useAgentApproval` |
+| `useAgentApproval(responder, method)` | Requests from the server waiting for a person to answer |
+| `createWebSocketRuns(client, { start, resume, event, reduce })` | Runs that resume after a reconnect or a reload: `start(request)`, `abort(runId)`, a `keep` or `cancel` policy |
+| `useAgentRun(runs, runId)` | A resumable run's value and status, e.g. an AI answer that keeps streaming after a reconnect or a reload |
 | `createAgUiAgent(client, options?)` | From `react-websocket/ag-ui`: `run({ messages })` an AG-UI agent over a WebSocket; also `applyAgUiEvent` and `applyPatch` |
-| `createWebTransportSocket(options?)` | From `react-websocket/webtransport`: a `WebSocket` class over WebTransport, with datagrams for `volatile` sends and a WebSocket fallback |
+| `useAgUiAgent(agent)` | An AG-UI agent's thread: messages, tool calls, shared state and status |
+| **Multiplayer and presence** | |
+| `createWebSocketPresence(client, { send, receive })` | `set(state)` shares this client's state, throttled and refreshed; peers expire after `timeout` |
+| `useWebSocketPresence(presence)` | The other peers' shared state, such as live cursors |
+| `createWebSocketSendRate(client, options?)` | `send(message, key)` coalesced per key at a rate that drops on a congested link |
+| `createWebSocketTimeline(client, { snapshot, interpolate, input })` | From `react-websocket/timeline`: interpolated server snapshots (`at()`) and predicted inputs (`predicted()`, `input()`) for multiplayer games |
+| **Transports and offline** | |
 | `createTabsWebSocket(options?)` | From `react-websocket/tabs`: a `WebSocket` class that shares one connection between all the tabs of an app |
-| `createRecordingWebSocket()` / `createReplayWebSocket(recording)` | From `react-websocket/replay`: record sessions to JSON, and replay them without a server, at any speed |
+| `createWebTransportSocket(options?)` | From `react-websocket/webtransport`: a `WebSocket` class over WebTransport, with datagrams for `volatile` sends and a WebSocket fallback |
+| `createWebSocketOutbox(client, { name, send, ack })` | From `react-websocket/outbox`: `add(message)` keeps a message in IndexedDB and sends it until the server acknowledges it, across reconnects and reloads |
+| `useWebSocketOutbox(outbox)` | The messages waiting in an outbox, for a "3 orders waiting to sync" banner |
+| **Debug and test** | |
 | `<WebSocketDevtools sources={…} />` | From `react-websocket/devtools`: a development panel showing every client's status, queue, buffer, messages, RTT and topics |
 | `createChaosWebSocket(options)` | From `react-websocket/chaos`: a `WebSocket` class that adds latency, lost messages and dropped connections in development |
+| `createRecordingWebSocket()` / `createReplayWebSocket(recording)` | From `react-websocket/replay`: record sessions to JSON, and replay them without a server, at any speed |
 
 | Option | Default | |
 | --- | --- | --- |

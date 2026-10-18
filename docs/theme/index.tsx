@@ -3,7 +3,6 @@ import {
   Button,
   DocContent,
   HomeBackground,
-  HomeFeature,
   HomeFooter,
   HomeLayout as BasicHomeLayout,
   Layout as BasicLayout,
@@ -77,18 +76,26 @@ function HomeHero() {
 }
 
 /**
- * The built-in home page renders only the frontmatter, with no <main>. This one puts the hero, the
- * features and the page's Markdown body (the "At a glance" example) in a <main>. `isOverviewPage`
- * skips the fallback <h1>. The Markdown version for llms.txt is the built-in one.
+ * The built-in home page renders only the frontmatter, with no <main>. This one puts the hero and
+ * the page's MDX body (the quick start and the toolkit cards) in a <main>, with no feature grid, so
+ * the first code sits right under the hero. `isOverviewPage` skips the fallback <h1>. The Markdown
+ * version for llms.txt is the built-in one, which renders only the hero, followed by the body.
  */
 function HomeLayout(props: ComponentProps<typeof BasicHomeLayout>) {
-  if (import.meta.env.SSG_MD) return <BasicHomeLayout {...props} />;
+  if (import.meta.env.SSG_MD) {
+    return (
+      <>
+        <BasicHomeLayout {...props} />
+        {'\n'}
+        <DocContent components={{}} isOverviewPage />
+      </>
+    );
+  }
   return (
     <>
       <HomeBackground />
       <main>
         <HomeHero />
-        <HomeFeature />
         <div className="rp-doc rws-home-content">
           <DocContent components={{}} isOverviewPage />
         </div>

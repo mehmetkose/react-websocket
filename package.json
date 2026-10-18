@@ -1,7 +1,7 @@
 {
   "name": "react-websocket",
   "version": "4.18.0",
-  "description": "Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready",
+  "description": "The real-time toolkit for React: a WebSocket hook with shared connections, auto-reconnect and typed messages, plus topics, state, requests, presence and AI agents",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -148,8 +148,10 @@
   "keywords": [
     "react",
     "websocket",
+    "websockets",
     "hooks",
     "realtime",
+    "real-time",
     "reconnect",
     "suspense"
   ],
