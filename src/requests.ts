@@ -91,7 +91,6 @@ export interface WebSocketRequests<Req, In> {
 // and resolve each other's requests with one reply.
 const lastIds = new WeakMap<WebSocketClient<any, any>, number>();
 
-const VOLATILE = { volatile: true };
 const noop = () => {};
 
 interface Pending<In> {
@@ -184,6 +183,11 @@ export function createWebSocketRequests<Req, In, const Out>(
       return noop;
     }
 
+    if (client.getSnapshot().status === 'closed') {
+      // Closed until someone reconnects it. Holding it would start it again, or leave it idle.
+      done(true, new Error('WebSocket is closed: request not sent'));
+      return noop;
+    }
     const id = (lastIds.get(client) ?? 0) + 1;
     lastIds.set(client, id);
     const key = String(id);
@@ -222,8 +226,12 @@ export function createWebSocketRequests<Req, In, const Out>(
         if (cancel && options.cancel) {
           try {
             // Still queued, it can't be taken back: queue the cancel right behind it. Once sent,
-            // the cancel only means something on that connection, so drop it unless it's open.
-            client.send(options.cancel(id), entry.socket ? VOLATILE : { priority });
+            // the cancel only means something on that connection, so drop it unless that one is
+            // still open. Not `volatile`, which can be a datagram that never arrives.
+            if (!entry.socket) client.send(options.cancel(id), { priority });
+            else if (entry.socket === client.socket && entry.socket.readyState === 1) {
+              client.send(options.cancel(id));
+            }
           } catch (error) {
             queueMicrotask(() => {
               throw error;
@@ -236,10 +244,9 @@ export function createWebSocketRequests<Req, In, const Out>(
     signal?.addEventListener('abort', onAbort, { once: true });
     arm();
 
-    const { status } = client.getSnapshot();
-    if (status === 'closed' || status === 'idle') {
-      // Closed until someone reconnects it, or (idle after acquiring) it can't connect here.
-      entry.end(true, new Error(`WebSocket is ${status}: request not sent`));
+    if (client.getSnapshot().status === 'idle') {
+      // Idle after acquiring: it can't connect here (a server render).
+      entry.end(true, new Error('WebSocket is idle: request not sent'));
     } else {
       try {
         const sent = client.send(options.send(message, id), {

@@ -6,7 +6,7 @@ import {
   type WebSocketOptions,
   type WebSocketResponder
 } from '../src/core';
-import { MockImpl, MockWebSocket } from './mock';
+import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
 
 type Params = { text: string };
 type In =
@@ -81,6 +81,19 @@ describe('createWebSocketResponder', () => {
       { type: 'result', id: 'a', result: { ok: true } }
     ]);
     expect(signals[0]!.aborted).toBe(false); // finishing normally doesn't abort
+  });
+
+  it("replies on the socket's reliable stream, not as a datagram", async () => {
+    const { tools } = connected({}, { WebSocket: DatagramImpl });
+    tools.onRequest('echo', params => params?.text ?? '');
+    call(1, 'echo', { params: { text: 'hi' } });
+    call(2, 'missing');
+    await flush();
+    expect(sent()).toEqual([
+      { type: 'result', id: 2, error: expect.stringContaining('No handler') },
+      { type: 'result', id: 1, result: 'hi' }
+    ]);
+    expect((MockWebSocket.last as DatagramMockWebSocket).datagrams).toEqual([]);
   });
 
   it('replies however full the send buffer is', async () => {

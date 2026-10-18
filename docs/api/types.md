@@ -22,7 +22,7 @@ type Status = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 | `connecting` | The first attempt is in progress |
 | `open` | Connected. `send()` goes out immediately |
 | `reconnecting` | The connection dropped or an attempt failed. A retry is scheduled or in progress |
-| `closed` | Stopped by `close()` or after giving up. Stays closed until `connect()` or `reconnect()`, or until every hook unmounts |
+| `closed` | Stopped by `close()` or after giving up. Stays closed until `connect()` or `reconnect()`, or until every hook unmounts. If nothing held it when it stopped, the next hook to mount starts it again |
 
 ### Snapshot
 
@@ -210,7 +210,7 @@ interface WebSocketClient<In = unknown, Out = unknown> {
 | `on(type, listener)` | Listen to an [event](#eventmap). Returns an unsubscribe function. Subscribing the same function twice creates two independent subscriptions |
 | `send(message, options?)` | Encode and send now, or queue until open (see [`queue`](./options.md#queue) and [`SendOptions`](#sendoptions)). Returns `true` if sent immediately |
 | `connect()` | Start connecting, and stay connected even with no hooks mounted, until `close()`. Does nothing if already connecting or open |
-| `close(code = 1000, reason?)` | Close, stop reconnecting and clear the queue. Status becomes `'closed'` |
+| `close(code = 1000, reason?)` | Close, stop reconnecting and clear the queue. Status becomes `'closed'`. Like `WebSocket.close()`, it throws for a code or reason the socket rejects (browsers take `1000` or `3000`–`4999`), and then nothing has changed |
 | `reconnect()` | Drop the current socket and connect again now, resetting the backoff. Also restarts a `'closed'` client |
 | `migrate(options?)` | Move to a new connection without a gap: at a random moment within `within` ms, open one (to `url`, if given), then close the current one once it's open. See [`MigrateOptions`](#migrateoptions) and [Deploys](../guide/reconnecting.md#deploys-without-reconnect-storms) |
 | `acquire()` | Hold the connection open until the returned release function is called. The hooks use this; it's useful for non-React integrations. The release function is safe to call more than once |

@@ -61,9 +61,9 @@ A `WebSocketOutbox<M>`:
 
 | Member | |
 | --- | --- |
-| `add(message, id?)` | Add a message and send it as soon as the socket is open. Resolves with its id once it's stored, and rejects if storing failed (it's still sent from memory then, but won't survive a reload). Pass `id` to use your own idempotency key, such as an order number. Adding an id again replaces that entry and moves it to the end |
-| `remove(id)` | Remove an entry without sending it again, e.g. when the user cancels it. Also works before stored entries are loaded |
-| `clear()` | Remove every entry at once, including ones other tabs stored, e.g. on logout. Stored entries that weren't loaded yet are never sent. Resolves once they're deleted from storage |
+| `add(message, id?)` | Add a message and send it as soon as the socket is open. Resolves with its id once it's stored (once IndexedDB has committed it), and rejects if storing failed (it's still sent from memory then, but won't survive a reload). Without `ack`, a message sent right away isn't stored, and it resolves at once. Pass `id` to use your own idempotency key, such as an order number. Adding an id again replaces that entry and moves it to the end |
+| `remove(id)` | Remove an entry without sending it again, e.g. when the user cancels it. Also works before stored entries are loaded. Other tabs' outboxes with the same `name` drop it too |
+| `clear()` | Remove every entry at once, including ones other tabs stored, e.g. on logout. Stored entries that weren't loaded yet are never sent, and other tabs' outboxes with the same `name` drop theirs. Resolves once they're deleted from storage |
 | `getSnapshot()` | The waiting entries, oldest first: [`OutboxEntry<M>[]`](#outboxentry). A new array on every change |
 | `subscribe(listener)` | Get notified when the entries change. Compatible with `useSyncExternalStore` |
 | `ready` | Resolves once entries stored by an earlier page load are back, and rejects if they couldn't be loaded. Nothing is sent before it settles |
@@ -104,6 +104,7 @@ interface OutboxRecord {
 - **At least once.** An entry is sent when it's added if the socket is open, and again on every new connection until the server acknowledges its id, including after [`migrate()`](../guide/reconnecting.md#deploys-without-reconnect-storms). The server must handle an id it has already seen by acknowledging it again, without acting twice.
 - **In order.** Entries are sent oldest first. After a reload, nothing is sent until the stored entries are back, so they go before new ones.
 - **Holds the connection.** While entries are waiting, the outbox holds the client's connection open, as a mounted hook would, so they're delivered even if no component uses the client.
-- **Not the client's queue.** Entries are sent with `volatile` and resent by the outbox itself, so `queue` options and `send()` options don't apply to them. They go out from an `open` listener, ahead of the client's own queue.
-- **Tabs.** Each tab loads the stored entries when its outbox is created and sends them, so two open tabs can both send an entry. The idempotency key makes that harmless.
+- **Not the client's queue.** Entries are sent only while the socket is open, and resent by the outbox itself, so `queue` options and `send()` options don't apply to them. They go out from an `open` listener, ahead of the client's own queue. Over [WebTransport](./webtransport.md) they go on the reliable stream, never as datagrams.
+- **Tabs.** Each tab loads the stored entries when its outbox is created and sends them, so two open tabs can both send an entry. The idempotency key makes that harmless. Tabs tell each other over a `BroadcastChannel` named after the outbox when an entry is acknowledged or removed, or the outbox cleared, so the others drop it too.
+- **The database.** The IndexedDB connection closes when another page deletes or upgrades the database, and opens again on the next write.
 - **Errors.** If `send` throws, the error surfaces where it was called: from `add()`, or asynchronously on a new connection.

@@ -97,13 +97,30 @@ describe('useWebSocket(url)', () => {
     expect(MockWebSocket.instances).toHaveLength(1);
     expect(MockWebSocket.last.closedWith).toBeDefined();
 
-    // Like a remount: the URL's only user left, so it starts from a fresh client.
+    // Its effects mount again, and connect the client it kept.
     rerender(view('visible'));
     act(() => vi.runAllTimers());
     expect(MockWebSocket.instances.filter(s => !s.closedWith)).toHaveLength(1);
     expect(screen.getByRole('button').textContent).toBe('connecting:-');
     act(() => MockWebSocket.last.open());
     expect(screen.getByRole('button').textContent).toBe('open:-');
+  });
+
+  itActivity("keeps a URL client's lastMessage across <Activity> hide/show", () => {
+    const url = uniqueUrl();
+    const view = (mode: 'visible' | 'hidden') => (
+      <Activity mode={mode}>
+        <Status url={url} />
+      </Activity>
+    );
+    const { rerender } = render(view('visible'));
+    act(() => MockWebSocket.last.open());
+    act(() => MockWebSocket.last.receive('kept'));
+
+    rerender(view('hidden'));
+    act(() => vi.runAllTimers());
+    rerender(view('visible'));
+    expect(screen.getByRole('button').textContent).toBe('connecting:kept');
   });
 
   itActivity("keeps a module-level client's lastMessage across <Activity> hide/show", () => {
@@ -454,6 +471,30 @@ describe('module-level clients', () => {
     expect(screen.getByText('connecting…')).toBeTruthy();
     expect(MockWebSocket.instances).toHaveLength(1);
 
+    await act(async () => MockWebSocket.last.open());
+    expect(await screen.findByText('room:open')).toBeTruthy();
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  itReact19("use() on a URL client's ready opens one socket, and renders once open", async () => {
+    vi.useRealTimers();
+    const url = uniqueUrl();
+    function Room() {
+      const { client, status } = useWebSocket(url, { WebSocket: MockImpl });
+      use(client!.ready);
+      return <span>room:{status}</span>;
+    }
+    await act(async () => {
+      render(
+        <Suspense fallback={<span>connecting…</span>}>
+          <Room />
+        </Suspense>
+      );
+    });
+    expect(screen.getByText('connecting…')).toBeTruthy();
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    // React retries the render without the state of the one that suspended.
     await act(async () => MockWebSocket.last.open());
     expect(await screen.findByText('room:open')).toBeTruthy();
     expect(MockWebSocket.instances).toHaveLength(1);

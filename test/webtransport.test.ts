@@ -256,6 +256,14 @@ describe('createWebTransportSocket', () => {
     FakeTransport.last.resolveReady();
   });
 
+  it('reports that close, not a failure, when closing makes the session attempt fail', async () => {
+    const { client, closes } = await connected();
+    client.close(4003, 'never mind');
+    // As in Chrome: closing a WebTransport that isn't ready rejects `ready`.
+    FakeTransport.last.rejectReady(new Error('closed'));
+    await vi.waitFor(() => expect(closes).toEqual(['4003 never mind']));
+  });
+
   it('keeps the order of a Blob and what follows it, and counts what is buffered', async () => {
     const { client, Transport } = await connected();
     FakeTransport.last.resolveReady();

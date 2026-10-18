@@ -6,7 +6,7 @@ import {
   useWebSocketState,
   useWebSocketTopic
 } from '../src';
-import { MockImpl, MockWebSocket } from './mock';
+import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
 
 type In =
   | { type: 'event'; topic: string; seq: number; text: string }
@@ -107,6 +107,23 @@ describe('createWebSocketFeeds', () => {
     // A later gap asks again.
     event(7);
     expect(onGap).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks for what's missing on the socket's reliable stream, not as a datagram", () => {
+    const client = createWebSocket<In, Out>(`ws://feeds/${++n}`, {
+      WebSocket: DatagramImpl,
+      json: true
+    });
+    const feeds = createWebSocketFeeds(client, {
+      subscribe: (topic, after) => ({ type: 'subscribe', topic, after }),
+      sequence: message => (message.type === 'event' ? message : undefined)
+    });
+    feeds.acquire('room');
+    MockWebSocket.last.open();
+    event(1);
+    event(3);
+    expect(sent().at(-1)).toEqual({ type: 'subscribe', topic: 'room', after: 1 });
+    expect((MockWebSocket.last as DatagramMockWebSocket).datagrams).toEqual([]);
   });
 
   it('uses resume for missing messages when given', () => {

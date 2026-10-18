@@ -22,7 +22,7 @@ export const game = createWebSocket<GameIn, GameOut>('wss://game.example.com/pla
 Hooks, reconnects, the queue, topics, feeds and everything else work as before.
 
 - **Ordinary sends** go on one reliable, ordered stream, so they behave exactly like WebSocket messages.
-- **`volatile` sends** go as datagrams: `game.send({ type: 'aim', angle }, { volatile: true })`. One too big for a datagram, about 1,200 bytes, goes on the stream instead. A datagram can be lost even while connected, so send what must arrive, such as a shot, without `volatile`, or pass `datagrams: false` to keep every message on the stream.
+- **`volatile` sends** go as datagrams: `game.send({ type: 'aim', angle }, { volatile: true })`. One too big for a datagram, about 1,200 bytes, goes on the stream instead. A datagram can be lost even while connected, so send what must arrive, such as a shot, without `volatile`, or pass `datagrams: false` to keep every message on the stream. The library's own messages that must arrive, such as outbox entries, request cancels and replies, feed and AG-UI resyncs, always go on the stream.
 - **The URL** is the client's, with `ws:` and `wss:` turned into `https:`, which WebTransport needs. Pass `url` to map it differently.
 
 In Chrome, against a local HTTP/3 server, the session opened in 22 ms, stream messages and datagrams arrived as sent, and a server closing the session with code 4001 reached `shouldReconnect` as `4001`.
@@ -50,6 +50,8 @@ WebTransport has no message framing of its own, so the client uses a small one. 
 
 3. Read **datagrams**, each one message: 1 byte of type, then the payload. Send datagrams back the same way, for messages that may be dropped.
 4. Close the session with a WebTransport close code and reason to close the connection: the client reports them as a WebSocket close code and reason. A session closed without a code reports `1005`, like a WebSocket closed without a status.
+
+The client opens its stream without writing to it. Some server libraries only report a stream once data arrives on it, aioquic's event API among them, so a server built on one can't send first, such as a welcome message: wait for the client's first message, or send what comes first from an `open` listener on the client.
 
 Libraries with WebTransport servers include [aioquic](https://github.com/aiortc/aioquic) (Python), [webtransport-go](https://github.com/quic-go/webtransport-go) (Go), and [@fails-components/webtransport](https://github.com/fails-components/webtransport) (Node.js).
 

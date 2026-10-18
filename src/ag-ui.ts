@@ -97,18 +97,43 @@ function fail(operation: JsonPatchOperation): never {
   throw new Error(`JSON Patch failed: ${operation.op} ${operation.path}`);
 }
 
+const INDEX = /^(0|[1-9]\d*)$/;
+
+/** A JSON Pointer's tokens. It's empty, for the whole document, or starts with `/`. */
+function tokens(pointer: string, operation: JsonPatchOperation) {
+  if (pointer !== '' && pointer[0] !== '/') fail(operation);
+  return pointer.split('/').slice(1).map(unescape);
+}
+
+/** Whether `node` has `token`: an index in range for an array, not `length`; an own key otherwise. */
+function has(node: Json, token: string) {
+  return Array.isArray(node)
+    ? INDEX.test(token) && +token < node.length
+    : Object.hasOwn(node, token);
+}
+
+/** Set an own property, even `__proto__`, as JSON.parse would. */
+function put(object: Json, key: string, value: Json) {
+  Object.defineProperty(object, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true
+  });
+}
+
 /**
  * Apply a JSON Patch (RFC 6902) without changing `document`: what changes is copied, the rest is
  * shared. Throws, leaving `document` as it was, if an operation can't be applied: a missing path,
- * an index out of range, or a failed `test`.
+ * an index out of range, a pointer that doesn't start with `/`, or a failed `test`.
  */
 export function applyPatch<T>(document: T, operations: readonly JsonPatchOperation[]): T {
   let root: Json = document;
 
   function get(path: string, operation: JsonPatchOperation): Json {
     let node = root;
-    for (const token of path.split('/').slice(1).map(unescape)) {
-      if (typeof node !== 'object' || node === null || !Object.hasOwn(node, token)) fail(operation);
+    for (const token of tokens(path, operation)) {
+      if (typeof node !== 'object' || node === null || !has(node, token)) fail(operation);
       node = node[token];
     }
     return node;
@@ -120,14 +145,14 @@ export function applyPatch<T>(document: T, operations: readonly JsonPatchOperati
     operation: JsonPatchOperation,
     change: (parent: Json, key: string) => void
   ) {
-    const tokens = path.split('/').slice(1).map(unescape);
-    if (!tokens.length) fail(operation);
+    const keys = tokens(path, operation);
+    if (!keys.length) fail(operation);
     const walk = (node: Json, depth: number): Json => {
       if (typeof node !== 'object' || node === null) fail(operation);
       const copy = Array.isArray(node) ? [...node] : { ...node };
-      const key = tokens[depth]!;
-      if (depth === tokens.length - 1) change(copy, key);
-      else if (!Object.hasOwn(node, key)) fail(operation);
+      const key = keys[depth]!;
+      if (depth === keys.length - 1) change(copy, key);
+      else if (!has(node, key)) fail(operation);
       else copy[key] = walk(node[key], depth + 1);
       return copy;
     };
@@ -136,7 +161,7 @@ export function applyPatch<T>(document: T, operations: readonly JsonPatchOperati
 
   function index(parent: Json[], key: string, operation: JsonPatchOperation, adding: boolean) {
     // `-` is the end of the array, which only `add` can use.
-    const i = key === '-' ? (adding ? parent.length : -1) : /^(0|[1-9]\d*)$/.test(key) ? +key : -1;
+    const i = key === '-' ? (adding ? parent.length : -1) : INDEX.test(key) ? +key : -1;
     if (i < 0 || i > parent.length - (adding ? 0 : 1)) fail(operation);
     return i;
   }
@@ -145,7 +170,7 @@ export function applyPatch<T>(document: T, operations: readonly JsonPatchOperati
     if (path === '') return void (root = value);
     edit(path, operation, (parent, key) => {
       if (Array.isArray(parent)) parent.splice(index(parent, key, operation, true), 0, value);
-      else parent[key] = value;
+      else put(parent, key, value);
     });
   }
 
@@ -166,7 +191,8 @@ export function applyPatch<T>(document: T, operations: readonly JsonPatchOperati
       if (path === '') root = value;
       else
         edit(path, operation, (parent, key) => {
-          parent[key] = value;
+          if (Array.isArray(parent)) parent[key as unknown as number] = value;
+          else put(parent, key, value);
         });
     } else if (op === 'move' || op === 'copy') {
       const moved = get(from ?? fail(operation), operation);
@@ -458,10 +484,11 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
   let base = empty;
   let snapshot = empty;
   const listeners = new Set<() => void>();
-  // Runs that already asked for a snapshot after a failed delta.
+  // Runs that asked for a snapshot after a failed delta, until one arrives.
   const resynced = new Set<string>();
   const event = options.event ?? isEnvelope;
-  const send = (message: unknown) => client.send(message as Out, { volatile: true });
+  // Now or never: not queued, and not `volatile`, which can be a datagram that never arrives.
+  const send = (message: unknown) => client.socket?.readyState === 1 && client.send(message as Out);
 
   const runs = createWebSocketRuns<RunAgentInput, AgUiThread<S>, In, Out>(client, {
     name: options.name ?? 'ag-ui',
@@ -481,9 +508,10 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
     let next = latest ? latest.value : base;
     if (latest?.status === 'aborted' && next.status === 'running')
       next = { ...next, status: 'aborted' };
-    if (latest?.value.stale && options.resync && !resynced.has(latest.runId)) {
-      resynced.add(latest.runId);
-      send(options.resync(latest.runId));
+    // Once each time the state goes stale, or on a later event if the socket wasn't open.
+    if (latest && !latest.value.stale) resynced.delete(latest.runId);
+    else if (latest && options.resync && !resynced.has(latest.runId)) {
+      if (send(options.resync(latest.runId))) resynced.add(latest.runId);
     }
     if (next === snapshot) return;
     snapshot = next;
@@ -502,7 +530,12 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
     run(input = {}, runOptions) {
       abort();
       const runId = randomId();
-      base = { ...snapshot, messages: [...snapshot.messages, ...(input.messages ?? [])] };
+      // The run starts from the state sent with it, the last good one: its deltas apply to it.
+      base = {
+        ...snapshot,
+        stale: false,
+        messages: [...snapshot.messages, ...(input.messages ?? [])]
+      };
       runs.start(
         {
           threadId,

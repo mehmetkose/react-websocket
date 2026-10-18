@@ -80,7 +80,7 @@ To keep the received data in one place instead of in each component, combine top
 | The socket opens or reconnects | `subscribe(topic)` for every held topic |
 | Released while disconnected | Nothing; the new connection never subscribes to it |
 
-Subscriptions are never put in the send queue. On open, they're sent **before** messages you queued while disconnected, so those messages reach a server that already knows your subscriptions.
+Subscriptions are never put in the send queue. On open, they're sent **before** messages you queued while disconnected, so those messages reach a server that already knows your subscriptions. While the server is closing the socket, which still reads `open` until its close event, nothing is sent: the next connection subscribes to what's held then.
 
 The one-tick delay before `unsubscribe` is the same trick the client uses for connections. StrictMode's mount → unmount → mount, `<Activity>` toggles and route transitions don't send `unsubscribe` + `subscribe` pairs.
 

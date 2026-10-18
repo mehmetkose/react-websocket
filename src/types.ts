@@ -20,7 +20,8 @@ export type UrlSource = string | (() => string | Promise<string>);
  * - `open`: connected. `send()` goes out immediately.
  * - `reconnecting`: the connection dropped (or an attempt failed) and a retry is scheduled or in progress.
  * - `closed`: stopped for good, by `close()` or after giving up on reconnecting.
- *   It stays closed until `connect()` or `reconnect()` is called, or every hook unmounts.
+ *   It stays closed until `connect()` or `reconnect()` is called, or every hook unmounts. If
+ *   nothing held it when it stopped, the next hook to mount starts it again.
  */
 export type Status = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 
@@ -444,7 +445,10 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
   /**
    * Close the connection and stop reconnecting. The status becomes `closed` and the
    * send queue is cleared. Mounted hooks stay mounted; call `connect()` or `reconnect()`
-   * to start again.
+   * to start again. Closed while no hook holds it, the next hook to mount starts it again.
+   *
+   * Like `WebSocket.close()`, it throws for a code or reason the socket rejects (browsers take
+   * `1000` or `3000`–`4999`, and a reason up to 123 bytes), and then nothing has changed.
    * @param code - Close code. @default 1000
    */
   close(code?: number, reason?: string): void;

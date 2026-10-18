@@ -4,6 +4,58 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `use(useWebSocket(url).client.ready)` resolves. React retries a render that suspended without its state, so each
+  retry made a new client and waited for that one instead: in Chrome, 243 sockets in 4 seconds. The retry now gets
+  the client the first attempt started.
+- `client.close()` with a code the browser rejects, such as `1001`, throws before anything changes. It used to throw
+  halfway, leaving the status `open`, `socket` null and the real socket open, with its messages ignored.
+- A client closed, or one that gave up, while nothing held it starts again for the next hook to mount, as after the
+  last hook unmounted. It used to stay `closed` for good.
+- `migrate()` delivers a message the old connection received while an async `schema` was still validating it.
+- The client connects in a Web Worker, which has no `window`.
+- Topics send nothing while the server closes the socket, which still reads `open` until its close event. A release
+  and hold there used to be queued, and sent after the new connection's subscriptions: the server ended up
+  unsubscribed from a topic still held.
+- A request on a `closed` client rejects and leaves it closed. It used to move it to `idle`, so the next request
+  opened it again.
+- The library's own messages that must arrive go on WebTransport's stream, never as datagrams that can be lost:
+  outbox entries, request cancels, responder replies, feed resumes and AG-UI resyncs. In Chrome, outbox orders went
+  as datagrams.
+- `runs.start()` with the id of a run it knows starts nothing. With an ended run's id, it used to reset its value to
+  `''`, keep it ended, and hold the connection open for good.
+- A `cancel` run's `cancel` is sent with `queue: false` too.
+- A duplicated tab, or one opened with `window.open`, no longer cancels the `cancel` runs of the page it was copied
+  from: a page waits 200 ms for another to say it still follows a remembered run before cancelling it. The original
+  page used to show the cancelled run as streaming forever.
+- AG-UI asks for a snapshot again each time a delta fails after one, not only the first time in a run, and a run
+  that finished stale no longer makes the next run skip its deltas.
+- `applyPatch` rejects an array's `length` as a member (`replace /list/length` used to truncate the array) and
+  pointers that don't start with `/`, and adds `__proto__` as a key of its own.
+- Outbox, without `ack`: a message sent right away is no longer stored. Its delete could run before its write, so it
+  stayed stored and was sent again on the next page load.
+- `outbox.remove()`, `outbox.clear()` and acknowledgements reach the other tabs' outboxes with the same `name`, which
+  drop the entry too. After a `clear()` in one tab, another used to send what it had loaded.
+- Outbox `add()` resolves once IndexedDB has committed the write, and its database connection closes when another
+  page deletes or upgrades the database, which it used to block.
+- Tabs: a tab that closes lets go of the shared connection and its topics on `pagehide`. The leader used to keep
+  both for it: the last live tab's unsubscribe was swallowed, and the shared socket stayed open.
+- Tabs: with `json`, the `topics` functions only get messages that parse, and one that throws counts as no topic. The
+  guide's example threw on a heartbeat `'ping'`, which never reached the server.
+- Tabs, where the Web Locks API is missing: `binaryType: 'arraybuffer'` is honored, instead of always a `Blob`.
+- WebTransport: `close()` while connecting reports its own code, not `1006`.
+
+### Documentation
+
+- `<Activity>`: a component using `useWebSocket(url)` keeps its client, and its `lastMessage`, across hide and show.
+- Suspense: a connection started only by reading `ready` keeps retrying a server that's down until it opens, gives up
+  or `close()` is called, since the client can't tell an abandoned read from a suspended render.
+- WebTransport: some server libraries, such as aioquic's event API, only see the client's stream once it writes, so
+  they can't send first.
+
 ## [4.17.0] - 2026-10-18
 
 ### Fixed
@@ -448,6 +500,7 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 
 See the [git tags](https://github.com/mehmetkose/react-websocket/tags) for 2.1.0 and earlier.
 
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.17.0...HEAD
 [4.17.0]: https://github.com/mehmetkose/react-websocket/compare/4.16.0...4.17.0
 [4.16.0]: https://github.com/mehmetkose/react-websocket/compare/4.15.0...4.16.0
 [4.15.0]: https://github.com/mehmetkose/react-websocket/compare/4.14.0...4.15.0

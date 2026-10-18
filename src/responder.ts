@@ -124,7 +124,6 @@ interface Entry {
   fail(error: DOMException): void;
 }
 
-const VOLATILE = { volatile: true };
 const abortError = (message: string) => new DOMException(message, 'AbortError');
 
 /**
@@ -171,12 +170,16 @@ export function createWebSocketResponder<Q extends RequestFields, R, In, const O
     for (const listener of [...listeners]) listener();
   }
 
-  /** Send a reply, or an `error` reply if building or encoding it throws. */
+  /**
+   * Send a reply, or an `error` reply if building or encoding it throws. Only while open: never
+   * queued, and not `volatile`, which can be a datagram that never arrives.
+   */
   function reply(id: number | string, build: () => Out): boolean {
+    if (client.socket?.readyState !== 1) return false;
     try {
-      return client.send(build(), VOLATILE);
+      return client.send(build());
     } catch (error) {
-      return client.send(options.error(id, error), VOLATILE);
+      return client.send(options.error(id, error));
     }
   }
 

@@ -109,7 +109,11 @@ export function createWebSocketFeeds<In, const Out>(
           if (seq > prev && !resuming.has(topic)) {
             resuming.add(topic);
             options.onGap?.(topic, prev, seq);
-            client.send((options.resume ?? options.subscribe)(topic, prev), { volatile: true });
+            // Now or never, like a subscription: the next connection subscribes with `after`.
+            // Not `volatile`, which can be a datagram that never arrives.
+            if (client.socket?.readyState === 1) {
+              client.send((options.resume ?? options.subscribe)(topic, prev));
+            }
           }
           return;
         }

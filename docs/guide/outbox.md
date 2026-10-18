@@ -109,8 +109,8 @@ await orders.clear(); // on logout: forget everything, including what other tabs
 ## Things to know
 
 - **Order.** Messages are sent oldest first. After a reload, nothing is sent until the stored messages are loaded, so they go before new ones.
-- **Tabs.** Every open tab sends the stored messages it loaded. The idempotency key makes that harmless.
-- **No acknowledgement?** Without `ack`, a message is removed once it has been handed to an open socket. It still survives a reload while offline, but one sent just before the connection dropped can be lost.
+- **Tabs.** Every open tab sends the stored messages it loaded. The idempotency key makes that harmless. A message acknowledged, removed or cleared in one tab is dropped in the others too, so a logout in one tab stops what the others would still send.
+- **No acknowledgement?** Without `ack`, a message is removed once it has been handed to an open socket, and one sent right away is never stored. It still survives a reload while offline, but one sent just before the connection dropped can be lost.
 - **Not the send queue.** Outbox messages don't go through the client's queue, so `queue` options don't apply to them. They're sent before what the client queued.
 - **Storage.** The default is IndexedDB, in a database named `react-websocket-outbox:<name>`. Where IndexedDB doesn't exist, as in a server render, messages are kept in memory. If storing fails, for example when the device is out of space, `add()` rejects, but the message is still sent from memory. Pass `storage` to keep messages elsewhere, or `memoryStorage()` in tests.
 - **Deploys.** After [`migrate()`](./reconnecting.md#deploys-without-reconnect-storms), unacknowledged messages are sent again on the new connection.

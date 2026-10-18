@@ -34,6 +34,10 @@ export function ChatPage() {
 
 Reading `chat.ready` starts an idle client, so `Room` doesn't need another hook to trigger the connection. While anyone is waiting on `ready`, the client won't close the attempt, even if no hook holds it yet. Once it opens, it waits a few seconds for a hook (such as `useWebSocket` in the retried render) to hold it, and closes if none does. So a render that reads `ready` and is then abandoned doesn't leave a socket open.
 
+The client can't tell an abandoned read from a render that is still suspended on it, so until it opens, it keeps retrying as for anyone waiting: against a server that's down, until `maxAttempts` (see the tip below) or `close()`.
+
+The client a `useWebSocket(url)` hook returns works too: `use(useWebSocket(url).client!.ready)`. React retries a render that suspended without the state it had, and the retry gets the client the first attempt started.
+
 `use()` needs React 19. On React 18, show a loading state from `status` instead.
 
 ## How `ready` behaves

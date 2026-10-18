@@ -41,6 +41,24 @@ describe('createWebSocketTopics', () => {
     ]);
   });
 
+  it('sends nothing while the server is closing the socket, and subscribes again after', () => {
+    const { client, topics } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    let release = topics.acquire('a');
+    // The server's close frame arrived: the socket is closing, and the status still `open`.
+    MockWebSocket.last.readyState = 2;
+    release();
+    vi.advanceTimersByTime(0);
+    release = topics.acquire('a');
+    MockWebSocket.last.finishClose(1001);
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    // Nothing queued: no unsubscribe after the subscription the new socket got.
+    expect(sent()).toEqual([{ type: 'sub', topic: 'a' }]);
+    release();
+  });
+
   it('subscribes immediately when already open', () => {
     const { client, topics } = setup();
     client.connect();

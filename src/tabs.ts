@@ -1,6 +1,10 @@
 // An entry with no imports: it only implements the `WebSocket` interface.
 
-/** Recognize topic subscriptions, so tabs sharing a socket don't unsubscribe each other. */
+/**
+ * Recognize topic subscriptions, so tabs sharing a socket don't unsubscribe each other. With
+ * `json`, only messages that parse are passed to these, and one that throws counts as
+ * `undefined`, so heartbeat pings and other plain strings go through.
+ */
 export interface TabsTopics {
   /** The topic an outgoing message subscribes to, or `undefined`. */
   subscribe: (message: any) => string | null | undefined;
@@ -69,6 +73,9 @@ function closeEvent(code: number, reason: string, wasClean: boolean): Event {
 
 let ids = 0;
 
+// What `read()` returns for a message that isn't JSON.
+const UNREAD = Symbol();
+
 /**
  * Share one WebSocket between all the tabs of an app. Pass the returned class as the
  * `WebSocket` option: every tab keeps its own client, with its own reconnects, queue, topics and
@@ -111,8 +118,29 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
     try {
       return JSON.parse(data);
     } catch {
+      return UNREAD;
+    }
+  };
+
+  /** A topic `recognize` finds in `data`, if it parses and `recognize` doesn't throw. */
+  const topicOf = (
+    recognize: ((message: any) => string | null | undefined) | undefined,
+    message: unknown
+  ) => {
+    if (!recognize || message === UNREAD) return undefined;
+    try {
+      return recognize(message) ?? undefined;
+    } catch {
       return undefined;
     }
+  };
+
+  // The sockets this tab has on shared ones. A tab that goes away tells the leading tab,
+  // which would otherwise keep their topics and the shared socket for them.
+  const live = new Set<() => void>();
+  let hiding = false;
+  const onPageHide = () => {
+    for (const leave of [...live]) leave();
   };
 
   function agent(key: string, url: string, protocols: string | string[] | undefined) {
@@ -147,8 +175,8 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
         for (const [id, told] of clients) if (!told) opened(id);
       };
       socket.onmessage = event => {
-        const topic = options.topics?.topic?.(read(event.data));
-        if (topic == null) return post({ t: 'message', data: event.data });
+        const topic = topicOf(options.topics?.topic, read(event.data));
+        if (topic === undefined) return post({ t: 'message', data: event.data });
         const to = [...(holders.get(topic) ?? [])];
         if (to.length) post({ t: 'message', data: event.data, to });
       };
@@ -166,13 +194,13 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       const { topics } = options;
       if (topics) {
         const message = read(data);
-        const subscribed = topics.subscribe(message);
-        if (subscribed != null) {
+        const subscribed = topicOf(topics.subscribe, message);
+        if (subscribed !== undefined) {
           if (!holders.has(subscribed)) holders.set(subscribed, new Set());
           holders.get(subscribed)!.add(id);
         }
-        const unsubscribed = topics.unsubscribe(message);
-        if (unsubscribed != null) {
+        const unsubscribed = topicOf(topics.unsubscribe, message);
+        if (unsubscribed !== undefined) {
           const set = holders.get(unsubscribed);
           set?.delete(id);
           if (set?.size) return; // another tab still holds it
@@ -252,6 +280,13 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
     #id = `${Date.now().toString(36)}-${++ids}-${Math.random().toString(36).slice(2)}`;
     #state: WebSocket['readyState'] = CONNECTING;
     #channel: BroadcastChannel | undefined;
+    // The page is going away, or into the back/forward cache: let go of the shared socket, and
+    // close, so a page that comes back connects again.
+    #leave = () => {
+      if (this.#state >= CLOSING) return; // `close()` told the leader already
+      this.#post({ t: 'disconnect', id: this.#id });
+      this.#end(1001, '', false);
+    };
     // Without `BroadcastChannel` or locks: a socket of this tab's own.
     #inner: WebSocket | undefined;
 
@@ -273,6 +308,8 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       this.url = String(url);
       if (typeof BroadcastChannel === 'undefined' || !globalThis.navigator?.locks) {
         const inner = (this.#inner = new (Fallback ?? globalThis.WebSocket)(url, protocols));
+        // As from the leading tab: `#message` turns it into what `binaryType` asks for.
+        inner.binaryType = 'arraybuffer';
         inner.onopen = () => this.#open(inner.protocol);
         inner.onmessage = event => this.#message(event.data);
         inner.onerror = () => this.dispatchEvent(new Event('error'));
@@ -284,6 +321,11 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       const channel = (this.#channel = new BroadcastChannel(key));
       channel.onmessage = event => this.#signal(event.data as Signal);
       this.#post({ t: 'connect', id: this.#id });
+      live.add(this.#leave);
+      if (!hiding) {
+        hiding = true;
+        addEventListener('pagehide', onPageHide);
+      }
     }
 
     get readyState() {
@@ -305,8 +347,10 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
 
     close(code = 1000, reason = '') {
       if (this.#state >= CLOSING) return;
+      // First, so that a code the socket rejects throws before anything has changed.
+      if (this.#inner) this.#inner.close(code, reason);
       this.#state = CLOSING;
-      if (this.#inner) return this.#inner.close(code, reason);
+      if (this.#inner) return;
       // Only this tab's socket closes; the shared one stays for the others.
       this.#post({ t: 'disconnect', id: this.#id });
       setTimeout(() => this.#end(code, reason, true), 0);
@@ -351,6 +395,7 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       if (this.#state === CLOSED) return;
       this.#state = CLOSED;
       this.#channel?.close();
+      live.delete(this.#leave);
       this.dispatchEvent(closeEvent(code, reason, wasClean));
     }
   }

@@ -83,7 +83,7 @@ A `WebSocketRuns<Req, T>`:
 
 | Member | |
 | --- | --- |
-| `start(request, options?)` | Start a run and return its id. `options.runId` sets the id, `options.policy` overrides the default policy, and `options.initial` the initial value |
+| `start(request, options?)` | Start a run and return its id. `options.runId` sets the id, `options.policy` overrides the default policy, and `options.initial` the initial value. An id it already knows, streaming or ended, starts nothing, as the server starts a run only once per id: `delete()` it first to use it again |
 | `attach(runId, options?)` | Follow a run started elsewhere, from its first event. Does nothing for a run it already knows. Takes `policy` and `initial` too |
 | `abort(runId)` | Stop a streaming run: send `cancel`, and make it `'aborted'` |
 | `get(runId)` | The run's [`AgentRun<T>`](#agentrun), or `undefined`. The same object until it changes |
@@ -107,7 +107,7 @@ interface AgentRun<T> {
 ## Behavior
 
 - **Reconnects.** A streaming run sends `resume(runId, after)` on every new connection, with the offset of the last event received. Events at or below it are dropped, and an event after a gap asks for the missing ones, as [feeds](./create-websocket-feeds.md) do: each run is a topic of its own.
-- **Reloads.** Streaming runs are remembered in `storage` with their policy, and forgotten once they end. A new page follows the remembered `keep` runs from their first event, and sends `cancel` for the `cancel` ones.
-- **Policies.** When the connection drops, `cancel` runs are aborted at once, and `cancel` goes out first thing on the next connection, holding the connection open until it does. `keep` runs carry on. [`migrate()`](../guide/reconnecting.md#deploys-without-reconnect-storms) keeps the status `open`, so it never aborts a run.
+- **Reloads.** Streaming runs are remembered in `storage` with their policy, and forgotten once they end. A new page follows the remembered `keep` runs from their first event, and sends `cancel` for the `cancel` ones, 200 ms later, unless another page says it still follows them. A duplicated tab, or one opened with `window.open`, starts with a copy of `sessionStorage`, and so with the runs of the page that is still streaming them.
+- **Policies.** When the connection drops, `cancel` runs are aborted at once, and `cancel` goes out first thing on the next connection, holding the connection open until it does. It doesn't go through the send queue, so it goes out with `queue: false` too. `keep` runs carry on. [`migrate()`](../guide/reconnecting.md#deploys-without-reconnect-storms) keeps the status `open`, so it never aborts a run.
 - **The connection.** While runs are streaming, they hold the client's connection, as a mounted hook would.
 - **Values stay.** A run that ended keeps its final `value` until `delete()`.

@@ -62,3 +62,14 @@ export class MockWebSocket {
 }
 
 export const MockImpl = MockWebSocket as unknown as typeof WebSocket;
+
+/** A socket that sends `volatile` messages as datagrams, which can be lost, like WebTransport's. */
+export class DatagramMockWebSocket extends MockWebSocket {
+  datagrams: unknown[] = [];
+
+  [Symbol.for('react-websocket.datagram')](data: unknown) {
+    this.datagrams.push(data);
+  }
+}
+
+export const DatagramImpl = DatagramMockWebSocket as unknown as typeof WebSocket;
