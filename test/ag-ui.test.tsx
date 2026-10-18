@@ -8,7 +8,7 @@ import {
   type AgUiEvent,
   type AgUiThread
 } from '../src/ag-ui';
-import { MockImpl, MockWebSocket } from './mock';
+import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
 
 const empty: AgUiThread = { messages: [], state: undefined, status: 'idle', stale: false };
 const fold = (events: AgUiEvent[], from: AgUiThread = empty) => events.reduce(applyAgUiEvent, from);
@@ -73,9 +73,28 @@ describe('applyPatch', () => {
     { op: 'test', path: '/a', value: 2 },
     { op: 'move', path: '/x' },
     { op: 'remove', path: '' },
-    { op: 'nope', path: '/a' }
+    { op: 'nope', path: '/a' },
+    // An array's `length` isn't one of its members.
+    { op: 'replace', path: '/list/length', value: 1 },
+    { op: 'test', path: '/list/length', value: 3 },
+    { op: 'add', path: '/list/length/x', value: 1 },
+    // A pointer is empty or starts with `/`.
+    { op: 'test', path: 'x/a', value: 1 },
+    { op: 'copy', from: 'a', path: '/b' },
+    // Nothing can move into its own child.
+    { op: 'move', from: '/nested', path: '/nested/x/moved' }
   ] as const)('throws on $op $path', operation => {
     expect(() => applyPatch(doc, [operation as never])).toThrow('JSON Patch failed');
+    expect(doc.list).toEqual([1, 2, 3]);
+  });
+
+  it('adds `__proto__` as a key of its own, as JSON.parse would', () => {
+    const next = applyPatch<Record<string, unknown>>({}, [
+      { op: 'add', path: '/__proto__', value: { polluted: true } }
+    ]);
+    expect(Object.getPrototypeOf(next)).toBe(Object.prototype);
+    expect(Object.hasOwn(next, '__proto__')).toBe(true);
+    expect(next).toEqual(JSON.parse('{"__proto__":{"polluted":true}}'));
   });
 });
 
@@ -309,6 +328,52 @@ describe('createAgUiAgent', () => {
     ]);
     emit(runId, { type: 'STATE_SNAPSHOT', snapshot: { count: 7 } });
     expect(agent.getSnapshot()).toMatchObject({ stale: false, state: { count: 7 } });
+  });
+
+  it('asks for a snapshot again each time the state goes stale', () => {
+    const { agent } = setup({ resync: runId => ({ type: 'resync', runId }) });
+    const runId = agent.run();
+    MockWebSocket.last.open();
+    emit(runId, { type: 'STATE_DELTA', delta: [{ op: 'remove', path: '/gone' }] });
+    emit(runId, { type: 'STATE_SNAPSHOT', snapshot: { count: 7 } });
+    emit(runId, { type: 'STATE_DELTA', delta: [{ op: 'remove', path: '/gone' }] });
+    expect(sent().filter(message => message.type === 'resync')).toHaveLength(2);
+    emit(runId, { type: 'STATE_SNAPSHOT', snapshot: { count: 8 } });
+    emit(runId, { type: 'STATE_DELTA', delta: [{ op: 'replace', path: '/count', value: 9 }] });
+    expect(agent.getSnapshot()).toMatchObject({ stale: false, state: { count: 9 } });
+  });
+
+  it("asks for a snapshot on the socket's reliable stream, not as a datagram", () => {
+    const client = createWebSocket(`ws://ag-ui/${Math.random()}`, {
+      WebSocket: DatagramImpl,
+      json: true
+    });
+    const agent = createAgUiAgent(client, {
+      storage: null,
+      resync: runId => ({ type: 'resync', runId })
+    });
+    const runId = agent.run();
+    MockWebSocket.last.open();
+    emit(runId, { type: 'STATE_DELTA', delta: [{ op: 'remove', path: '/gone' }] });
+    expect(sent().at(-1)).toEqual({ type: 'resync', runId });
+    expect((MockWebSocket.last as DatagramMockWebSocket).datagrams).toEqual([]);
+  });
+
+  it("starts the next run from the last good state, and applies that run's deltas", () => {
+    const { agent } = setup();
+    const first = agent.run();
+    MockWebSocket.last.open();
+    emit(first, { type: 'STATE_DELTA', delta: [{ op: 'replace', path: '/count', value: 1 }] });
+    emit(first, { type: 'STATE_DELTA', delta: [{ op: 'remove', path: '/gone' }] });
+    emit(first, { type: 'RUN_FINISHED', threadId: 'thread-1', runId: first });
+    expect(agent.getSnapshot()).toMatchObject({ stale: true, state: { count: 1 } });
+
+    const next = agent.run();
+    expect(sent().at(-1)!.input.state).toEqual({ count: 1 });
+    expect(agent.getSnapshot().stale).toBe(false);
+    offset = 0;
+    emit(next, { type: 'STATE_DELTA', delta: [{ op: 'replace', path: '/count', value: 2 }] });
+    expect(agent.getSnapshot()).toMatchObject({ stale: false, state: { count: 2 } });
   });
 
   it('aborts the streaming run when a new one starts, or on abort()', () => {

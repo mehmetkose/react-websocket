@@ -62,8 +62,10 @@ export function createWebSocketTopics<const Out>(
   let sentOn: WebSocket | null = null;
   let sent = new Set<string>();
 
+  // The socket, not the status: one the server is closing still reads `open` until its close
+  // event, and what's sent on it would be queued and sent after the new subscriptions.
   function isOpen() {
-    return client.getSnapshot().status === 'open' && client.socket !== null;
+    return client.socket?.readyState === 1;
   }
 
   function subscribe(topic: string) {

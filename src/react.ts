@@ -95,6 +95,10 @@ if (process.env.NODE_ENV !== 'production') {
   (globalThis as Record<symbol, unknown>)[Symbol.for('react-websocket.registry')] = registry;
 }
 const registryListeners = new Set<() => void>();
+// A client started before any component using its URL committed: a render read its `ready`.
+// React retries a render that suspended on it without its state, so the retry would make a new
+// client and wait for that one instead, opening a socket on every attempt. It gets this one.
+const started = new Map<string, WebSocketClient<any, any>>();
 
 function subscribeRegistry(listener: () => void) {
   registryListeners.add(listener);
@@ -183,15 +187,23 @@ function ownClient<In, Out>(
   options: WebSocketOptions<In, Out>,
   id: string
 ): WebSocketClient<In, Out> {
+  const reused = started.get(key);
+  if (reused) return reused;
   const created: WebSocketClient<In, Out> = createWebSocket(url, {
     ...options,
     [ON_TEARDOWN]: () => {
+      if (started.get(key) === created) started.delete(key);
       if (registry.get(key) === created) {
         registry.delete(key);
         registryChanged();
       }
     }
   } as WebSocketOptions<In, Out>);
+  const off = created.subscribe(() => {
+    if (created.getSnapshot().status !== 'connecting') return;
+    off();
+    if (registry.get(key) !== created && !started.has(key)) started.set(key, created);
+  });
   if (process.env.NODE_ENV !== 'production') origins.set(created, { options, id });
   return created;
 }
@@ -270,7 +282,7 @@ export function useWebSocket<In, Out>(
   const client =
     key === null ? ((target as WebSocketClient<In, Out> | null | undefined) ?? null) : shared;
   const enabled = options.enabled ?? true;
-  if (process.env.NODE_ENV !== 'production' && client !== own && key !== null) {
+  if (process.env.NODE_ENV !== 'production' && key !== null) {
     warnOnConflict(url!, key, client!, options, id);
   }
 
@@ -297,6 +309,7 @@ export function useWebSocket<In, Out>(
     // with its own, holds the shared one right away and re-renders with it.
     if (!registry.has(key)) {
       registry.set(key, own!);
+      if (started.get(key) === own) started.delete(key);
       registryChanged();
     }
     return registry.get(key)!.acquire();

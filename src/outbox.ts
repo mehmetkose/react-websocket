@@ -75,15 +75,18 @@ export interface WebSocketOutbox<M> {
   /**
    * Add a message and send it as soon as the socket is open. Resolves with its id once it's
    * stored, and rejects if storing failed; the entry is still sent from memory then, but won't
-   * survive a reload.
+   * survive a reload. Without `ack`, one sent right away isn't stored, and resolves at once.
    * @param id - The idempotency key, e.g. an order number. A new random one by default.
    */
   add(message: M, id?: string): Promise<string>;
-  /** Remove an entry without sending it again, e.g. when the user cancels it. */
+  /**
+   * Remove an entry without sending it again, e.g. when the user cancels it. Other tabs using
+   * the same `name` drop it too.
+   */
   remove(id: string): Promise<void>;
   /**
-   * Remove every entry at once, including ones other tabs stored, e.g. on logout. Resolves once
-   * they're deleted from storage.
+   * Remove every entry at once, including ones other tabs stored, e.g. on logout. Other tabs
+   * using the same `name` drop theirs too. Resolves once they're deleted from storage.
    */
   clear(): Promise<void>;
   /** The waiting entries, oldest first. A new array on every change. */
@@ -94,31 +97,40 @@ export interface WebSocketOutbox<M> {
   dispose(): void;
 }
 
-function request<T>(req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
 /** Keep outbox entries in IndexedDB, in the database `react-websocket-outbox:<name>`. */
 export function indexedDBStorage(name: string): OutboxStorage {
   let db: Promise<IDBDatabase> | undefined;
-  const store = async (mode: IDBTransactionMode) => {
+  // Settles once the transaction has committed, not when its request succeeds: a write isn't
+  // durable before, and could still be lost if the page closed.
+  const run = async <T>(
+    mode: IDBTransactionMode,
+    ask: (store: IDBObjectStore) => IDBRequest<T>
+  ): Promise<T> => {
     db ??= new Promise((resolve, reject) => {
       const open = indexedDB.open(`react-websocket-outbox:${name}`, 1);
       open.onupgradeneeded = () => open.result.createObjectStore('entries', { keyPath: 'id' });
-      open.onsuccess = () => resolve(open.result);
+      open.onsuccess = () => {
+        const connection = open.result;
+        // Let another page delete or upgrade the database: the next write opens it again.
+        connection.onversionchange = () => {
+          connection.close();
+          db = undefined;
+        };
+        resolve(connection);
+      };
       open.onerror = () => reject(open.error);
     });
-    return (await db).transaction('entries', mode).objectStore('entries');
+    const transaction = (await db).transaction('entries', mode);
+    const req = ask(transaction.objectStore('entries'));
+    return new Promise((resolve, reject) => {
+      transaction.oncomplete = () => resolve(req.result);
+      transaction.onerror = transaction.onabort = () => reject(transaction.error ?? req.error);
+    });
   };
   return {
-    load: async () => request((await store('readonly')).getAll()),
-    async put(record) {
-      await request((await store('readwrite')).put(record));
-    },
-    delete: async id => request((await store('readwrite')).delete(id))
+    load: () => run('readonly', store => store.getAll()),
+    put: record => run('readwrite', store => store.put(record)).then(noop),
+    delete: id => run('readwrite', store => store.delete(id))
   };
 }
 
@@ -132,6 +144,8 @@ export function memoryStorage(): OutboxStorage {
   };
 }
 
+const noop = () => {};
+
 function randomId() {
   // `randomUUID` needs a secure context; plain-HTTP pages fall back to a timestamp and random digits.
   return (
@@ -139,8 +153,6 @@ function randomId() {
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   );
 }
-
-const noop = () => {};
 
 /**
  * Keep messages until the server acknowledges them, across reconnects and page reloads, for
@@ -186,8 +198,14 @@ export function createWebSocketOutbox<M, In, const Out>(
   let loaded = false;
   // Removed (or acknowledged) before the stored entries were loaded: don't restore them.
   const removed = new Set<string>();
-  // Cleared before the stored entries were loaded: restore none of them.
-  let cleared = false;
+  // Entries created before this were cleared, here or in another tab: don't restore them.
+  let clearedBefore = 0;
+  // Other tabs using the same outbox, which loaded the same entries: tell them what's gone. Not
+  // on a server, where an open channel would keep the process alive.
+  const channel =
+    typeof window !== 'undefined' && typeof BroadcastChannel === 'function'
+      ? new BroadcastChannel(`react-websocket-outbox:${options.name}`)
+      : undefined;
   let disposed = false;
   let release: (() => void) | undefined;
   // A strictly increasing `createdAt`, so entries added in the same ms keep their order.
@@ -204,15 +222,31 @@ export function createWebSocketOutbox<M, In, const Out>(
     for (const listener of [...listeners]) listener();
   }
 
-  // Also deletes a stored entry that isn't loaded yet, so it doesn't come back.
-  function forget(id: string) {
+  function drop(id: string) {
     if (!loaded) removed.add(id);
     if (entries.delete(id)) changed();
+  }
+
+  function dropBefore(before: number) {
+    clearedBefore = Math.max(clearedBefore, before);
+    let changes = false;
+    for (const entry of entries.values()) {
+      if (entry.createdAt < before) changes = entries.delete(entry.id);
+    }
+    if (changes) changed();
+  }
+
+  // Also deletes a stored entry that isn't loaded yet, so it doesn't come back.
+  function forget(id: string) {
+    drop(id);
+    channel?.postMessage({ id });
     return storage.delete(id);
   }
 
   function flush() {
-    if (!loaded || disposed || client.getSnapshot().status !== 'open') return;
+    // The socket, not the status, which reads `open` while the server closes it. Not `volatile`
+    // either, which can be a datagram that never arrives.
+    if (!loaded || disposed || client.socket?.readyState !== 1) return;
     const now = Date.now();
     let sent = false;
     for (const entry of [...entries.values()]) {
@@ -220,7 +254,7 @@ export function createWebSocketOutbox<M, In, const Out>(
       if (now - entry.createdAt > maxAge) {
         forget(entry.id).catch(noop);
         options.onExpire?.(entry);
-      } else if (client.send(options.send(entry.message, entry.id), { volatile: true })) {
+      } else if (client.send(options.send(entry.message, entry.id))) {
         if (!options.ack) forget(entry.id).catch(noop);
         else {
           entries.set(entry.id, { ...entry, sent: true });
@@ -239,7 +273,10 @@ export function createWebSocketOutbox<M, In, const Out>(
       entries = new Map(
         [
           ...records.filter(
-            record => !cleared && !entries.has(record.id) && !removed.has(record.id)
+            record =>
+              record.createdAt >= clearedBefore &&
+              !entries.has(record.id) &&
+              !removed.has(record.id)
           ),
           ...entries.values()
         ]
@@ -269,7 +306,15 @@ export function createWebSocketOutbox<M, In, const Out>(
     if (changes) changed();
   }
 
+  if (channel) {
+    channel.onmessage = ({ data }: MessageEvent<{ id?: string; before?: number } | null>) => {
+      if (data?.before) dropBefore(data.before);
+      else if (data?.id) drop(data.id);
+    };
+  }
+
   const offs = [
+    () => channel?.close(),
     // Also after `migrate()`, where the status stays `open`.
     client.on('open', () => {
       unsend();
@@ -295,15 +340,17 @@ export function createWebSocketOutbox<M, In, const Out>(
       entries.set(id, { ...record, sent: false });
       changed();
       flush();
+      // Sent, with no ack to wait for: there's nothing to keep. Storing it now would outlive its
+      // delete, and send it again after a reload.
+      if (!entries.has(id)) return Promise.resolve(id);
       return storage.put(record).then(() => id);
     },
     remove: forget,
     clear() {
       // At once, like `remove()`: waiting for the stored entries would send them first.
-      if (!loaded) cleared = true;
       const before = (lastCreated = Math.max(Date.now(), lastCreated + 1));
-      entries.clear();
-      changed();
+      dropBefore(before);
+      channel?.postMessage({ before });
       // Including what other tabs stored, but not what's added from now on.
       return storage
         .load()

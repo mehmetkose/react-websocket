@@ -71,7 +71,8 @@ export interface WebSocketRuns<Req, T> {
   /**
    * Start a run and return its `runId`. The start message is sent as soon as the socket is
    * open, and the run is remembered until it ends. `initial` overrides the `initial` option for
-   * this run.
+   * this run. A `runId` it already knows, streaming or ended, starts nothing: the server starts
+   * a run only once per id. `delete()` it first to use the id again.
    */
   start(request: Req, options?: { runId?: string; policy?: RunPolicy; initial?: T }): string;
   /**
@@ -99,6 +100,11 @@ function randomId() {
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   );
 }
+
+// How long a page waits for another to say it's following a run found in storage, before
+// cancelling it. A duplicated tab, or one opened with `window.open`, gets a copy of
+// `sessionStorage` while the page that started the run is still following it.
+const CLAIM_WAIT = 200;
 
 function defaultStorage(): RunStorage | null {
   try {
@@ -217,12 +223,15 @@ export function createWebSocketRuns<Req, T, In, const Out>(
   }
 
   function cancel(runId: string) {
-    // Ahead of anything queued. While disconnected, hold the connection until it goes out, as
-    // the queue is sent right after `open` listeners run.
-    if (!options.cancel || client.send(options.cancel(runId), { priority: true })) return;
+    const message = options.cancel;
+    if (!message) return;
+    if (client.socket?.readyState === 1) return void client.send(message(runId));
+    // Not through the queue, which `queue: false` turns off: hold the connection, and send it
+    // from an `open` listener, ahead of anything queued.
     const release = client.acquire();
     const off = client.on('open', () => {
       off();
+      client.send(message(runId));
       release();
     });
   }
@@ -256,18 +265,49 @@ export function createWebSocketRuns<Req, T, In, const Out>(
     feeds.dispose
   ];
 
+  // Pages using the same storage say which runs they follow, so a copy of it doesn't cancel them.
+  // Not on a server, where an open channel would keep the process alive.
+  const channel =
+    storage && typeof window !== 'undefined' && typeof BroadcastChannel === 'function'
+      ? new BroadcastChannel(key)
+      : undefined;
+  const claimed = new Set<string>();
+  if (channel) {
+    channel.onmessage = ({ data }: MessageEvent<{ who?: string; mine?: string } | null>) => {
+      if (data?.mine) claimed.add(data.mine);
+      else if (data?.who && policies.has(data.who)) channel.postMessage({ mine: data.who });
+    };
+    offs.push(() => channel.close());
+  }
+
   // Runs that were streaming before a reload: follow them again, or stop those that shouldn't
-  // outlive their page.
+  // outlive their page, unless another page still follows them.
+  const stale: string[] = [];
   for (const [runId, policy] of Object.entries(read())) {
-    if (policy === 'cancel') {
+    if (policy !== 'cancel') follow(runId, policy);
+    else if (channel) {
+      stale.push(runId);
+      channel.postMessage({ who: runId });
+    } else {
       cancel(runId);
       remember(runId, undefined);
-    } else follow(runId, policy);
+    }
+  }
+  if (stale.length) {
+    const timer = setTimeout(() => {
+      for (const runId of stale) {
+        if (claimed.has(runId) || policies.has(runId)) continue;
+        cancel(runId);
+        remember(runId, undefined);
+      }
+    }, CLAIM_WAIT);
+    offs.push(() => clearTimeout(timer));
   }
 
   return {
     client,
     start(request, { runId = randomId(), policy = options.policy ?? 'keep', initial } = {}) {
+      if (runs.has(runId)) return runId;
       starting.set(runId, request);
       follow(runId, policy, initial);
       return runId;

@@ -197,8 +197,10 @@ export function createWebTransportSocket(
     close(code = 1000, reason = '') {
       if (this.#state >= CLOSING) return;
       const connecting = this.#state === CONNECTING;
+      // First, so that a code the socket rejects throws before anything has changed.
+      if (this.#inner) this.#inner.close(code, reason);
       this.#state = CLOSING;
-      if (this.#inner) return this.#inner.close(code, reason);
+      if (this.#inner) return;
       if (!connecting) return this.#transport!.close({ closeCode: code, reason });
       // Not open yet: give up on the session, and report this close rather than its failure.
       this.#transport?.close();
@@ -224,7 +226,8 @@ export function createWebTransportSocket(
         // No session: fall back to a WebSocket for this connection and the ones after it.
         this.#transport?.close();
         this.#transport = undefined;
-        if (this.#state !== CONNECTING) return this.#end(1006, '', false);
+        // Closed while connecting: `close()` reports its own code.
+        if (this.#state !== CONNECTING) return;
         if (options.fallback === false) {
           this.dispatchEvent(new Event('error'));
           return this.#end(1006, '', false);

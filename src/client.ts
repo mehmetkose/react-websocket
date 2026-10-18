@@ -15,6 +15,9 @@ import {
 
 const OPEN = 1;
 
+// Defined in workers only, and missing from the DOM typings.
+declare const WorkerGlobalScope: unknown;
+
 const RECONNECT_DEFAULTS = {
   maxAttempts: Infinity,
   minDelay: 1000,
@@ -169,12 +172,17 @@ function createClient<In = unknown, Out = unknown>(
   let ws: WebSocket | null = null;
   // The new connection of a `migrate()`, until it opens and replaces `ws`.
   let incoming: WebSocket | null = null;
+  // The connection a `migrate()` replaced: messages it received still go out once validated.
+  let replaced: WebSocket | null = null;
   // Where `migrate()` moved the client, used instead of `url` until it stops.
   let moved: UrlSource | undefined;
   let wanted = false;
   let refs = 0;
   // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
   let pinned = false;
+  // Stopped (`close()` or giving up) while nothing held it: the next holder starts it again,
+  // as it would after the last hook unmounted.
+  let unheldStop = false;
   // Priority messages form the head of the queue, in the order they were sent.
   let pending: {
     data: SendData;
@@ -231,8 +239,11 @@ function createClient<In = unknown, Out = unknown>(
 
   function getImpl(): typeof WebSocket | undefined {
     if (options.WebSocket) return options.WebSocket;
-    // Node has a global WebSocket too; don't connect from a server render.
-    return typeof window === 'undefined' ? undefined : globalThis.WebSocket;
+    // Node has a global WebSocket too; don't connect from a server render. Workers have no
+    // `window`, but are browsers.
+    return typeof window === 'undefined' && typeof WorkerGlobalScope === 'undefined'
+      ? undefined
+      : globalThis.WebSocket;
   }
 
   function rejectReady(reason: unknown) {
@@ -257,18 +268,23 @@ function createClient<In = unknown, Out = unknown>(
     if (document.visibilityState === 'visible') wake();
   }
 
+  // `self` in a worker, which has `online` too but no document.
   function bindWindow() {
-    if (windowBound || typeof window === 'undefined') return;
+    if (windowBound || typeof addEventListener !== 'function') return;
     windowBound = true;
-    window.addEventListener('online', wake);
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    addEventListener('online', wake);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
   }
 
   function unbindWindow() {
     if (!windowBound) return;
     windowBound = false;
-    window.removeEventListener('online', wake);
-    document.removeEventListener('visibilitychange', onVisibilityChange);
+    removeEventListener('online', wake);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
   }
 
   /** Send a heartbeat ping and, with a `timeout`, close the socket if nothing comes back. */
@@ -396,7 +412,7 @@ function createClient<In = unknown, Out = unknown>(
         retryTimer = undefined;
         stopSocketTimers();
         if (ws) {
-          const old = ws;
+          const old = (replaced = ws);
           detach(old, true);
           old.close(1000, 'migrated');
         }
@@ -442,6 +458,7 @@ function createClient<In = unknown, Out = unknown>(
   }
 
   function handleClose(info: CloseInfo) {
+    replaced = null;
     stopSocketTimers();
     log('closed', info);
     retryOrFail(info);
@@ -503,6 +520,7 @@ function createClient<In = unknown, Out = unknown>(
   function fail(reason: unknown) {
     wanted = false;
     opened = false;
+    unheldStop = refs === 0;
     unbindWindow();
     stopMigrating();
     pending = [];
@@ -582,7 +600,8 @@ function createClient<In = unknown, Out = unknown>(
   }
 
   function deliver(message: In, event: MessageEvent, socket: WebSocket) {
-    if (ws !== socket) return; // closed or replaced while validating
+    // Closed while validating. One that `migrate()` replaced received it before the switch.
+    if (ws !== socket && replaced !== socket) return;
     set({ lastMessage: message });
     emit('message', message, event);
   }
@@ -660,6 +679,7 @@ function createClient<In = unknown, Out = unknown>(
 
   function begin() {
     wanted = true;
+    unheldStop = false;
     // Starting over after `close()` or giving up: wait for a new connection.
     if (snapshot.status === 'idle' || snapshot.status === 'closed') {
       opened = false;
@@ -683,6 +703,9 @@ function createClient<In = unknown, Out = unknown>(
   }
 
   function stop(code?: number, reason?: string) {
+    const socket = ws;
+    // First, so that a code or reason the socket rejects throws before anything has changed.
+    socket?.close(code, reason);
     wanted = false;
     generation++;
     clearTimeout(retryTimer);
@@ -692,17 +715,15 @@ function createClient<In = unknown, Out = unknown>(
     unbindWindow();
     stopMigrating();
     pending = [];
-    if (ws) {
-      const socket = ws;
-      detach(socket, true);
-      socket.close(code, reason);
-    }
+    replaced = null;
+    if (socket) detach(socket, true);
   }
 
   function close(code = 1000, reason?: string) {
+    stop(code, reason);
     pinned = false;
     opened = false;
-    stop(code, reason);
+    unheldStop = refs === 0;
     set({ status: 'closed', attempt: 0 });
     rejectReady(new Error('WebSocket was closed'));
   }
@@ -734,7 +755,9 @@ function createClient<In = unknown, Out = unknown>(
   function acquire() {
     refs++;
     clearTimeout(teardownTimer);
-    if (snapshot.status === 'idle') ensureConnecting();
+    if (snapshot.status === 'idle' || (snapshot.status === 'closed' && unheldStop)) {
+      ensureConnecting();
+    }
     let released = false;
     return () => {
       if (released) return;

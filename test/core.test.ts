@@ -53,6 +53,20 @@ describe('lifecycle', () => {
     expect(ws.getSnapshot()).not.toBe(before);
   });
 
+  it('connects in a worker, which has no window', () => {
+    vi.stubGlobal('window', undefined);
+    vi.stubGlobal('WorkerGlobalScope', class {});
+    vi.stubGlobal('WebSocket', MockImpl);
+    try {
+      const ws = createWebSocket('ws://x');
+      ws.connect();
+      MockWebSocket.last.open();
+      expect(ws.getSnapshot().status).toBe('open');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('fails permanently on a constructor error', () => {
     const ws = createWebSocket('invalid', { WebSocket: MockImpl });
     const onError = vi.fn();
@@ -518,6 +532,24 @@ describe('reconnecting', () => {
     await expect(ready).rejects.toThrow('code 1006');
   });
 
+  it('starts again for the next holder after giving up while nothing held it', async () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 0 }
+    });
+    const ready = ws.ready; // e.g. a Suspense render that was then abandoned
+    await Promise.resolve();
+    MockWebSocket.last.finishClose(1006);
+    await expect(ready).rejects.toThrow('code 1006');
+    expect(ws.getSnapshot().status).toBe('closed');
+
+    const release = ws.acquire(); // a component that mounts later
+    expect(MockWebSocket.instances).toHaveLength(2);
+    MockWebSocket.last.open();
+    expect(ws.getSnapshot().status).toBe('open');
+    release();
+  });
+
   it('respects shouldReconnect and reconnect: false', () => {
     const a = createWebSocket('ws://a', {
       WebSocket: MockImpl,
@@ -955,6 +987,27 @@ describe('migrate()', () => {
     expect(MockWebSocket.last.closedWith).toBeDefined();
   });
 
+  it('delivers what the old connection received while an async schema validates it', async () => {
+    const schema: StandardSchemaV1<unknown, string> = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: v => new Promise(resolve => setTimeout(() => resolve({ value: v as string }), 50))
+      }
+    };
+    const { ws, first } = connected({ schema });
+    const received: unknown[] = [];
+    ws.on('message', message => received.push(message));
+    first.receive('from the old one');
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    second.open();
+    second.receive('from the new one');
+    await vi.runAllTimersAsync();
+    expect(received).toEqual(['from the old one', 'from the new one']);
+  });
+
   it('only changes the URL of the next attempt while not open', () => {
     const { ws } = connected();
     MockWebSocket.last.finishClose(1006);
@@ -1012,6 +1065,54 @@ describe('close()', () => {
     vi.advanceTimersByTime(60_000);
     expect(MockWebSocket.instances).toHaveLength(1);
     expect(ws.getSnapshot().status).toBe('closed');
+  });
+
+  it('throws for a code the socket rejects, and changes nothing', () => {
+    // Browsers accept 1000 and 3000–4999.
+    class Strict extends MockWebSocket {
+      override close(code?: number, reason?: string) {
+        if (code !== undefined && code !== 1000 && (code < 3000 || code > 4999)) {
+          throw new DOMException('invalid code', 'InvalidAccessError');
+        }
+        super.close(code, reason);
+      }
+    }
+    const ws = createWebSocket<string>('ws://x', {
+      WebSocket: Strict as unknown as typeof WebSocket
+    });
+    const received: string[] = [];
+    ws.on('message', message => received.push(message));
+    ws.connect();
+    const socket = MockWebSocket.last;
+    socket.open();
+    expect(() => ws.close(1001, 'bye')).toThrow('invalid code');
+    expect(ws.getSnapshot().status).toBe('open');
+    expect(ws.socket).toBe(socket);
+    socket.receive('still here');
+    expect(received).toEqual(['still here']);
+
+    ws.close(4000, 'bye');
+    expect(socket.closedWith).toEqual({ code: 4000, reason: 'bye' });
+    expect(ws.getSnapshot().status).toBe('closed');
+  });
+
+  it('starts again for the next holder when nothing held it, and not while something does', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    MockWebSocket.last.open();
+    ws.close(); // nothing holds it: as after the last hook unmounted
+    const release = ws.acquire();
+    expect(MockWebSocket.instances).toHaveLength(2);
+    MockWebSocket.last.open();
+    expect(ws.getSnapshot().status).toBe('open');
+
+    ws.close(); // `release` still holds it: closed until connect() or reconnect()
+    const other = ws.acquire();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('closed');
+    expect(MockWebSocket.instances).toHaveLength(2);
+    release();
+    other();
   });
 });
 

@@ -109,7 +109,7 @@ Handlers belong to the component: they run only while it is mounted and `enabled
 - **Renders.** The component re-renders when the status changes and on **every message**. For high-frequency streams, use [`useWebSocketEvent`](./use-websocket-event.md) and [`useWebSocketStatus`](./use-websocket-status.md), which don't re-render per message. See [Performance](../guide/performance.md).
 - **Lifecycle.** The connection opens on mount (in an Effect) and closes one tick after the last component using it unmounts. StrictMode and `<Activity>` don't create duplicate sockets. See [StrictMode, Activity and lifecycle](../guide/lifecycle.md).
 - **Server rendering.** Renders `status: 'idle'` and never connects. See [Server rendering](../guide/ssr.md).
-- **After `close()`.** The status stays `'closed'` while components remain mounted. Call `reconnect()` to start again. Once every component unmounts, the next mount connects normally.
+- **After `close()`.** The status stays `'closed'` while components remain mounted. Call `reconnect()` to start again. Once every component unmounts, the next mount connects normally, as it does after a `close()` while none was mounted.
 
 ## Caveats
 

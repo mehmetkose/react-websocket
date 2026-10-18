@@ -9,7 +9,7 @@ import {
   type OutboxStorage,
   type WebSocketOutbox
 } from '../src/outbox';
-import { MockImpl, MockWebSocket } from './mock';
+import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
 
 type In = { type: 'ack'; id: string } | { type: 'chat' };
 type Out = { type: 'order'; id: string; order: Order };
@@ -18,16 +18,24 @@ type Order = { table: number };
 let n = 0;
 
 function setup(
-  options: { storage?: OutboxStorage; ack?: boolean; maxAge?: number; onExpire?: () => void } = {}
+  options: {
+    storage?: OutboxStorage;
+    ack?: boolean;
+    maxAge?: number;
+    onExpire?: () => void;
+    name?: string;
+    WebSocket?: typeof WebSocket;
+  } = {}
 ) {
   const client = createWebSocket<In, Out>(`ws://outbox/${++n}`, {
-    WebSocket: MockImpl,
+    WebSocket: options.WebSocket ?? MockImpl,
     json: true,
     reconnect: { jitter: 0, minDelay: 1000 }
   });
   const storage = options.storage ?? memoryStorage();
   const outbox = createWebSocketOutbox(client, {
-    name: 'orders',
+    // Its own name, so tests don't reach each other's outboxes through BroadcastChannel.
+    name: options.name ?? `orders-${n}`,
     storage,
     send: (order: Order, id) => ({ type: 'order', id, order }),
     ack:
@@ -109,6 +117,68 @@ describe('createWebSocketOutbox', () => {
     await settle();
     expect(outbox.getSnapshot()).toEqual([]);
     expect(await storage.load()).toEqual([]);
+  });
+
+  it("doesn't store a message sent at once without ack, so a reload doesn't send it again", async () => {
+    const storage = memoryStorage();
+    const { client, outbox } = setup({ ack: false, storage });
+    await outbox.ready;
+    client.connect();
+    MockWebSocket.last.open();
+    await outbox.add({ table: 1 }, 'a');
+    await settle();
+    expect(sent()).toEqual([{ type: 'order', id: 'a', order: { table: 1 } }]);
+    expect(await storage.load()).toEqual([]);
+  });
+
+  it("sends on the socket's reliable stream, not as datagrams", async () => {
+    const { outbox } = setup({ WebSocket: DatagramImpl });
+    await outbox.ready;
+    outbox.add({ table: 1 }, 'a');
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([{ type: 'order', id: 'a', order: { table: 1 } }]);
+    expect((MockWebSocket.last as DatagramMockWebSocket).datagrams).toEqual([]);
+  });
+
+  it("doesn't send while the server is closing the socket", async () => {
+    const { client, outbox } = setup();
+    await outbox.ready;
+    client.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.readyState = 2;
+    outbox.add({ table: 1 }, 'a');
+    expect(MockWebSocket.last.sent).toEqual([]);
+    MockWebSocket.last.finishClose(1001);
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    expect(sent().map(message => message.id)).toEqual(['a']);
+  });
+
+  it('remove() and clear() drop the messages other tabs loaded too', async () => {
+    vi.useRealTimers();
+    // Two tabs on one database.
+    const storage = memoryStorage();
+    const name = `shared-${++n}`;
+    const a = setup({ storage, name });
+    await a.outbox.ready;
+    await a.outbox.add({ table: 1 }, 'one');
+    await a.outbox.add({ table: 2 }, 'two');
+    const b = setup({ storage, name });
+    await b.outbox.ready;
+    expect(ids(b.outbox)).toEqual(['one', 'two']);
+
+    await a.outbox.remove('one');
+    await vi.waitFor(() => expect(ids(b.outbox)).toEqual(['two']));
+    await a.outbox.clear();
+    await vi.waitFor(() => expect(ids(b.outbox)).toEqual([]));
+    // What a tab adds after the clear stays.
+    await b.outbox.add({ table: 3 }, 'three');
+    MockWebSocket.instances.forEach(socket => socket.open());
+    expect(MockWebSocket.instances.flatMap(socket => sent(socket)).map(m => m.id)).toEqual([
+      'three'
+    ]);
+    a.outbox.dispose();
+    b.outbox.dispose();
   });
 
   it('restores stored messages after a reload and sends them before new ones', async () => {
@@ -295,6 +365,20 @@ describe('indexedDBStorage', () => {
 
     await indexedDBStorage('orders').delete('a');
     expect((await indexedDBStorage('orders').load()).map(r => r.id)).toEqual(['b']);
+  });
+
+  it("doesn't keep another page from deleting the database", async () => {
+    const storage = indexedDBStorage('deletable');
+    await storage.put({ id: 'a', message: { table: 1 }, createdAt: 1 });
+    const outcome = await new Promise(resolve => {
+      const request = indexedDB.deleteDatabase('react-websocket-outbox:deletable');
+      request.onsuccess = () => resolve('deleted');
+      request.onblocked = () => resolve('blocked');
+    });
+    expect(outcome).toBe('deleted');
+    // The next write opens it again.
+    await storage.put({ id: 'b', message: { table: 2 }, createdAt: 2 });
+    expect((await storage.load()).map(record => record.id)).toEqual(['b']);
   });
 
   it('is the default where IndexedDB exists', async () => {

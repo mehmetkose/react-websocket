@@ -27,6 +27,7 @@ That's the whole change. Each tab keeps its own client, with its own status, que
 - **Closes** reach every tab too, and each tab's client reconnects as usual, through the leader.
 - **When the leading tab closes**, another tab takes over the lock and opens a new connection, and every tab's client reconnects through it. Topic subscriptions are sent again, as after any reconnect.
 - **The shared connection** opens when a tab first needs it, and closes a second (`linger`) after the last tab lets go, so a reload doesn't close and reopen it.
+- **A tab that closes** lets go on `pagehide`, with its topics, so the leader neither keeps the shared connection for it nor holds back an unsubscribe for a topic only it still held. A tab that goes into the back/forward cache lets go the same way, and its clients reconnect when it comes back.
 
 In Chrome, three tabs using the same URL opened three connections without it, and one with it. Closing the leading tab moved the connection to another tab, and both remaining tabs went on receiving their topics.
 
@@ -48,7 +49,7 @@ WebSocket: createTabsWebSocket({
 - **One tab unsubscribing another.** If two tabs show `prices` and one closes its view, its `unsubscribe` would stop prices for both: the server only sees one connection. With `subscribe` and `unsubscribe`, the leader keeps track of which tabs hold each topic, and forwards an unsubscribe only when no other tab still holds it.
 - **Every tab getting every topic.** With `topic`, a message goes only to the tabs that hold its topic, so a tab's [state](./state.md) doesn't reduce messages for topics it never asked for. Messages without a topic still go to every tab.
 
-`json: true` hands the functions parsed messages. Recognize every message your app subscribes with: a message on a topic no tab holds is dropped.
+`json: true` hands the functions parsed messages. Recognize every message your app subscribes with: a message on a topic no tab holds is dropped. A message that isn't JSON, such as a [heartbeat](./reconnecting.md#heartbeats) `'ping'`, never reaches them, and one that throws counts as no topic, so `message.type` on a `null` doesn't stop the message.
 
 Subscribes are always forwarded, so a tab that joins a topic gets what the server sends a new subscriber, such as a snapshot. The tabs that already hold the topic get it too, since it comes on the same connection. A [state](./state.md) that replaces itself with a snapshot handles that without doing anything, and [numbered feeds](./topics.md#numbered-feeds) drop events they've already delivered.
 

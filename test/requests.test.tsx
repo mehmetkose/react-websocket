@@ -8,7 +8,7 @@ import {
   type UseWebSocketStreamResult,
   type WebSocketRequests
 } from '../src';
-import { MockImpl, MockWebSocket } from './mock';
+import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
 
 type In =
   | { type: 'reply'; id: number | string; ok?: string; error?: string }
@@ -232,6 +232,18 @@ describe('createWebSocketRequests', () => {
     await expect(rpc.request({ type: 'join', room: 'b' })).rejects.toThrow('WebSocket is closed');
   });
 
+  it("leaves a closed client closed: a request doesn't start it again", async () => {
+    const { client, rpc } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    client.close();
+    await expect(rpc.request({ type: 'join', room: 'a' })).rejects.toThrow('WebSocket is closed');
+    vi.runAllTimers();
+    expect(client.getSnapshot().status).toBe('closed');
+    await expect(rpc.request({ type: 'join', room: 'b' })).rejects.toThrow('WebSocket is closed');
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
   it('rejects a volatile request right away when not open', async () => {
     const { client, rpc } = setup();
     client.connect();
@@ -382,6 +394,26 @@ describe('cancel', () => {
       join('c', 3),
       cancel(3)
     ]);
+  });
+
+  it("goes on the socket's reliable stream, not as a datagram", async () => {
+    const client = createWebSocket<In, Out>(`ws://requests/${++n}`, {
+      WebSocket: DatagramImpl,
+      json: true
+    });
+    const rpc = createWebSocketRequests(client, {
+      send: (message: Request, id) => ({ ...message, id }),
+      reply: message => (message.type === 'chat' ? undefined : message.id),
+      ...STREAM
+    });
+    client.connect();
+    MockWebSocket.last.open();
+    const controller = new AbortController();
+    const aborted = rpc.request({ type: 'join', room: 'a' }, { signal: controller.signal });
+    controller.abort('stop');
+    await expect(aborted).rejects.toBe('stop');
+    expect(sent()).toEqual([join('a', 1), cancel(1)]);
+    expect((MockWebSocket.last as DatagramMockWebSocket).datagrams).toEqual([]);
   });
 
   it('is not sent after a reply, an error reply, a lost connection or close()', async () => {

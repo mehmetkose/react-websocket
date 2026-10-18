@@ -143,7 +143,9 @@ The release function is safe to call more than once.
 
 ### Closing and restarting
 
-`client.close(code?, reason?)` closes the socket and stops reconnecting, for every component using it. The status becomes `closed`. Mounted hooks stay mounted but don't reopen it. To start again, call `connect()` or `reconnect()`. Once every hook unmounts, the client goes back to `idle`, and the next hook to mount opens it again.
+`client.close(code?, reason?)` closes the socket and stops reconnecting, for every component using it. The status becomes `closed`. Mounted hooks stay mounted but don't reopen it. To start again, call `connect()` or `reconnect()`. Once every hook unmounts, the client goes back to `idle`, and the next hook to mount opens it again. The same goes for a client closed (or one that gave up) while no hook held it: the next hook to mount opens it.
+
+Like `WebSocket.close()`, `close()` throws for a code the browser rejects: it takes `1000` or `3000`–`4999`, so `1001` (going away) throws. Nothing changes then, and the connection keeps working.
 
 ## Which one should I use?
 

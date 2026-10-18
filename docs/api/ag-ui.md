@@ -36,7 +36,7 @@ function createAgUiAgent<S, In, Out>(
 | `run` | The message that starts a run | `{ type: 'run', runId, input }` |
 | `resume` | The message that asks for a run's events after `after` | `{ type: 'resume', runId, after }` |
 | `cancel` | The message that stops a run | `{ type: 'cancel', runId }` |
-| `resync` | The message that asks for a `STATE_SNAPSHOT`, sent once when a `STATE_DELTA` fails | Not sent |
+| `resync` | The message that asks for a `STATE_SNAPSHOT`, sent once each time a `STATE_DELTA` fails, until a snapshot arrives | Not sent |
 | `event` | Recognize a run's event in a server message | Messages shaped `{ runId, offset, event }` |
 | `policy` | What happens to a run when its connection drops: `'keep'` resumes it, `'cancel'` stops it | `'keep'` |
 | `storage` | Where streaming runs are remembered, or `null` | `sessionStorage` |
@@ -100,4 +100,4 @@ A `STATE_DELTA` that can't be applied returns the thread with `stale: true` and 
 function applyPatch<T>(document: T, operations: readonly JsonPatchOperation[]): T;
 ```
 
-Apply a [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) (`add`, `remove`, `replace`, `move`, `copy`, `test`) without changing `document`: what changes is copied, and the rest is shared. Throws if an operation can't be applied, such as a missing path, an index out of range or a failed `test`, and `document` stays as it was.
+Apply a [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) (`add`, `remove`, `replace`, `move`, `copy`, `test`) without changing `document`: what changes is copied, and the rest is shared. Throws if an operation can't be applied, such as a missing path, an index out of range (an array's `length` isn't one of its members), a pointer that doesn't start with `/`, or a failed `test`, and `document` stays as it was. A key such as `__proto__` is added as a property of its own, as `JSON.parse` would.

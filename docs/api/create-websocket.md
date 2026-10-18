@@ -70,6 +70,7 @@ It closes **one tick after the last hook unmounts** (or the last `acquire()` is 
 | `reconnecting` | A retry opens | `open` |
 | any | `close()`, or reconnecting gives up | `closed` |
 | `closed` | `connect()` or `reconnect()` | `connecting` |
+| `closed` while nothing held it | A hook mounts | `connecting` |
 | any | The last hook unmounts (unless `connect()` was called) | `idle` |
 
 The full picture, including backoff and heartbeats, is in [Reconnecting and heartbeats](../guide/reconnecting.md).
@@ -81,7 +82,7 @@ The full picture, including backoff and heartbeats, is in [Reconnecting and hear
 | `send(message, options?)` | Send now, or queue until open. `{ volatile: true }` drops instead of queueing, `{ key }` keeps only the newest queued message per key, `{ priority: true }` queues ahead of the others, and `{ maxBuffered }` drops while the send buffer is full. See [`SendOptions`](./types.md#sendoptions). Returns `true` if sent immediately |
 | `on(type, listener)` | Listen to `'open'`, `'message'`, `'close'` or `'error'`. Returns an unsubscribe function |
 | `connect()` | Connect, and stay connected until `close()` even with no hooks mounted |
-| `close(code?, reason?)` | Close, stop reconnecting, clear the queue. Status becomes `'closed'` |
+| `close(code?, reason?)` | Close, stop reconnecting, clear the queue. Status becomes `'closed'`. Throws, like `WebSocket.close()`, for a code the browser rejects (it takes `1000` or `3000`–`4999`), and then nothing has changed |
 | `reconnect()` | Drop the socket and connect again now, resetting the backoff. Also restarts a `'closed'` client |
 | `migrate({ url?, within? })` | Move to a new connection without a gap, at a random moment within `within` ms, for example when the server asks before a deploy. See [Deploys](../guide/reconnecting.md#deploys-without-reconnect-storms) |
 | `ready` | Promise that resolves once connected. See [Suspense](../guide/suspense.md) |

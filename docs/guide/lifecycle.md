@@ -74,7 +74,7 @@ What survives depends on how you share the connection:
 
 | | After hide → show |
 | --- | --- |
-| `useWebSocket(url)` | A new client: `lastMessage` is `undefined` until the next message, as after a remount |
+| `useWebSocket(url)` | The component keeps its client: `lastMessage` is kept, and shows immediately while it reconnects. If another component opened the URL meanwhile, it shows that one's instead |
 | Module-level client (`createWebSocket`) | Same client: `lastMessage` is kept, and shows immediately while it reconnects |
 
 ### Keeping a connection open while hidden

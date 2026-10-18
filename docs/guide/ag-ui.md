@@ -58,7 +58,7 @@ Tool call arguments arrive as JSON text in pieces, so `toolCalls[n].function.arg
 
 `STATE_DELTA` carries [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) operations against the state the client is supposed to have. If the client's state differs, because a delta was lost or the server's view drifted, a patch can fail: a path that doesn't exist, a failed `test`. Applying later deltas to the wrong base would only make it worse.
 
-So the adapter keeps the last good state, marks the thread `stale`, and skips deltas until a `STATE_SNAPSHOT` arrives. With the `resync` option, it asks the server for one right away; answer it with a snapshot before the run finishes. Patches never change the state in place: what changes is copied, and the rest is shared, so React sees new objects only where something changed.
+So the adapter keeps the last good state, marks the thread `stale`, and skips deltas until a `STATE_SNAPSHOT` arrives. With the `resync` option, it asks the server for one right away, and again each time a later delta fails after a snapshot; answer it with a snapshot before the run finishes. A run that finishes stale doesn't make the next one stale: that run starts from the last good state, which it sends to the server, so its deltas apply. Patches never change the state in place: what changes is copied, and the rest is shared, so React sees new objects only where something changed.
 
 ## Runs that survive reconnects
 

@@ -132,6 +132,71 @@ describe('createTabsWebSocket', () => {
     ]);
   });
 
+  it('lets go of a tab that goes away, with its topics, without its client closing', async () => {
+    const options = {
+      json: true,
+      topics: {
+        subscribe: (m: any) => (m.type === 'sub' ? m.topic : undefined),
+        unsubscribe: (m: any) => (m.type === 'unsub' ? m.topic : undefined)
+      }
+    };
+    const a = client(tab(options), true);
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
+    const listen = vi.spyOn(window, 'addEventListener');
+    // A page that goes away runs nothing more, so its client doesn't reconnect.
+    const b = createWebSocket(url, {
+      WebSocket: tab(options) as unknown as typeof WebSocket,
+      json: true,
+      reconnect: false
+    });
+    clients.push(b);
+    b.connect();
+    await vi.waitFor(() => expect(b.getSnapshot().status).toBe('open'));
+    const pagehide = listen.mock.calls.find(([type]) => type === 'pagehide')![1] as () => void;
+    listen.mockRestore();
+    a.send({ type: 'sub', topic: 'news' });
+    b.send({ type: 'sub', topic: 'news' });
+    await vi.waitFor(() => expect(sent()).toHaveLength(2));
+
+    pagehide(); // b's page closes
+    expect(b.getSnapshot().status).toBe('closed');
+    a.send({ type: 'unsub', topic: 'news' });
+    await vi.waitFor(() => expect(sent()).toHaveLength(3));
+    expect(JSON.parse(sent()[2] as string)).toEqual({ type: 'unsub', topic: 'news' });
+    // Nothing holds the shared socket once a lets go.
+    a.close();
+    await vi.waitFor(() => expect(MockWebSocket.last.closedWith).toBeDefined());
+  });
+
+  it('passes on messages that are not JSON, such as heartbeat pings, with topics', async () => {
+    // As in the guide: these throw for a message that isn't an object.
+    const a = client(
+      tab({
+        json: true,
+        topics: {
+          subscribe: (m: any) => (m.type === 'subscribe' ? m.topic : undefined),
+          unsubscribe: (m: any) => (m.type === 'unsubscribe' ? m.topic : undefined),
+          topic: (m: any) => m.topic
+        }
+      })
+    );
+    const received: unknown[] = [];
+    a.on('message', message => received.push(message));
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
+    a.send('ping');
+    a.send('null');
+    await vi.waitFor(() => expect(sent()).toEqual(['ping', 'null']));
+    MockWebSocket.last.receive('pong');
+    MockWebSocket.last.receive('42');
+    await vi.waitFor(() => expect(received).toEqual(['pong', '42']));
+  });
+
   it('hands over to another tab when the leading one goes away', async () => {
     const first = tab();
     const a = client(first);
@@ -191,6 +256,30 @@ describe('createTabsWebSocket', () => {
     expect(received).toEqual(['back']);
     a.close();
     MockWebSocket.last.finishClose(1000);
+  });
+
+  it('gives binary messages the binaryType asked for where the Web Locks API is missing', () => {
+    setLocks(undefined);
+    const Shared = tab();
+    const blobs = createWebSocket(url, { WebSocket: Shared as unknown as typeof WebSocket });
+    const buffers = createWebSocket(url, {
+      WebSocket: Shared as unknown as typeof WebSocket,
+      binaryType: 'arraybuffer'
+    });
+    clients.push(blobs, buffers);
+    const received: unknown[] = [];
+    blobs.on('message', message => received.push(message));
+    buffers.on('message', message => received.push(message));
+    blobs.connect();
+    buffers.connect();
+    for (const socket of MockWebSocket.instances) {
+      // Its own socket hands over ArrayBuffers, which it turns into what was asked for.
+      expect(socket.binaryType).toBe('arraybuffer');
+      socket.open();
+      socket.receive(new ArrayBuffer(2));
+    }
+    expect(received[0]).toBeInstanceOf(Blob);
+    expect(received[1]).toBeInstanceOf(ArrayBuffer);
   });
 
   it('throws during a server render, like any WebSocket would be missing', () => {
