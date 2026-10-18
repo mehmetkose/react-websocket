@@ -11,7 +11,7 @@ export default defineConfig({
   themeDir: 'docs/theme',
   title: 'react-websocket',
   description:
-    'Hooks-first WebSocket client for React: shared connections, auto-reconnect, typed messages, Suspense-ready.',
+    'The real-time toolkit for React: a WebSocket hook with shared connections, auto-reconnect and typed messages, plus topics, state, requests, presence and AI agents.',
   // Served from GitHub Pages at https://mehmetkose.github.io/react-websocket/
   siteOrigin: 'https://mehmetkose.github.io',
   base: '/react-websocket/',
@@ -28,7 +28,7 @@ export default defineConfig({
     ['meta', { property: 'og:image:height', content: '630' }],
     [
       'meta',
-      { property: 'og:image:alt', content: 'react-websocket: WebSockets for React, done right' }
+      { property: 'og:image:alt', content: 'react-websocket: The real-time toolkit for React' }
     ],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }]
   ],

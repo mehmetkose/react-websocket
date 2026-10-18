@@ -1,0 +1,180 @@
+---
+pageType: home
+titleSuffix: 'WebSocket hook and real-time toolkit for React'
+description: 'useWebSocket for React 18 and 19: shared connections, auto-reconnect, a send queue and typed messages, plus topics, state, requests, presence and AI agents when you need them. Zero dependencies.'
+
+hero:
+  name: react-websocket
+  text: The real-time toolkit for React
+  tagline: One hook to connect, with shared sockets, automatic reconnects and typed messages built in. Add topics, state, requests, presence, games or AI agents on the same connection, and ship only what you import. Zero dependencies.
+  actions:
+    - theme: brand
+      text: Get started
+      link: /guide/getting-started
+    - theme: alt
+      text: Why react-websocket?
+      link: /guide/
+    - theme: alt
+      text: API reference
+      link: /api/
+---
+
+import { PackageManagerTabs } from '@rspress/core/theme';
+
+## Start in a minute
+
+<PackageManagerTabs
+  command={{
+    npm: 'npm install react-websocket',
+    pnpm: 'pnpm add react-websocket',
+    yarn: 'yarn add react-websocket',
+    bun: 'bun add react-websocket'
+  }}
+/>
+
+```tsx
+import { useWebSocket } from 'react-websocket';
+
+export function Echo() {
+  const { status, lastMessage, send } = useWebSocket('wss://echo.websocket.org');
+
+  return (
+    <div>
+      <p>Status: {status}</p>
+      <p>Last message: {String(lastMessage ?? '—')}</p>
+      <button onClick={() => send('hello')}>Send</button>
+    </div>
+  );
+}
+```
+
+No provider, no setup and no `useEffect`. That component already:
+
+- Shares one socket with every component that uses the same URL, through StrictMode, `<Activity>` and route changes.
+- Reconnects with exponential backoff and jitter, and at once when the network or the tab comes back.
+- Queues messages sent before the socket opens, and delivers them in order once it does.
+- Never connects during a server render, and hydrates without mismatches.
+
+### Add types when you're ready
+
+Most servers send JSON. Turn on `json` and name what you receive and what you send:
+
+```tsx
+import { useWebSocket } from 'react-websocket';
+
+type Price = { symbol: string; price: number };
+
+function Ticker() {
+  const { status, lastMessage, send } = useWebSocket<Price, { subscribe: string }>(
+    'wss://api.example.com/prices',
+    {
+      json: true,
+      // Runs after every (re)connect, by which time `send` is assigned.
+      onOpen: () => send({ subscribe: 'ACME' })
+    }
+  );
+
+  if (status !== 'open') return <p>{status}…</p>;
+  return <p>ACME: {lastMessage?.price ?? '—'}</p>;
+}
+```
+
+To check messages at runtime too, pass a `schema` from zod, valibot or arktype, and the types are inferred from it. The [getting started guide](./guide/getting-started.mdx) goes on from here.
+
+## The toolkit
+
+Everything builds on the client that `useWebSocket` uses. Each piece is a separate import, so a page that only connects ships only the core, about 4 kB, and most pieces add under 2 kB. None of them imposes a wire protocol: you describe your server's messages, and they do the bookkeeping.
+
+<div className="rws-toolkit">
+
+<section>
+
+### Connect
+
+Where every app starts: connections shared by URL, automatic reconnects, a send queue, typed and validated messages, Suspense and server rendering.
+
+`useWebSocket`&nbsp;· `createWebSocket`&nbsp;· `useWebSocketStatus`&nbsp;· `useWebSocketEvent`
+
+[Getting started](./guide/getting-started.mdx)&nbsp;· [Shared clients](./guide/shared-clients.md)&nbsp;· [Reconnecting](./guide/reconnecting.md)&nbsp;· [Messages and types](./guide/messages.md)&nbsp;· [Suspense](./guide/suspense.md)&nbsp;· [Server rendering](./guide/ssr.md)&nbsp;· [Without React](./guide/without-react.md)
+
+</section>
+
+<section>
+
+### Live data
+
+Subscriptions that are sent again after every reconnect, numbered feeds that arrive once and in order, and stores reduced from messages that re-render only the slice that changed.
+
+`createWebSocketTopics`&nbsp;· `createWebSocketFeeds`&nbsp;· `createWebSocketState`&nbsp;· `useWebSocketTopic`&nbsp;· `useWebSocketState`&nbsp;· `useInView`
+
+[Topics](./guide/topics.md)&nbsp;· [State](./guide/state.md)
+
+</section>
+
+<section>
+
+### Requests and streams
+
+Await a reply, stream replies such as an LLM's tokens with a Stop button that tells the server, and measure the round-trip time and the server's clock.
+
+`createWebSocketRequests`&nbsp;· `useWebSocketStream`&nbsp;· `createWebSocketLatency`&nbsp;· `useWebSocketLatency`
+
+[Requests](./api/create-websocket-requests.md)&nbsp;· [Streams](./api/use-websocket-stream.md)&nbsp;· [Latency](./api/create-websocket-latency.md)
+
+</section>
+
+<section>
+
+### AI agents
+
+Answer an agent's tool calls in the browser or from an approval dialog, keep a streamed answer through a reload, run AG-UI agents, and handle voice interruptions.
+
+`createWebSocketResponder`&nbsp;· `useAgentApproval`&nbsp;· `createWebSocketRuns`&nbsp;· `useAgentRun`&nbsp;· `useAgUiAgent`&nbsp;· `react-websocket/ag-ui`
+
+[AI agents](./guide/agents.md)&nbsp;· [AG-UI](./guide/ag-ui.md)&nbsp;· [Voice](./guide/voice.md)
+
+</section>
+
+<section>
+
+### Multiplayer and presence
+
+Live cursors that expire when a peer vanishes, a send rate that adapts to the connection, and snapshot interpolation with client-side prediction for games.
+
+`createWebSocketPresence`&nbsp;· `useWebSocketPresence`&nbsp;· `createWebSocketSendRate`&nbsp;· `react-websocket/timeline`
+
+[Presence](./guide/presence.md)&nbsp;· [Games](./guide/games.md)
+
+</section>
+
+<section>
+
+### Transports and offline
+
+One connection shared by every tab, WebTransport with datagrams and a WebSocket fallback, and an IndexedDB outbox that keeps messages until the server acknowledges them.
+
+`react-websocket/tabs`&nbsp;· `react-websocket/webtransport`&nbsp;· `react-websocket/outbox`&nbsp;· `useWebSocketOutbox`
+
+[Tabs](./guide/tabs.md)&nbsp;· [WebTransport](./guide/webtransport.md)&nbsp;· [Outbox](./guide/outbox.md)
+
+</section>
+
+<section>
+
+### Debug and test
+
+A devtools panel, faults injected in development, and sessions recorded to a file and replayed without a server.
+
+`react-websocket/devtools`&nbsp;· `react-websocket/chaos`&nbsp;· `react-websocket/replay`
+
+[Testing](./guide/testing.md)&nbsp;· [Devtools](./api/devtools.md)&nbsp;· [Chaos](./guide/chaos.md)&nbsp;· [Replay](./guide/replay.md)
+
+</section>
+
+</div>
+
+## Works with your stack
+
+react-websocket uses the standard `WebSocket` API, so any WebSocket server works: Node's `ws`, Hono, Django Channels, Tornado, Go, Phoenix or Cloudflare Durable Objects. In the browser it runs in a Vite app or in a server-rendered framework such as [Next.js, React Router or Astro](./guide/ssr.md), and [`react-websocket/core`](./guide/without-react.md) brings the same client to code without React.
+
+The repository has runnable [examples](https://github.com/mehmetkose/react-websocket/tree/main/examples) for Next.js, Astro, Remix, Hono and Tornado, and a multiplayer game.

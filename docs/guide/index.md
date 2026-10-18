@@ -1,6 +1,6 @@
 ---
 title: 'Why use a React WebSocket library'
-description: 'What it takes to use the browser''s WebSocket well in React (StrictMode, sharing, reconnects, types, SSR) and how react-websocket handles it in about 3 kB.'
+description: 'What it takes to use the browser''s WebSocket well in React (StrictMode, sharing, reconnects, types, SSR) and how react-websocket handles it in about 4 kB.'
 ---
 
 # Why react-websocket
@@ -19,7 +19,7 @@ The browser's `WebSocket` is a low-level object. Using it well in React takes a 
 - **Types.** `event.data` is `any`. Production code needs parsing and validation.
 - **Server rendering.** Node has a global `WebSocket` too, so a careless hook opens connections from your server.
 
-react-websocket handles all of this in about 3 kB min+gzip.
+react-websocket handles all of this in about 4 kB min+gzip.
 
 ## How it works
 
@@ -48,7 +48,7 @@ You get clients in two ways:
 
 ## What it doesn't do
 
-- **No protocol.** It doesn't impose a message format, rooms, acknowledgements or request/response semantics. Build them on top; the [recipes](../recipes.md) show how.
+- **No wire protocol.** It sends what you send. Topics, feeds, requests and acknowledgements are optional helpers that you map onto your server's own messages, so nothing on the server has to change. For anything else, the [recipes](../recipes.md) show how to build it on top.
 - **No Socket.IO, SignalR or STOMP.** Those have their own wire protocols and clients.
 - **No server.** Use any WebSocket server: Node's `ws`, Django Channels, Tornado, Go, Phoenix, Cloudflare Durable Objects, and so on.
 

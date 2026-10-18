@@ -452,11 +452,7 @@ button.rp-switch-appearance:focus-visible {
   }
 }
 
-/* Line the features and the page body up with the hero text. */
-.rp-home-feature {
-  padding: 10px 40px;
-}
-
+/* Line the page body up with the hero text. */
 .rws-home-content {
   max-width: 72rem;
   margin: 0 auto 4rem;
@@ -464,31 +460,69 @@ button.rp-switch-appearance:focus-visible {
 }
 
 @media (width <= 600px) {
-  .rp-home-feature,
   .rws-home-content {
     padding: 10px 16px;
   }
 }
 
-.rp-home-feature__card {
+/* The toolkit: the core as a full-width card, then the opt-in groups three to a row. */
+.rws-toolkit {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.rws-toolkit > section {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 22px;
   border: 1px solid var(--rp-c-divider-light);
   border-radius: 6px;
-  backdrop-filter: none;
+  transition: border-color 0.2s;
 }
 
-.rp-home-feature__card:hover {
+.rws-toolkit > section:hover,
+.rws-toolkit > section:focus-within {
   border-color: var(--rp-c-text-1);
-  color: inherit;
 }
 
-.rp-home-feature__title {
-  font-weight: 650;
-  letter-spacing: -0.02em;
+.rws-toolkit > section:first-child {
+  grid-column: 1 / -1;
+  background: var(--rp-c-bg-alt);
 }
 
-.rp-home-feature__detail {
+.rws-toolkit h3 {
+  margin: 0;
+}
+
+.rws-toolkit p {
+  margin: 10px 0 0;
   font-size: 13.5px;
   line-height: 1.7;
+}
+
+/* Wrap between imports, never inside a name. */
+.rws-toolkit code {
+  white-space: nowrap;
+}
+
+/* The links line sits at the bottom of each card, so a row of cards lines up. */
+.rws-toolkit p:last-child {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+@media (width <= 1000px) {
+  .rws-toolkit {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 600px) {
+  .rws-toolkit {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .rp-button {
