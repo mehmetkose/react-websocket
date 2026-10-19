@@ -3,8 +3,12 @@ import { useHead, usePage, useSite } from '@rspress/core/runtime';
 const repo = 'https://github.com/mehmetkose/react-websocket';
 const npm = 'https://www.npmjs.com/package/react-websocket';
 
-// The sections that have an index page, for the breadcrumbs.
-const sections: Record<string, string> = { guide: 'Guide', api: 'API reference' };
+// The sections that have an index page, for the breadcrumbs: their name and the index's path.
+const sections: Record<string, [name: string, path: string]> = {
+  guide: ['Guide', 'guide/'],
+  api: ['API reference', 'api/'],
+  recipes: ['Recipes', 'recipes']
+};
 
 /**
  * Per-page tags for search engines and link previews that Rspress doesn't add: the canonical URL,
@@ -77,11 +81,9 @@ export function SeoHead() {
     });
 
     const crumbs = [{ name: site.title, item: siteUrl }];
-    const section = page.routePath.split('/')[1] ?? '';
-    const sectionUrl = `${siteUrl}${section}/`;
-    if (sections[section] && url !== sectionUrl) {
-      crumbs.push({ name: sections[section], item: sectionUrl });
-    }
+    const [sectionName, sectionPath] = sections[page.routePath.split('/')[1] ?? ''] ?? [];
+    const sectionUrl = `${siteUrl}${sectionPath}`;
+    if (sectionName && url !== sectionUrl) crumbs.push({ name: sectionName, item: sectionUrl });
     // The page's <h1>, which is shorter than its title.
     crumbs.push({ name: page.headingTitle || page.title, item: url });
     graph.push({

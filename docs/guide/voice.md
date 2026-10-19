@@ -138,3 +138,4 @@ For a voice session that must survive a reconnect, such as a long dictation, kee
 - [Reconnecting and heartbeats](./reconnecting.md#control-messages-first): `priority` and `maxBuffered`
 - [AI agents](./agents.md): tools, approvals and streamed text answers
 - [Performance](./performance.md)
+- [Build a voice assistant and text to speech](../recipes/voice-assistant.md): all of this in a whole app, with a server that relays to OpenAI
