@@ -95,3 +95,4 @@ A peer that reconnects usually gets a new id from the server, so it shows up as 
 - [Topic subscriptions](./topics.md): join the room's topic, so presence goes to the right people
 - [Real-time games](./games.md): `createWebSocketSendRate` for state that's sent every tick
 - [Build a multiplayer party game](../recipes/party-game.md): presence that shows which phones are still here
+- [Build a team chat app](../recipes/team-chat.md) and [Build a collaborative whiteboard](../recipes/collaborative-whiteboard.md): presence in whole apps, with typing indicators and live cursors

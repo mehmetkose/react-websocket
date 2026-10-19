@@ -73,6 +73,32 @@ The game example, file by file: a fixed-tick server, prediction and interpolatio
 
 </div>
 
+### Collaboration
+
+<div className="rws-guides rp-toc-exclude">
+
+<section>
+
+#### [Team chat](./recipes/team-chat.md)
+
+Channels where every message arrives once and in order, an outbox that survives reloads, unread counts on every device, and one connection for all tabs.
+
+`createWebSocketFeeds`&nbsp;· `react-websocket/outbox`&nbsp;· `createWebSocketPresence`&nbsp;· `react-websocket/tabs`
+
+</section>
+
+<section>
+
+#### [Collaborative whiteboard](./recipes/collaborative-whiteboard.md)
+
+Live cursors, strokes others watch as you draw, a snapshot for late joiners, drawing offline, and notes merged by Yjs.
+
+`createWebSocketPresence`&nbsp;· `createWebSocketSendRate`&nbsp;· `createWebSocketFeeds`&nbsp;· `react-websocket/outbox`
+
+</section>
+
+</div>
+
 ## Many message types on one socket
 
 Pub/sub topics, Django Channels groups and similar features all deliver different kinds of message over the same socket. Tag each message on the server with a discriminant field, type it as a union, and route on the client:

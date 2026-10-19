@@ -69,3 +69,4 @@ In Chrome, with tabs 1 and 2 showing `prices` and tab 3 showing `news`, prices r
 - [`react-websocket/tabs` API](../api/tabs.md)
 - [Shared clients](./shared-clients.md): sharing one connection between the components of one tab
 - [Topic subscriptions](./topics.md)
+- [Build a team chat app](../recipes/team-chat.md): one connection for all tabs, with topics, a peer per tab, and a hello from each tab
