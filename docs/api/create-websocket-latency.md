@@ -38,7 +38,7 @@ Your server answers each ping with its id and its own `Date.now()`:
 socket.send(JSON.stringify({ type: 'pong', id: message.id, time: Date.now() }));
 ```
 
-Read the measurements in components with [`useWebSocketLatency`](./use-websocket-latency.md). The guide is [Real-time games](../guide/games.md#ping-and-server-time).
+Read the measurements in components with [`useWebSocketLatency`](./use-websocket-latency.md). The guide is [Real-time games](../guide/games.md#ping-and-server-time). For a countdown every screen agrees on, see [Build a multiplayer party game](../recipes/party-game.md#the-countdown).
 
 ## Parameters
 

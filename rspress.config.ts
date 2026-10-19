@@ -125,7 +125,9 @@ export default defineConfig({
           items: [
             { text: 'AI chatbot', link: '/recipes/ai-chatbot' },
             { text: 'AI image and video generator', link: '/recipes/ai-media-generator' },
-            { text: 'Voice assistant and text to speech', link: '/recipes/voice-assistant' }
+            { text: 'Voice assistant and text to speech', link: '/recipes/voice-assistant' },
+            { text: 'Multiplayer party game', link: '/recipes/party-game' },
+            { text: 'Real-time action game', link: '/recipes/action-game' }
           ]
         },
         {

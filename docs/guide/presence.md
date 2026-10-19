@@ -94,3 +94,4 @@ A peer that reconnects usually gets a new id from the server, so it shows up as 
 - [`createWebSocketPresence`](../api/create-websocket-presence.md) and [`useWebSocketPresence`](../api/use-websocket-presence.md)
 - [Topic subscriptions](./topics.md): join the room's topic, so presence goes to the right people
 - [Real-time games](./games.md): `createWebSocketSendRate` for state that's sent every tick
+- [Build a multiplayer party game](../recipes/party-game.md): presence that shows which phones are still here

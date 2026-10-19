@@ -458,6 +458,7 @@ Browsers throttle timers in background tabs to about once per second, and someti
 ## See also
 
 - [`createWebSocketTimeline`](../api/create-websocket-timeline.md), [`createWebSocketSendRate`](../api/create-websocket-send-rate.md), [`createWebSocketRequests`](../api/create-websocket-requests.md), [`createWebSocketLatency`](../api/create-websocket-latency.md), [`useWebSocketLatency`](../api/use-websocket-latency.md)
-- The [game example](https://github.com/mehmetkose/react-websocket/tree/main/examples/game): a multiplayer demo with a network panel
+- The [game example](https://github.com/mehmetkose/react-websocket/tree/main/examples/game): a multiplayer demo with a network panel. [Build a real-time action game](../recipes/action-game.md) walks through it file by file
+- [Build a multiplayer party game](../recipes/party-game.md): rooms, a countdown every screen agrees on, and answers counted once
 - [`SendOptions`](../api/types.md#sendoptions)
 - [Message state](./state.md) and [Performance](./performance.md)
