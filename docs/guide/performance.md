@@ -86,6 +86,8 @@ return <BigChart data={deferred} />; // wrap BigChart in memo()
 
 Keep updates that must feel instant, like a connection indicator or the message the user just sent, outside of transitions.
 
+To see these in a whole app, see [Build a live trading dashboard](../recipes/trading-dashboard.md): 500 symbols, measured with and without `useInView` and batching.
+
 ## React Compiler and memoization
 
 The hooks are compatible with the [React Compiler](https://react.dev/learn/react-compiler) and with hand-written memoization:

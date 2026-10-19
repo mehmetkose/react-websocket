@@ -129,7 +129,10 @@ export default defineConfig({
             { text: 'Multiplayer party game', link: '/recipes/party-game' },
             { text: 'Real-time action game', link: '/recipes/action-game' },
             { text: 'Team chat', link: '/recipes/team-chat' },
-            { text: 'Collaborative whiteboard', link: '/recipes/collaborative-whiteboard' }
+            { text: 'Collaborative whiteboard', link: '/recipes/collaborative-whiteboard' },
+            { text: 'Trading dashboard', link: '/recipes/trading-dashboard' },
+            { text: 'Live notifications', link: '/recipes/live-notifications' },
+            { text: 'Delivery tracking', link: '/recipes/delivery-tracking' }
           ]
         },
         {

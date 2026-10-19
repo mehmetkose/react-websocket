@@ -132,3 +132,4 @@ To connect from Node (a script, a worker, a test), pass an implementation explic
 - [Suspense](./suspense.md)
 - [Without React](./without-react.md)
 - [Troubleshooting](../troubleshooting.md)
+- [Build live notifications](../recipes/live-notifications.md): a notification bell in a layout, with a cache that doesn't break hydration

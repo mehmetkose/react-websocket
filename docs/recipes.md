@@ -99,6 +99,42 @@ Live cursors, strokes others watch as you draw, a snapshot for late joiners, dra
 
 </div>
 
+### Live data
+
+<div className="rws-guides rp-toc-exclude">
+
+<section>
+
+#### [Trading dashboard](./recipes/trading-dashboard.md)
+
+A 500-symbol watchlist that streams only the rows on screen and renders once per frame, an order book that stays exact through lost messages, and orders placed exactly once.
+
+`createWebSocketTopics`&nbsp;· `createWebSocketFeeds`&nbsp;· `useInView`&nbsp;· `batch: 'frame'`
+
+</section>
+
+<section>
+
+#### [Live notifications](./recipes/live-notifications.md)
+
+One connection for every tab, an unread badge that resumes from the last notice after a reload, reads that survive going offline, and sign-out everywhere.
+
+`react-websocket/tabs`&nbsp;· `createWebSocketFeeds`&nbsp;· `react-websocket/outbox`&nbsp;· `useWebSocketOutbox`
+
+</section>
+
+<section>
+
+#### [Delivery tracking](./recipes/delivery-tracking.md)
+
+A courier marker that glides between GPS fixes without React renders, an ETA on the server's clock, and proof of delivery that gets through a dead zone.
+
+`react-websocket/timeline`&nbsp;· `createWebSocketLatency`&nbsp;· `createWebSocketSendRate`&nbsp;· `react-websocket/outbox`
+
+</section>
+
+</div>
+
 ## Many message types on one socket
 
 Pub/sub topics, Django Channels groups and similar features all deliver different kinds of message over the same socket. Tag each message on the server with a discriminant field, type it as a union, and route on the client:

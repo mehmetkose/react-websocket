@@ -151,3 +151,4 @@ export function Price({ symbol }: { symbol: string }) {
 - [`createWebSocketState`](../api/create-websocket-state.md) and [`useWebSocketState`](../api/use-websocket-state.md)
 - [Topic subscriptions](./topics.md)
 - [Performance](./performance.md)
+- [Build a live trading dashboard](../recipes/trading-dashboard.md): a frame-batched store with a selector per row
