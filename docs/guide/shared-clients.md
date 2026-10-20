@@ -31,7 +31,7 @@ The connection's options come from **the first component to mount** with that UR
 
 Only mounted components count. A component whose render React throws away, because it suspended or because a transition was interrupted, doesn't open the connection or decide its options. Components that mount together share one connection too, and anything they `send` from a mount effect reaches it. A component with `enabled: false` shows the shared connection's status without opening one.
 
-In development, a hook whose connection options differ from the first one's logs a `console.warn` that names them. Options written inline count as the same when they have the same contents, even though they are new objects and functions on every render. A `schema` is compared by identity, so create schemas outside components: on React 18, StrictMode's second render can't be told apart from another component, and a schema created during render warns there.
+In development, a hook whose connection options differ from the first one's logs a `console.warn` that names them. Options written inline count as the same when they have the same contents, even though they are new objects and functions on every render. A `schema` is compared by identity, so create schemas outside components: on React 18, StrictMode's second render can't be told apart from another component, and a schema created during render warns there. If no warning shows up, see [No warnings in development](../troubleshooting.md#no-warnings-in-development).
 
 :::tip Across tabs
 Clients share a connection between the components of one tab. To share one between tabs too, see [One connection across tabs](./tabs.md).

@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- The published files no longer read `process.env`, which security scanners such as Socket flag as environment
+  variable access. `react-websocket` ships a production build without the development-only checks, and a development
+  build with them, which tools load through the `development` condition in `exports`. Vite, Vitest, webpack and
+  Next.js load it in development. Other tools load the production build unless you add the condition; see
+  [No warnings in development](https://mehmetkose.github.io/react-websocket/troubleshooting#no-warnings-in-development).
+
 ## [4.19.0] - 2026-10-20
 
 The library's code is the same as in 4.18.1. This release updates the Tornado example.
