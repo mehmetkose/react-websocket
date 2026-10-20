@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "4.18.1",
+  "version": "4.19.0",
   "description": "The real-time toolkit for React: a WebSocket hook with shared connections, auto-reconnect and typed messages, plus topics, state, requests, presence and AI agents",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -133,7 +133,7 @@
     "docs:build": "rspress build",
     "docs:preview": "rspress preview",
     "example:tornado": "vp dev examples/tornado",
-    "example:tornado:server": "python3 examples/tornado/server.py",
+    "example:tornado:server": "uv run examples/tornado/server.py",
     "example:nextjs": "npm --prefix examples/nextjs run update-library && npm --prefix examples/nextjs run dev",
     "example:hono": "npm --prefix examples/hono run update-library && npm --prefix examples/hono run dev",
     "example:astro": "npm --prefix examples/astro run update-library && npm --prefix examples/astro run dev",

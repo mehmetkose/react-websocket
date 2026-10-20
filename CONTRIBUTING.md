@@ -40,7 +40,7 @@ npm test
 | `npm run check:package` | Build, then validate the package with publint and Are the Types Wrong |
 | `npm run size` | Build, then check bundle sizes against the size-limit budgets |
 | `npm run docs:dev` | Run the documentation site locally |
-| `npm run example:tornado:server` | Start the Tornado example's WebSocket server (`pip install -r examples/tornado/requirements.txt` first) |
+| `npm run example:tornado:server` | Start the Tornado example's WebSocket server with [uv](https://docs.astral.sh/uv/), which installs its dependencies |
 | `npm run example:tornado` | Start the Tornado example's Vite app against that server |
 | `npm run example:nextjs` | Build the library, install it into the Next.js example, and start the demo on http://localhost:3000 |
 | `npm run example:hono` | Build the library, install it into the Hono example, and start its server and Vite app on http://localhost:5173 |
