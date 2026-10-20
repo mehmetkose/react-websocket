@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.18.1] - 2026-10-20
+
+The library's code is the same as in 4.18.0. This release brings the new README and package description to npm.
+
+### Documentation
+
+- The README and the package description present react-websocket as a real-time toolkit: install and a quick start
+  come first, then the features and the API, grouped into the core and six opt-in groups. The bundle size is now given
+  as about 4 kB, which is what `{ useWebSocket }` measures.
+- Real-world guides that build whole apps, client and server: an AI chatbot, an AI image and video generator, a voice
+  assistant, a multiplayer party game, a real-time action game, a team chat, a collaborative whiteboard, a trading
+  dashboard, live notifications and delivery tracking. See
+  [Real-world guides](https://mehmetkose.github.io/react-websocket/recipes#real-world-guides).
+- Numbered feeds: the example server sends the whole state when a client's `after` is ahead of its own number, as it
+  is after the server restarts.
+- Tabs share a connection only when they connect to the same URL, so a token in the URL that differs between tabs
+  opens a connection per tab. Send it in a first message instead.
+
 ## [4.18.0] - 2026-10-18
 
 The first release since 4.0.0. Versions 4.1.0 to 4.17.0 were numbered on `main` but never tagged or published to
@@ -387,7 +405,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.18.0...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.18.1...HEAD
+[4.18.1]: https://github.com/mehmetkose/react-websocket/compare/4.18.0...4.18.1
 [4.18.0]: https://github.com/mehmetkose/react-websocket/compare/4.0.0...4.18.0
 [4.0.0]: https://github.com/mehmetkose/react-websocket/compare/3.6.0...4.0.0
 [3.6.0]: https://github.com/mehmetkose/react-websocket/compare/3.5.0...3.6.0
