@@ -75,7 +75,7 @@ export const monochromeLight = monochrome('monochrome-light', 'light', {
   text: '#0a0a0a',
   strong: '#000000',
   muted: '#5c5c5c',
-  faint: '#8f8f8f',
+  faint: '#707070',
   bg: '#fafafa'
 });
 
@@ -83,6 +83,6 @@ export const monochromeDark = monochrome('monochrome-dark', 'dark', {
   text: '#ededed',
   strong: '#ffffff',
   muted: '#a3a3a3',
-  faint: '#6e6e6e',
+  faint: '#7d7d7d',
   bg: '#050505'
 });
