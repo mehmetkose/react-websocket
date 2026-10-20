@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.19.1] - 2026-10-21
+
 ### Changed
 
 - The published files no longer read `process.env`, which security scanners such as Socket flag as environment
@@ -425,7 +427,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.19.0...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.19.1...HEAD
+[4.19.1]: https://github.com/mehmetkose/react-websocket/compare/4.19.0...4.19.1
 [4.19.0]: https://github.com/mehmetkose/react-websocket/compare/4.18.1...4.19.0
 [4.18.1]: https://github.com/mehmetkose/react-websocket/compare/4.18.0...4.18.1
 [4.18.0]: https://github.com/mehmetkose/react-websocket/compare/4.0.0...4.18.0
