@@ -39,6 +39,19 @@ If different components need different options, or you want them defined in one 
 export const live = createWebSocket(url, { json: true, heartbeat: { interval: 25_000 } });
 ```
 
+## No warnings in development
+
+The warning about [ignored options](#my-options-are-ignored), and the [devtools](./api/devtools.md) listing the clients that `useWebSocket(url)` shares, come from react-websocket's development build. Tools load it through the `development` condition in the package's `exports`. Vite, Vitest, webpack and Next.js do this in development, and load the production build, which leaves these checks out, when you build for production. The published files don't read `process.env`.
+
+Other tools load the production build unless you add the condition:
+
+| Tool | Setting |
+| --- | --- |
+| esbuild | `conditions: ['development', 'module']` (`module` keeps esbuild's default) |
+| Rollup | Run with `NODE_ENV=development`, or pass `exportConditions: ['development']` to `@rollup/plugin-node-resolve` |
+| Jest | `testEnvironmentOptions: { customExportConditions: ['browser', 'development'] }` with jsdom |
+| Node | `node --conditions=development` |
+
 ## The status is stuck at `idle`
 
 `idle` means nothing is trying to connect. Check that:

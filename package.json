@@ -10,10 +10,12 @@
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
+        "development": "./dist/index.development.js",
         "default": "./dist/index.js"
       },
       "require": {
         "types": "./dist/index.d.cts",
+        "development": "./dist/index.development.cjs",
         "default": "./dist/index.cjs"
       }
     },

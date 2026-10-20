@@ -24,6 +24,21 @@ function coreAsExternal(target: string): Plugin {
   };
 }
 
+// Entries marked `'use client'`. `process.env.NODE_ENV` is replaced when they are built, so no
+// published file reads the environment: the production build drops the development-only checks.
+function clientEntries(entry: Record<string, string>, mode: 'production' | 'development') {
+  return {
+    ...shared,
+    entry,
+    banner: { js: "'use client';" },
+    define: { 'process.env.NODE_ENV': JSON.stringify(mode) },
+    format: {
+      esm: { plugins: [coreAsExternal('./core.js')] },
+      cjs: { plugins: [coreAsExternal('./core.cjs')] }
+    }
+  } satisfies PackUserConfig;
+}
+
 export default defineConfig({
   pack: [
     // `react-websocket/core` has no React dependency and no client directive.
@@ -59,15 +74,10 @@ export default defineConfig({
     },
     // The hooks are client-only; mark them so Server Components frameworks bundle them correctly.
     // So is the devtools panel, which imports only types from `core`.
-    {
-      ...shared,
-      entry: { index: 'src/index.ts', devtools: 'src/devtools.ts' },
-      banner: { js: "'use client';" },
-      format: {
-        esm: { plugins: [coreAsExternal('./core.js')] },
-        cjs: { plugins: [coreAsExternal('./core.cjs')] }
-      }
-    }
+    clientEntries({ index: 'src/index.ts', devtools: 'src/devtools.ts' }, 'production'),
+    // The hooks with their development-only checks. Bundlers pick it in development through the
+    // `development` condition in package.json's `exports`. Its types are `index.d.ts`.
+    { ...clientEntries({ 'index.development': 'src/index.ts' }, 'development'), dts: false }
   ],
   fmt: {
     singleQuote: true,

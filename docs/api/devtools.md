@@ -66,4 +66,4 @@ A button in the corner shows how many clients there are, with a dot for the wors
 
 - **Refresh.** It re-renders twice a second, and counts messages from the moment it mounts.
 - **Server rendering.** It renders nothing on the server and during hydration.
-- **In production builds,** the clients `useWebSocket(url)` shares aren't listed by themselves; pass their `client` in `sources`.
+- **In production builds,** the clients `useWebSocket(url)` shares aren't listed by themselves; pass their `client` in `sources`. The same goes for tools that load the production build in development; see [No warnings in development](../troubleshooting.md#no-warnings-in-development).
