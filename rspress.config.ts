@@ -36,6 +36,9 @@ export default defineConfig({
   // llms.txt, llms-full.txt and a Markdown copy of every page, for AI assistants and agents. The
   // "Copy Markdown" buttons this would add under each title are turned off in themeConfig.
   llms: true,
+  // Rspress downloads the search index on every page load, before anyone opens search. Without the
+  // code blocks it's 119 kB gzipped instead of 189 kB. Headings and prose are still searched.
+  search: { codeBlocks: false },
   route: {
     // Only Markdown files are pages, so the theme and demo components can live under docs/.
     extensions: ['.md', '.mdx'],

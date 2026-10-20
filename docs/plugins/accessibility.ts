@@ -3,6 +3,7 @@ interface HastNode {
   tagName?: string;
   properties?: Record<string, unknown>;
   children?: HastNode[];
+  value?: string;
 }
 
 const hasClass = (node: HastNode | undefined, name: string) => {
@@ -15,6 +16,25 @@ const hasClass = (node: HastNode | undefined, name: string) => {
   return classes.includes(name);
 };
 
+const textOf = (node: HastNode): string =>
+  node.type === 'text' ? (node.value ?? '') : (node.children ?? []).map(textOf).join('');
+
+const elements = (node: HastNode | undefined, tagName: string) =>
+  (node?.children ?? []).filter(child => child.tagName === tagName);
+
+/** Makes the first cell of every body row a row header, if the header row has an empty cell. */
+const addRowHeaders = (table: HastNode) => {
+  const [head] = elements(elements(table, 'thead')[0], 'tr');
+  if (!elements(head, 'th').some(cell => !textOf(cell).trim())) return;
+  for (const row of elements(elements(table, 'tbody')[0], 'tr')) {
+    const first = row.children?.find(child => child.type === 'element');
+    if (first?.tagName === 'td') {
+      first.tagName = 'th';
+      first.properties = { ...first.properties, scope: 'row' };
+    }
+  }
+};
+
 /**
  * Fixes markup that Rspress generates from Markdown and that misleads assistive technology and AI
  * agents. Runs after Rspress's own rehype plugins.
@@ -25,6 +45,9 @@ const hasClass = (node: HastNode | undefined, name: string) => {
  *   affordance, and the "On this page" outline links to every heading.
  * - Task lists: each `- [ ]` item starts with a disabled checkbox that has no label. In the docs
  *   they're decoration nobody can tick, so they're hidden and the item's text is read on its own.
+ * - Tables with an empty header cell (`| File | Runs in | |`, or `| | v3 | v4 |`): the cells under
+ *   it have no header to be read with. The first cell of each row names the row, so it becomes a
+ *   row header, and every cell is read with its row's name. The theme styles it like other cells.
  */
 export function rehypeAccessibility() {
   return (tree: HastNode) => {
@@ -39,6 +62,7 @@ export function rehypeAccessibility() {
       ) {
         node.properties = { ...node.properties, ariaHidden: 'true' };
       }
+      if (node.tagName === 'table') addRowHeaders(node);
       node.children?.forEach(child => visit(child, node));
     };
     visit(tree);

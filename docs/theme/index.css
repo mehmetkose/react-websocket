@@ -22,7 +22,7 @@
   --rp-c-text-0: #000000;
   --rp-c-text-1: #0a0a0a;
   --rp-c-text-2: #4a4a4a;
-  --rp-c-text-3: #8a8a8a;
+  --rp-c-text-3: #707070;
   --rp-c-text-4: #bdbdbd;
 
   --rp-c-divider: #d4d4d4;
@@ -53,7 +53,7 @@ html.dark {
   --rp-c-text-0: #ffffff;
   --rp-c-text-1: #f5f5f5;
   --rp-c-text-2: #a8a8a8;
-  --rp-c-text-3: #6e6e6e;
+  --rp-c-text-3: #7d7d7d;
   --rp-c-text-4: #3a3a3a;
 
   --rp-c-divider: #333333;
@@ -264,7 +264,7 @@ html.dark .shiki span {
 :root {
   --shiki-token-constant: #5c5c5c;
   --shiki-token-string: #5c5c5c;
-  --shiki-token-comment: #8f8f8f;
+  --shiki-token-comment: #707070;
   --shiki-token-keyword: #000000;
   --shiki-token-parameter: #0a0a0a;
   --shiki-token-function: #000000;
@@ -276,7 +276,7 @@ html.dark .shiki span {
 html.dark {
   --shiki-token-constant: #a3a3a3;
   --shiki-token-string: #a3a3a3;
-  --shiki-token-comment: #6e6e6e;
+  --shiki-token-comment: #7d7d7d;
   --shiki-token-keyword: #ffffff;
   --shiki-token-parameter: #ededed;
   --shiki-token-function: #ffffff;
@@ -315,12 +315,18 @@ html.dark {
   border-bottom: 1px solid var(--rp-c-divider-light);
 }
 
-.rp-doc th {
+.rp-doc thead th {
   font-weight: 600;
   color: var(--rp-c-text-2);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* Row headers (see docs/plugins/accessibility.ts) look like the other cells. */
+.rp-doc tbody th {
+  font-weight: inherit;
+  color: var(--rp-c-text-1);
 }
 
 /* Callouts: a plain panel with a solid rule on the left. */
