@@ -124,3 +124,4 @@ Pass `storage: memoryStorage()` to keep tests independent of IndexedDB, and driv
 - [`createWebSocketOutbox`](../api/create-websocket-outbox.md) and [`useWebSocketOutbox`](../api/use-websocket-outbox.md)
 - [Reconnecting and heartbeats](./reconnecting.md): the send queue and `queue.maxAge`
 - [Chaos testing](./chaos.md): drop connections at random and watch the outbox recover
+- [Build a team chat app](../recipes/team-chat.md) and [Build a collaborative whiteboard](../recipes/collaborative-whiteboard.md): the outbox for chat messages and drawings

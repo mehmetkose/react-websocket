@@ -127,7 +127,9 @@ export default defineConfig({
             { text: 'AI image and video generator', link: '/recipes/ai-media-generator' },
             { text: 'Voice assistant and text to speech', link: '/recipes/voice-assistant' },
             { text: 'Multiplayer party game', link: '/recipes/party-game' },
-            { text: 'Real-time action game', link: '/recipes/action-game' }
+            { text: 'Real-time action game', link: '/recipes/action-game' },
+            { text: 'Team chat', link: '/recipes/team-chat' },
+            { text: 'Collaborative whiteboard', link: '/recipes/collaborative-whiteboard' }
           ]
         },
         {

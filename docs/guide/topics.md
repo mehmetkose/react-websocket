@@ -124,7 +124,7 @@ Components hold topics exactly as before, with `useWebSocketTopic(feeds, 'room:4
 - **After a reconnect**, each held topic is subscribed with `after`, the number of the last message received, so the server sends only what was missed.
 - **Duplicates are dropped.** A message numbered at or below the last one never reaches your reducer, even if the server replays more than it needs to.
 - **Gaps are filled.** A message that skips numbers is held back, and the feed asks the server once for what's missing (`resume`, which defaults to subscribing again with `after`). Nothing is delivered out of order.
-- **Snapshots are the fallback.** When the server no longer has the messages after `after`, it sends the topic's whole state with its current number. The snapshot is always delivered, and numbering goes on from it.
+- **Snapshots are the fallback.** When the server no longer has the messages after `after`, or it restarted and its numbers are behind the client's, it sends the topic's whole state with its current number. The snapshot is always delivered, and numbering goes on from it.
 
 Messages that aren't numbered, and those on topics the feed doesn't hold, pass through untouched, so `feeds` can stand in for the client wherever you listen to messages: `feeds.on('message', …)` or `createWebSocketState(feeds, …)`.
 
@@ -134,7 +134,8 @@ The server keeps a short history per topic. With the [`ws`](https://github.com/w
 function subscribe(socket: WebSocket, topic: string, after: number | undefined) {
   const feed = feeds.get(topic)!; // { seq, history: { seq, message }[] }
   const oldest = feed.history[0]?.seq ?? feed.seq + 1;
-  if (after === undefined || after < oldest - 1) {
+  // Too old for the history, or ahead of a server that restarted: send the whole state.
+  if (after === undefined || after < oldest - 1 || after > feed.seq) {
     send(socket, { type: 'snapshot', topic, seq: feed.seq, messages: currentState(topic) });
   } else {
     for (const entry of feed.history) {
@@ -164,3 +165,4 @@ release();
 - [`createWebSocketTopics`](../api/create-websocket-topics.md), [`createWebSocketFeeds`](../api/create-websocket-feeds.md) and [`useWebSocketTopic`](../api/use-websocket-topic.md)
 - [Message state](./state.md)
 - [Reconnecting and heartbeats](./reconnecting.md)
+- [Build a team chat app](../recipes/team-chat.md): numbered feeds for channels, with unread counts and catching up after a reconnect
