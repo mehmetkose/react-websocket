@@ -65,7 +65,7 @@ And on input:
 timeline.input({ dx: 1, dy: 0 });
 ```
 
-Annotate `send`'s `input` parameter: that's what `timeline.input()` accepts. The guide is [Real-time games](../guide/games.md#smooth-movement-snapshot-interpolation).
+Annotate `send`'s `input` parameter: that's what `timeline.input()` accepts. The guide is [Real-time games](../guide/games.md#smooth-movement-snapshot-interpolation). For interpolation alone, outside games, see [Build live delivery tracking](../recipes/delivery-tracking.md).
 
 ## Parameters
 

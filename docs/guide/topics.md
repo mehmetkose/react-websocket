@@ -166,3 +166,4 @@ release();
 - [Message state](./state.md)
 - [Reconnecting and heartbeats](./reconnecting.md)
 - [Build a team chat app](../recipes/team-chat.md): numbered feeds for channels, with unread counts and catching up after a reconnect
+- [Build a live trading dashboard](../recipes/trading-dashboard.md): quotes as topics and an order book as a feed, in a whole app
