@@ -329,4 +329,4 @@ Voice agents stream audio both ways, and the hard part is the interruption: stop
 - **Requests are messages.** They also reach `onMessage`, `lastMessage` and state stores, so a state reducer that switches on `type` should ignore them.
 - **The connection.** A mounted `useAgentApproval` keeps the connection open, like the other hooks. The responder alone doesn't.
 
-The full API is in [`createWebSocketResponder`](../api/create-websocket-responder.md).
+The full API is in [`createWebSocketResponder`](../api/create-websocket-responder.md). To see it in a whole app, with a server that calls Claude, see [Build an AI chatbot](../recipes/ai-chatbot.md). For jobs that run for minutes, see [Build an AI image and video generator](../recipes/ai-media-generator.md).

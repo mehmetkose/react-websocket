@@ -121,6 +121,14 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Real-world guides',
+          items: [
+            { text: 'AI chatbot', link: '/recipes/ai-chatbot' },
+            { text: 'AI image and video generator', link: '/recipes/ai-media-generator' },
+            { text: 'Voice assistant and text to speech', link: '/recipes/voice-assistant' }
+          ]
+        },
+        {
           text: 'API reference',
           items: [
             { text: 'Overview', link: '/api/' },

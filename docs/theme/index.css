@@ -465,15 +465,24 @@ button.rp-switch-appearance:focus-visible {
   }
 }
 
-/* The toolkit: the core as a full-width card, then the opt-in groups three to a row. */
-.rws-toolkit {
+/* The toolkit: the core as a full-width card, then the opt-in groups three to a row. The recipes'
+   guides use the same cards, two to a row in the narrower doc layout. */
+.rws-toolkit,
+.rws-guides {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-top: 24px;
 }
 
-.rws-toolkit > section {
+.rws-guides {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 32px;
+}
+
+.rws-toolkit > section,
+.rws-guides > section {
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 20px 22px;
@@ -483,7 +492,9 @@ button.rp-switch-appearance:focus-visible {
 }
 
 .rws-toolkit > section:hover,
-.rws-toolkit > section:focus-within {
+.rws-toolkit > section:focus-within,
+.rws-guides > section:hover,
+.rws-guides > section:focus-within {
   border-color: var(--rp-c-text-1);
 }
 
@@ -492,23 +503,39 @@ button.rp-switch-appearance:focus-visible {
   background: var(--rp-c-bg-alt);
 }
 
-.rws-toolkit h3 {
+.rws-toolkit h3,
+.rws-guides h4 {
   margin: 0;
 }
 
-.rws-toolkit p {
+.rws-guides h4 {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+/* A guide's whole card is its link. */
+.rws-guides h4 a:not(.rp-header-anchor)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.rws-toolkit p,
+.rws-guides p {
   margin: 10px 0 0;
   font-size: 13.5px;
   line-height: 1.7;
 }
 
 /* Wrap between imports, never inside a name. */
-.rws-toolkit code {
+.rws-toolkit code,
+.rws-guides code {
   white-space: nowrap;
 }
 
 /* The links line sits at the bottom of each card, so a row of cards lines up. */
-.rws-toolkit p:last-child {
+.rws-toolkit p:last-child,
+.rws-guides p:last-child {
   margin-top: auto;
   padding-top: 14px;
 }
@@ -520,7 +547,8 @@ button.rp-switch-appearance:focus-visible {
 }
 
 @media (width <= 600px) {
-  .rws-toolkit {
+  .rws-toolkit,
+  .rws-guides {
     grid-template-columns: minmax(0, 1fr);
   }
 }

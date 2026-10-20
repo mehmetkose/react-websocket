@@ -1,11 +1,51 @@
 ---
-title: 'React WebSocket recipes'
-description: 'Patterns for real-time React features over WebSockets: message routing, request/response, presence and typing indicators, polling, optimistic sends, logging.'
+title: 'React WebSocket recipes and real-world guides'
+description: 'Real-world guides that build whole real-time apps in React, client and server, plus short patterns: message routing, request/response, presence and typing indicators, polling, optimistic sends, logging.'
 ---
 
 # Recipes
 
-Patterns for common real-time features. Each one is self-contained; copy what you need.
+Two kinds of page live here. The real-world guides build a whole app, client and server, and show what happens when the network misbehaves. The patterns below them are short and self-contained: copy what you need.
+
+## Real-world guides
+
+Each guide's code is complete and type-checked against the library, and was run in Chrome against its server, with stand-ins for the AI providers.
+
+### AI apps
+
+<div className="rws-guides rp-toc-exclude">
+
+<section>
+
+#### [AI chatbot](./recipes/ai-chatbot.md)
+
+Streamed answers that survive reconnects and reloads, a Stop button that stops the model, and tools the user approves. The server calls Claude.
+
+`createWebSocketRuns`&nbsp;· `useAgentRun`&nbsp;· `createWebSocketResponder`&nbsp;· `useAgentApproval`
+
+</section>
+
+<section>
+
+#### [AI image and video generator](./recipes/ai-media-generator.md)
+
+A queue with live positions, progress and previews, jobs that carry on through reloads, and one gallery on every device.
+
+`createWebSocketRuns`&nbsp;· `useAgentRun`&nbsp;· `createWebSocketState`&nbsp;· `heartbeat`
+
+</section>
+
+<section>
+
+#### [Voice assistant and text to speech](./recipes/voice-assistant.md)
+
+Microphone audio up, the answer down, interruptions cut back to what was heard, and narration that streams and downloads.
+
+`volatile`&nbsp;· `maxBuffered`&nbsp;· `priority`&nbsp;· `createWebSocketRequests`
+
+</section>
+
+</div>
 
 ## Many message types on one socket
 
