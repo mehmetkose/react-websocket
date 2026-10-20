@@ -23,7 +23,7 @@ function url() {
 export const game = createWebSocket<ServerMessage, ClientMessage>(url, {
   json: true,
   WebSocket: Chaos,
-  // Snapshots arrive 20 times a second, so three quiet seconds mean a dead (stalled) link.
+  // Snapshots arrive 20 times a second, so three quiet seconds after a ping mean a dead link.
   heartbeat: { interval: 4000, timeout: 3000, message: HEARTBEAT, pong: HEARTBEAT }
 });
 

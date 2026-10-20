@@ -9,7 +9,7 @@ Two kinds of page live here. The real-world guides build a whole app, client and
 
 ## Real-world guides
 
-Each guide's code is complete and type-checked against the library, and was run in Chrome against its server, with stand-ins for the AI providers.
+Each guide's code is complete and type-checked against the library, and was run in Chrome against its server, with stand-ins for third-party APIs where a guide uses one.
 
 ### AI apps
 
@@ -42,6 +42,32 @@ A queue with live positions, progress and previews, jobs that carry on through r
 Microphone audio up, the answer down, interruptions cut back to what was heard, and narration that streams and downloads.
 
 `volatile`&nbsp;· `maxBuffered`&nbsp;· `priority`&nbsp;· `createWebSocketRequests`
+
+</section>
+
+</div>
+
+### Multiplayer games
+
+<div className="rws-guides rp-toc-exclude">
+
+<section>
+
+#### [Multiplayer party game](./recipes/party-game.md)
+
+A trivia host screen and phones: rooms with a join code, a countdown every screen agrees on, answers counted once, and phones that rejoin after they sleep.
+
+`createWebSocketRequests`&nbsp;· `createWebSocketPresence`&nbsp;· `createWebSocketLatency`&nbsp;· `createWebSocketState`
+
+</section>
+
+<section>
+
+#### [Real-time action game](./recipes/action-game.md)
+
+The game example, file by file: a fixed-tick server, prediction and interpolation, an adaptive send rate and a 60 fps canvas.
+
+`react-websocket/timeline`&nbsp;· `createWebSocketSendRate`&nbsp;· `createWebSocketLatency`&nbsp;· `react-websocket/chaos`
 
 </section>
 

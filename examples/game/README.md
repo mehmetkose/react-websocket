@@ -2,6 +2,8 @@
 
 A small multiplayer game: dots in an arena, a Node.js WebSocket server that runs the game at 20 ticks a second, and a Vite + React 19 client that draws it at 60 fps with [`react-websocket/timeline`](https://mehmetkose.github.io/react-websocket/api/create-websocket-timeline). A panel makes the network worse with [`react-websocket/chaos`](https://mehmetkose.github.io/react-websocket/guide/chaos), so you can see what interpolation and prediction do.
 
+A walkthrough of this example is in [Build a real-time action game](https://mehmetkose.github.io/react-websocket/recipes/action-game).
+
 ```sh
 # From the repository root: build the library, install it here, and start both servers.
 npm run example:game
@@ -16,7 +18,7 @@ Then open http://localhost:5180, move with the arrow keys or WASD, and aim with 
 3. **Turn off "Predict my moves"**. Now every key press waits for the round trip and the render delay. That's what prediction saves.
 4. **Turn off "Interpolate others"**. Other dots jump 20 times a second, unevenly on a bad network.
 5. **Turn on "Lose 5% of my inputs"**. The server never applies the lost ones, so your dot snaps back a little when its confirmations skip past them. That's reconciliation correcting a misprediction.
-6. **Drop the connection**, or **stall** it (the heartbeat notices after three silent seconds). The last frame stays on screen while it reconnects, then the game resumes from a fresh snapshot.
+6. **Drop the connection**, or **stall** it (the heartbeat notices at its next ping, after three silent seconds). The last frame stays on screen while it reconnects, then the game resumes from a fresh snapshot.
 7. **Watch the send rate** in the HUD on "Bad". Aim is streamed through `createWebSocketSendRate`, which halves the rate when the round trip rises and climbs back when it settles, and inputs follow the same rate as fewer, bigger moves. Turn off "Adaptive send rate" to send an input every frame again.
 8. **Set the delay to 0**. Other dots stutter, because there's rarely a newer snapshot to blend toward. "Buffered ahead" under the arena turns red when the render time runs out of snapshots. "Automatic delay" renders just far enough behind for the jitter it measures.
 
