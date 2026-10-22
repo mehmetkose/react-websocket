@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- Framework recipes under [Recipes](https://mehmetkose.github.io/react-websocket/recipes#frameworks), one for each
+  example: [Next.js](https://mehmetkose.github.io/react-websocket/recipes/nextjs),
+  [Astro](https://mehmetkose.github.io/react-websocket/recipes/astro),
+  [Remix 3](https://mehmetkose.github.io/react-websocket/recipes/remix),
+  [Hono](https://mehmetkose.github.io/react-websocket/recipes/hono) and
+  [Tornado](https://mehmetkose.github.io/react-websocket/recipes/tornado). Each one shows where the shared client
+  goes, where the WebSocket server goes in that framework, and how to run the example. The sidebar has a new
+  Frameworks group, and each example's README links to its recipe.
+
 ## [4.19.1] - 2026-10-21
 
 ### Changed

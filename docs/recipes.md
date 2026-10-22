@@ -1,11 +1,69 @@
 ---
 title: 'React WebSocket recipes and real-world guides'
-description: 'Real-world guides that build whole real-time apps in React, client and server, plus short patterns: message routing, request/response, presence and typing indicators, polling, optimistic sends, logging.'
+description: 'Framework recipes for Next.js, Astro, Remix, Hono and Tornado, real-world guides that build whole real-time apps in React, client and server, and short patterns: message routing, request/response, presence and typing indicators, polling, optimistic sends, logging.'
 ---
 
 # Recipes
 
-Two kinds of page live here. The real-world guides build a whole app, client and server, and show what happens when the network misbehaves. The patterns below them are short and self-contained: copy what you need.
+Three kinds of page live here. The framework recipes show how to set react-websocket up in the framework or server you already use. The real-world guides build a whole app, client and server, and show what happens when the network misbehaves. The patterns at the end are short and self-contained: copy what you need.
+
+## Frameworks
+
+Each recipe follows one of the repository's [examples](https://github.com/mehmetkose/react-websocket/tree/main/examples), so you can run what you read: where the client goes, where the WebSocket server goes, and the catches particular to that framework.
+
+<div className="rws-guides rp-toc-exclude">
+
+<section>
+
+#### [Next.js](./recipes/nextjs.md)
+
+Hooks in Client Components, a client that Server Components can import, Suspense for the first connection, and a custom server for the socket.
+
+`'use client'`&nbsp;· `react-websocket/core`&nbsp;· custom server&nbsp;· `browser()`
+
+</section>
+
+<section>
+
+#### [Astro](./recipes/astro.md)
+
+Islands that share one connection, state for islands that hydrate late, and a connection that survives page changes.
+
+`client:visible`&nbsp;· `client:only`&nbsp;· `<ClientRouter />`&nbsp;· `transition:persist`
+
+</section>
+
+<section>
+
+#### [Remix 3](./recipes/remix.md)
+
+No React needed: the client from `core`, small bindings that stand in for the hooks, and client entries on one socket.
+
+`react-websocket/core`&nbsp;· bindings&nbsp;· `clientEntry`&nbsp;· `queueTask`
+
+</section>
+
+<section>
+
+#### [Hono](./recipes/hono.md)
+
+A chat room with a Hono server on Node.js, a Vite and React client, and message types both sides import.
+
+`upgradeWebSocket`&nbsp;· Vite proxy&nbsp;· `createWebSocketState`&nbsp;· `heartbeat`
+
+</section>
+
+<section>
+
+#### [Tornado (Python)](./recipes/tornado.md)
+
+A broadcast chat with a Python server run by uv: origin checks, pings that drop dead connections, and a heartbeat for the browser.
+
+`WebSocketHandler`&nbsp;· `check_origin`&nbsp;· `websocket_ping_interval`&nbsp;· uv
+
+</section>
+
+</div>
 
 ## Real-world guides
 

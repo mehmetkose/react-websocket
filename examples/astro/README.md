@@ -2,6 +2,8 @@
 
 Every react-websocket feature on one page of [Astro](https://astro.build/) islands. Each card is a separate island that hydrates on its own schedule, and all of them share one connection. One card uses that connection with no React at all.
 
+A walkthrough of this example is in the [Astro recipe](https://mehmetkose.github.io/react-websocket/recipes/astro).
+
 ```sh
 # From the repository root: build the library, install it here, and start the demo.
 npm run example:astro

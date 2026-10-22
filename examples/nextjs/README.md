@@ -2,6 +2,8 @@
 
 Every react-websocket feature on one page: a Next.js App Router app with its own WebSocket server, sharing one connection.
 
+A walkthrough of this example is in the [Next.js recipe](https://mehmetkose.github.io/react-websocket/recipes/nextjs).
+
 ```sh
 # From the repository root: build the library, install it here, and start the demo.
 npm run example:nextjs

@@ -2,6 +2,8 @@
 
 A chat room with a list of who's online: a [Hono](https://hono.dev/) WebSocket server on Node.js plus a Vite + React 19 client. Both sides import the same message types.
 
+A walkthrough of this example is in the [Hono recipe](https://mehmetkose.github.io/react-websocket/recipes/hono).
+
 ```sh
 # From the repository root: build the library, install it here, and start both servers.
 npm run example:hono
