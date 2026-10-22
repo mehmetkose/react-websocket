@@ -108,6 +108,8 @@ release();
 </script>
 ```
 
+For components in other frameworks, the [Remix 3 recipe](../recipes/remix.md#bindings-hooks-for-remix-components) has small bindings that stand in for each hook, and the [Astro recipe](../recipes/astro.md#use-it-without-react) holds the connection from a custom element.
+
 ## Node
 
 Outside a browser (no `window`), the client never reaches for a global `WebSocket` on its own, so that server renders don't open sockets. In Node, pass an implementation explicitly, either Node's built-in `WebSocket` (Node 22+) or the [`ws`](https://github.com/websockets/ws) package:

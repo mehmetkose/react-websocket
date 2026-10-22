@@ -2,6 +2,8 @@
 
 A small broadcast chat: a [Tornado](https://www.tornadoweb.org/) WebSocket server plus a Vite + React 19 client.
 
+A walkthrough of this example is in the [Tornado recipe](https://mehmetkose.github.io/react-websocket/recipes/tornado).
+
 The server runs with [uv](https://docs.astral.sh/uv/getting-started/installation/). Its dependencies are declared at the top of `server.py` ([inline script metadata](https://packaging.python.org/en/latest/specifications/inline-script-metadata/)) and pinned in `server.py.lock`, so `uv run` sets up the environment itself. It also downloads Python 3.11+ if you don't have it. You don't need a virtualenv or `pip install`.
 
 ```sh

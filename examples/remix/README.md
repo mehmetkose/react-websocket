@@ -2,6 +2,8 @@
 
 Every react-websocket feature on one page of a [Remix 3](https://remix.run/) app. Remix 3 components aren't React components, so this demo uses `react-websocket/core`, which has the client and every manager with no React dependency. Each card is a client entry that hydrates on its own, and all of them share one connection.
 
+A walkthrough of this example is in the [Remix 3 recipe](https://mehmetkose.github.io/react-websocket/recipes/remix).
+
 ```sh
 # From the repository root: build the library, install it here, and start the demo.
 npm run example:remix

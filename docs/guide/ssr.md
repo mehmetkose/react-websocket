@@ -133,3 +133,4 @@ To connect from Node (a script, a worker, a test), pass an implementation explic
 - [Without React](./without-react.md)
 - [Troubleshooting](../troubleshooting.md)
 - [Build live notifications](../recipes/live-notifications.md): a notification bell in a layout, with a cache that doesn't break hydration
+- Framework recipes: [Next.js](../recipes/nextjs.md), [Astro](../recipes/astro.md) and [Remix 3](../recipes/remix.md), each with its WebSocket server on the same port

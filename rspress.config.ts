@@ -124,6 +124,16 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Frameworks',
+          items: [
+            { text: 'Next.js', link: '/recipes/nextjs' },
+            { text: 'Astro', link: '/recipes/astro' },
+            { text: 'Remix 3', link: '/recipes/remix' },
+            { text: 'Hono', link: '/recipes/hono' },
+            { text: 'Tornado (Python)', link: '/recipes/tornado' }
+          ]
+        },
+        {
           text: 'Real-world guides',
           items: [
             { text: 'AI chatbot', link: '/recipes/ai-chatbot' },
