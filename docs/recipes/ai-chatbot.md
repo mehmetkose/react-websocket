@@ -426,9 +426,36 @@ The answer goes into the history as it's written, so a stopped answer keeps its 
 ### The connection
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): ChatOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (type === 'run' && [message.runId, message.chatId, message.prompt].every(isString))
+      return message;
+    if (type === 'resume' && isString(message.runId) && Number.isInteger(message.after ?? 0))
+      return message;
+    if (type === 'cancel' && isString(message.runId)) return message;
+    if (type === 'history' && isString(message.chatId)) return message;
+    if (
+      type === 'result' &&
+      (isString(message.id) || Number.isInteger(message.id)) &&
+      isString(message.error ?? '')
+    )
+      return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 function connected(socket: WebSocket, userId: string) {
+  socket.on('error', console.error);
   socket.on('message', data => {
-    const message = JSON.parse(String(data)) as ChatOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     const found = 'runId' in message ? runs.get(message.runId) : undefined;
     const run = found?.userId === userId ? found : undefined;
 
@@ -492,6 +519,8 @@ These are the rules `createWebSocketRuns` expects from a server:
 - **Every run belongs to a user.** A `resume` or a `cancel` for someone else's run is ignored.
 
 `verifyToken` checks the token from the URL and returns the user's id. A bad token is closed with `1008`, which the client doesn't retry.
+
+`parse` checks every message before the server uses it: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and every answer being written.
 
 ### Claude
 

@@ -137,6 +137,18 @@ Each kind of data gets the tool that fits it:
 - **`maxBuffered: 16 * 1024`** lets a stroke of a few hundred points through. The send rate's default, 1 KB, suits a cursor.
 - **`inks`** holds the others' strokes while they draw. It's a plain `Map` read by the canvas loop, not React state.
 
+On sign-out, forget this user's unsaved edits before the next person signs in on the browser. The server saves each edit as the user whose socket sends it:
+
+```ts
+export function signOut() {
+  void edits.clear();
+  board.reset();
+  shapes.reset();
+  cursors.leave();
+  room.close();
+}
+```
+
 ## The board
 
 ```tsx
@@ -302,7 +314,7 @@ import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { userFromCookie } from './auth.ts';
-import type { BoardIn, BoardOut, Cursor, Edit, Shape } from './protocol.ts';
+import type { BoardIn, BoardOut, Cursor, Edit, Shape, Stroke } from './protocol.ts';
 
 type Board = {
   seq: number;
@@ -380,11 +392,43 @@ function apply(board: Board, topic: string, user: string, id: string, edit: Edit
 ```
 
 - **Each edit id is applied once.** An edit that arrives again, because its acknowledgement was lost or two tabs sent it, changes nothing.
-- **Only its author can erase a shape.** Check whatever your app allows, and validate the stroke, such as how many points it has, before saving it.
+- **Only its author can erase a shape.** Check whatever your app allows, and limit the stroke, such as how many points it has, before saving it.
 
 ### The connection
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+const isPoint = (point: unknown) =>
+  Array.isArray(point) && point.length === 2 && point.every(Number.isFinite);
+const isStroke = (stroke?: Partial<Stroke>) =>
+  isString(stroke?.id) &&
+  isString(stroke?.color) &&
+  Array.isArray(stroke?.points) &&
+  stroke.points.every(isPoint);
+const isCursor = (cursor?: Partial<Cursor>) =>
+  Number.isFinite(cursor?.x) && Number.isFinite(cursor?.y) && isString(cursor?.color);
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): BoardOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (type === 'subscribe' && isString(message.topic) && Number.isInteger(message.after ?? 0))
+      return message;
+    if (type === 'unsubscribe' || type === 'leave') return message;
+    if (type === 'edit' && isString(message.id)) {
+      const { edit } = message;
+      if (edit?.kind === 'draw' && isStroke(edit.stroke)) return message;
+      if (edit?.kind === 'erase' && isString(edit.shape)) return message;
+    }
+    if (type === 'ink' && isStroke(message.stroke)) return message;
+    if (type === 'cursor' && isCursor(message.cursor)) return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 function connected(socket: WebSocket, user: string, id: string) {
   const board = boardFor(id);
   const topic = `board:${id}`;
@@ -393,9 +437,11 @@ function connected(socket: WebSocket, user: string, id: string) {
   for (const [other, cursor] of board.cursors) {
     send(socket, { type: 'cursor', peer: other, cursor });
   }
+  socket.on('error', console.error);
 
   socket.on('message', data => {
-    const message = JSON.parse(String(data)) as BoardOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     switch (message.type) {
       case 'subscribe':
         if (message.topic === topic) subscribe(board, socket, topic, message.after);
@@ -451,6 +497,8 @@ server.on('upgrade', async (request, stream, head) => {
 
 server.listen(Number(process.env.PORT ?? 8080));
 ```
+
+`parse` checks every message before the server uses it: JSON, a known `type`, and the fields that type needs, down to each stroke's points. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and drop every board.
 
 Every acknowledgement goes out, even for an edit seen before, since the first one may never have arrived.
 
@@ -523,10 +571,15 @@ function connected(socket: WebSocket, id: string) {
   const { doc, sockets } = room;
   sockets.add(socket);
   socket.send(Y.encodeStateAsUpdate(doc));
+  socket.on('error', console.error);
 
   socket.on('message', data => {
     const before = Y.encodeStateVector(doc);
-    Y.applyUpdate(doc, new Uint8Array(data as Buffer));
+    try {
+      Y.applyUpdate(doc, new Uint8Array(data as Buffer));
+    } catch {
+      return socket.close(1003, 'Invalid update'); // not a Yjs update
+    }
     // Pass on only what was new: a client's first message is the whole document.
     const news = Y.encodeStateAsUpdate(doc, before);
     if (news.length <= 2) return; // an empty update
@@ -548,7 +601,7 @@ server.on('upgrade', (request, stream, head) => {
 server.listen(Number(process.env.PORT ?? 8081));
 ```
 
-A client's first message is its whole document, which is mostly what the server has already. `Y.encodeStateAsUpdate(doc, before)` keeps only what that message added, and an update with nothing in it is 2 bytes, so it isn't passed on. For large documents, send a state vector first and only the missing part, as Yjs's own sync protocol does.
+A client's first message is its whole document, which is mostly what the server has already. `Y.encodeStateAsUpdate(doc, before)` keeps only what that message added, and an update with nothing in it is 2 bytes, so it isn't passed on. When `Y.applyUpdate` can't read a message, it throws, and only the client that sent it is closed. For large documents, send a state vector first and only the missing part, as Yjs's own sync protocol does.
 
 ## When things go wrong
 

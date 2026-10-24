@@ -255,7 +255,8 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer } from 'ws';
 import { verifyToken } from './lib/token.ts';
 
-const wss = new WebSocketServer({ noServer: true });
+// The demo's messages are small: a bigger one closes its connection with code 1009.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 
 /** Accept a WebSocket upgrade on `/ws` if its token is valid. */
 export function handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {

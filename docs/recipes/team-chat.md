@@ -164,6 +164,22 @@ addEventListener('pageshow', event => event.persisted && here.set({ typing: null
 - **`outbox`** keeps each message in IndexedDB until the server acknowledges it, and sends it again on every connection until then. See [Offline outbox](../guide/outbox.md).
 - **`here`** shares who's online and typing with [presence](../guide/presence.md). The tabs share one connection, so the server can't tell them apart: each tab names itself. `pagehide` sends `leave`, so a closed tab disappears at once instead of after 30 seconds. The listener is added when the module loads, before the first connection adds the tabs' own `pagehide` listener, so the `leave` goes out before the tab lets go of the connection.
 
+### Signing out
+
+```ts
+/** Forget what this user left behind, in every tab, before the next one signs in. */
+export function signOut() {
+  void outbox.clear();
+  feeds.reset();
+  messages.reset();
+  channels.reset();
+  here.leave();
+  chat.close();
+}
+```
+
+The outbox keeps unsent messages in IndexedDB across reloads, and the server posts whatever arrives as the user whose socket sent it, so without `clear()` the next person to sign in on the browser would post the previous user's unsent messages as their own. Call `chat.connect()` once someone signs in again. See [Logging out and switching accounts](../guide/authentication.md#logging-out-and-switching-accounts).
+
 ## The page
 
 ```tsx
@@ -429,11 +445,35 @@ function post(socket: WebSocket, user: string, { id, channel, text }: Post) {
 ### The connection
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): ChatOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (type === 'hello') return message;
+    if (type === 'subscribe' && isString(message.topic) && Number.isInteger(message.after ?? 0))
+      return message;
+    if (type === 'unsubscribe' && isString(message.topic)) return message;
+    if (type === 'post' && [message.id, message.channel, message.text].every(isString))
+      return message;
+    if (type === 'read' && isString(message.channel) && Number.isInteger(message.seq))
+      return message;
+    if ((type === 'here' || type === 'leave') && isString(message.peer)) return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 function connected(socket: WebSocket, user: string) {
   users.set(socket, user);
+  socket.on('error', console.error);
 
   socket.on('message', data => {
-    const message = JSON.parse(String(data)) as ChatOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     switch (message.type) {
       case 'hello':
         return hello(socket, user);
@@ -489,6 +529,8 @@ server.on('upgrade', async (request, stream, head) => {
 
 server.listen(Number(process.env.PORT ?? 8080));
 ```
+
+`parse` checks every message before the server uses it: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and drop every user.
 
 Peers are named by user and tab, since a user's tabs share one socket. When a socket closes, every peer on it leaves at once.
 

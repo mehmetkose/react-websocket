@@ -178,10 +178,12 @@ export function read(ids: string[]) {
   void reads.add(ids);
 }
 
-// Signed out, in this tab or another: forget this user's notices.
+// Signed out, in this tab or another: forget this user's notices, and where their feed was.
 notify.on('close', ({ code }) => {
   if (code !== 4401) return;
   localStorage.removeItem(CACHE);
+  cached.seq = undefined;
+  feeds.reset();
   inbox.reset();
   void reads.clear();
 });
@@ -313,6 +315,9 @@ The server's HTML has the bell with no notices. After hydration, it shows the ca
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const secret = process.env.SOCKET_SECRET ?? '';
+if (secret.length < 32) {
+  throw new Error('Set SOCKET_SECRET to a random value of at least 32 characters');
+}
 const sign = (payload: string) => createHmac('sha256', secret).update(payload).digest('base64url');
 
 export function issueToken(userId: string) {
@@ -321,16 +326,20 @@ export function issueToken(userId: string) {
 }
 
 /** The user's id, if the token is ours and hasn't expired. Ids mustn't contain a `.`. */
-export function verifyToken(token: string): string | undefined {
-  const [userId, expires, signature = ''] = token.split('.');
-  const expected = sign(`${userId}.${expires}`);
-  if (signature.length !== expected.length) return undefined;
-  if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return undefined;
+export function verifyToken(token: unknown): string | undefined {
+  if (typeof token !== 'string') return undefined;
+  const parts = token.split('.');
+  if (parts.length !== 3) return undefined;
+  const [userId, expires, signature] = parts as [string, string, string];
+  // Compare bytes, not characters: `timingSafeEqual` throws on buffers of different lengths.
+  const given = Buffer.from(signature);
+  const expected = Buffer.from(sign(`${userId}.${expires}`));
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) return undefined;
   return Number(expires) > Date.now() ? userId : undefined;
 }
 ```
 
-A token is the user's id, an expiry a minute away, and a signature only the server can make. `verifyToken` is synchronous, so a `subscribe` right behind the `auth` message never arrives before the connection knows its user.
+A token is the user's id, an expiry a minute away, and a signature only the server can make. Set `SOCKET_SECRET` to a long random value, such as the output of `openssl rand -base64 32`, and keep it on the server: `auth.ts` refuses to start without one. `verifyToken` is synchronous, so a `subscribe` right behind the `auth` message never arrives before the connection knows its user.
 
 ### Inboxes
 
@@ -405,11 +414,36 @@ export function signOut(userId: string) {
 ### The connection
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): NotifyOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (type === 'auth' && isString(message.token)) return message;
+    if (type === 'subscribe' && Number.isInteger(message.after ?? 0)) return message;
+    if (type === 'unsubscribe') return message;
+    if (
+      type === 'mark-read' &&
+      isString(message.id) &&
+      Array.isArray(message.ids) &&
+      message.ids.every(isString)
+    )
+      return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 function connected(socket: WebSocket) {
   let userId: string | undefined;
+  socket.on('error', console.error);
 
   socket.on('message', data => {
-    const message = JSON.parse(String(data)) as NotifyOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     if (message.type === 'auth') {
       // Every tab sends its own, on the one connection they share: all for the same user.
       const user = verifyToken(message.token);
@@ -471,6 +505,7 @@ server.listen(Number(process.env.PORT ?? 8080));
 
 - **Every tab sends `auth`** on the connection they share. They're all the same user, so later ones change nothing. One for a different user closes the connection.
 - **A read is applied once.** Every tab that stored it sends it, and it's sent again after each reconnect until it's acknowledged. `handled` remembers the keys already applied.
+- **`parse` checks every message** before the server uses it, `auth` included: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and drop every user.
 
 ## When things go wrong
 

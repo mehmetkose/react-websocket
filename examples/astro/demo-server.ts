@@ -15,6 +15,7 @@ import { verifyToken } from './src/lib/token.ts';
 // The demo server's clock runs ahead on purpose, so the latency card has an offset to measure.
 const CLOCK_SKEW = 2500;
 const COLORS = ['#e5484d', '#30a46c', '#0090ff', '#f76b15', '#8e4ec6', '#12a594'];
+const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 interface Peer {
   socket: WebSocket;
@@ -29,7 +30,8 @@ interface Peer {
 }
 
 const peers = new Set<Peer>();
-const wss = new WebSocketServer({ noServer: true });
+// The demo's messages are small: a bigger one closes its connection with code 1009.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 let names = 0;
 let calls = 0;
 
@@ -64,8 +66,15 @@ function connected(socket: WebSocket) {
     if (other !== peer) send(peer, { type: 'peer', id: other.name, ...other.cursor });
   broadcastPeer(peer);
 
+  socket.on('error', console.error);
   socket.on('message', (data, isBinary) => {
-    if (!peer.silent) receive(peer, data, isBinary);
+    if (peer.silent) return;
+    // A message this server can't handle closes that client's socket, not the whole server.
+    try {
+      receive(peer, data, isBinary);
+    } catch {
+      socket.close(1003, 'Invalid message');
+    }
   });
   socket.on('close', () => {
     peers.delete(peer);
@@ -94,6 +103,8 @@ function receive(peer: Peer, data: RawData, isBinary: boolean) {
   } catch {
     return;
   }
+  // Valid JSON can still be `null`, a number, or an object without a `type`.
+  if (typeof message !== 'object' || message === null || typeof message.type !== 'string') return;
 
   switch (message.type) {
     case 'chat':
@@ -114,10 +125,14 @@ function receive(peer: Peer, data: RawData, isBinary: boolean) {
       peer.topics.delete(message.topic);
       break;
     case 'cursor':
-      peer.cursor = { ...peer.cursor, x: message.x, y: message.y };
+      // Fractions of the pad's size: a position off the pad is moved to its edge.
+      if (!Number.isFinite(message.x) || !Number.isFinite(message.y)) break;
+      peer.cursor = { ...peer.cursor, x: clamp(message.x), y: clamp(message.y) };
       broadcastPeer(peer);
       break;
     case 'color':
+      // Only a palette color: every other tab paints this peer's cursor with it.
+      if (!COLORS.includes(message.color)) break;
       peer.cursor = { ...peer.cursor, color: message.color };
       broadcastPeer(peer);
       break;
@@ -128,6 +143,7 @@ function receive(peer: Peer, data: RawData, isBinary: boolean) {
       send(peer, { type: 'pong', id: message.id, time: Date.now() + CLOCK_SKEW });
       break;
     case 'result':
+      if (typeof message.id !== 'string' && typeof message.id !== 'number') break;
       peer.calls.get(String(message.id))?.(message);
       break;
     case 'agent':

@@ -39,7 +39,7 @@ export const Cursors = clientEntry(import.meta.url, function Cursors(handle: Han
               style={{
                 left: `${cursor.x * 100}%`,
                 top: `${cursor.y * 100}%`,
-                background: cursor.color
+                backgroundColor: cursor.color
               }}
             />
           ))}

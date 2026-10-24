@@ -393,12 +393,39 @@ async function place(order: Order) {
 ### The connection and the simulation
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): MarketOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (type === 'subscribe' && isString(message.topic) && Number.isInteger(message.after ?? 0))
+      return message;
+    if (type === 'unsubscribe' && isString(message.topic)) return message;
+    if (
+      type === 'order' &&
+      isString(message.clientOrderId) &&
+      isString(message.symbol) &&
+      (message.side === 'buy' || message.side === 'sell') &&
+      Number.isFinite(message.qty) &&
+      Number.isFinite(message.limit)
+    )
+      return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 const wss = new WebSocketServer({ port: Number(process.env.PORT ?? 8080), path: '/live' });
 
 wss.on('connection', socket => {
+  socket.on('error', console.error);
   socket.on('message', data => {
     if (String(data) === 'ping') return socket.send('pong');
-    const message = JSON.parse(String(data)) as MarketOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     switch (message.type) {
       case 'subscribe':
         subscribe(socket, message.topic, message.after);
@@ -461,6 +488,7 @@ setInterval(() => {
 ```
 
 - **`ping`** is answered with `pong`, for the client's heartbeat.
+- **`parse` checks every message** before the server uses it: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and drop every client.
 - **Orders are idempotent.** `placed` keeps the result of each `clientOrderId`, so the same key asked again, after a lost answer, gets the same order instead of a second one. Keep it in your database, with a lifetime longer than the client's retry.
 
 ## A binary codec
@@ -481,7 +509,7 @@ export const market = createWebSocket<MarketIn, MarketOut>('wss://market.example
 });
 ```
 
-The server encodes with `encode(message)` and decodes with `decode(data)`. Measured with `@msgpack/msgpack`, a quote from this page is 92 bytes as JSON and 79 as MessagePack, and an order book change 87 and 67. Compression (`permessage-deflate`, which `ws` supports) shrinks JSON too, at some CPU cost on both ends: measure both on your own traffic.
+The server encodes with `encode(message)`, and `parse` decodes with `decode(data)` in place of `JSON.parse`. Measured with `@msgpack/msgpack`, a quote from this page is 92 bytes as JSON and 79 as MessagePack, and an order book change 87 and 67. Compression (`permessage-deflate`, which `ws` supports) shrinks JSON too, at some CPU cost on both ends: measure both on your own traffic.
 
 ## When things go wrong
 

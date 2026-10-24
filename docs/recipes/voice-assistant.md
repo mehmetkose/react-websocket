@@ -486,6 +486,8 @@ function openSession(id: string, userId: string): Session {
     }
   });
 
+  // A failed connection to OpenAI ends this session only: 'close' follows every 'error'.
+  upstream.on('error', console.error);
   upstream.on('close', () => {
     sessions.delete(id);
     session.socket?.close(1011, 'Session ended'); // the browser reconnects to a new one
@@ -496,7 +498,7 @@ function openSession(id: string, userId: string): Session {
 
 - **`semantic_vad`** lets OpenAI decide when the user has finished talking, and answer. When the user starts talking over an answer, it cancels the answer by itself, and sends `input_audio_buffer.speech_started`, which the browser turns into an interruption.
 - **`sentMs`** counts the audio of each answer that went to the browser: 48 bytes per millisecond at 24 kHz.
-- **When OpenAI closes the session**, the browser's socket is closed with `1011`. The client reconnects, and gets a new conversation.
+- **When OpenAI closes the session**, or the connection to it fails, the browser's socket is closed with `1011`. The client reconnects, and gets a new conversation.
 
 ### Interruptions
 
@@ -547,12 +549,40 @@ The `pcm` format is raw 24 kHz PCM16 with no header, streamed as it's generated.
 ### The connection
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A text message from the browser, if it's JSON with the fields its type needs. */
+function parse(data: string): Exclude<VoiceOut, ArrayBuffer> | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (
+      type === 'interrupt' &&
+      isString(message.itemId ?? '') &&
+      Number.isFinite(message.heardMs ?? 0)
+    )
+      return message;
+    if (
+      type === 'speak' &&
+      Number.isInteger(message.id) &&
+      isString(message.text) &&
+      isString(message.voice)
+    )
+      return message;
+    if (type === 'stop-speaking') return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 function connected(socket: WebSocket, session: Session) {
   clearTimeout(session.idle);
   // The conversation opened somewhere else, such as a duplicated tab: it moves there.
   session.socket?.close(4409, 'Opened in another tab');
   session.socket = socket;
   const speaking = new Map<number, AbortController>();
+  socket.on('error', console.error);
 
   socket.on('message', (data, isBinary) => {
     const { upstream } = session;
@@ -562,7 +592,8 @@ function connected(socket: WebSocket, session: Session) {
       const audio = Buffer.from(data as Buffer).toString('base64');
       return upstream.send(JSON.stringify({ type: 'input_audio_buffer.append', audio }));
     }
-    const message = JSON.parse(String(data)) as Exclude<VoiceOut, ArrayBuffer>;
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     switch (message.type) {
       case 'interrupt':
         interrupt(session, message);
@@ -618,6 +649,7 @@ server.listen(Number(process.env.PORT ?? 8080));
 - **A frame that arrives before OpenAI's socket is open** is dropped, as the browser drops frames while it's disconnected.
 - **When the browser disconnects**, the conversation waits 30 seconds for it, then closes. A reload comes back within that.
 - **Each conversation belongs to a user.** A session id from someone else is refused.
+- **`parse` checks every text message** before the server uses it: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and end every conversation.
 
 ## When things go wrong
 

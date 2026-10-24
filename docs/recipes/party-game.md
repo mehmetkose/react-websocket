@@ -608,19 +608,43 @@ function closed(socket: WebSocket) {
   for (const other of everyone(game)) send(other, { type: 'here', peer: player.id, state: null });
 }
 
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): PartyOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (type === 'create' || type === 'start' || type === 'next' || type === 'ping') return message;
+    if (type === 'join' && isString(message.code) && isString(message.name)) return message;
+    if (type === 'answer' && Number.isInteger(message.question) && Number.isInteger(message.choice))
+      return message;
+    if (type === 'rejoin' && isString(message.token)) return message;
+    if (type === 'here' && isString(message.state?.name)) return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 const server = createServer();
 const wss = new WebSocketServer({ server, path: '/party' });
 
 wss.on('connection', socket => {
+  socket.on('error', console.error);
   socket.on('message', data => {
     if (String(data) === 'ping') return socket.send('pong'); // the client's heartbeat
-    received(socket, JSON.parse(String(data)) as PartyOut); // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
+    received(socket, message);
   });
   socket.on('close', () => closed(socket));
 });
 
 server.listen(Number(process.env.PORT ?? 8080));
 ```
+
+`parse` checks every message before `received` sees it: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and end every game.
 
 When a phone's socket closes, the others hear it left. Its seat stays. A phone that reconnected before its old socket closed has already replaced it, so the late close changes nothing.
 
