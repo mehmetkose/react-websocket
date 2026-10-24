@@ -18,7 +18,8 @@ export const serverMessage = z.discriminatedUnion('type', [
     id: z.string(),
     x: z.number(),
     y: z.number(),
-    color: z.string()
+    // A hex color from the server's palette: it's painted as this peer's cursor.
+    color: z.string().regex(/^#[0-9a-f]{6}$/i)
   }),
   z.object({ type: z.literal('leave'), id: z.string() }),
   z.object({

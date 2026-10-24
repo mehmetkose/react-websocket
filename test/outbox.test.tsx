@@ -276,6 +276,58 @@ describe('createWebSocketOutbox', () => {
     client.close();
   });
 
+  it('clear() removes entries stored while the clock was ahead, as after it is set back', async () => {
+    const storage = memoryStorage();
+    vi.setSystemTime(Date.now() + 600_000);
+    const first = setup({ storage });
+    await first.outbox.ready;
+    await first.outbox.add({ table: 1 }, 'ahead');
+    first.outbox.dispose();
+    first.client.close();
+
+    // A reload after the clock was corrected, then a logout.
+    vi.setSystemTime(Date.now() - 600_000);
+    const { client, outbox } = setup({ storage });
+    await outbox.ready;
+    expect(ids(outbox)).toEqual(['ahead']);
+    await outbox.clear();
+    expect(outbox.getSnapshot()).toEqual([]);
+    expect(await storage.load()).toEqual([]);
+    client.connect();
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([]);
+  });
+
+  it('clear() before the stored entries load restores none of them, whenever they were stored', async () => {
+    const storage = memoryStorage();
+    await storage.put({ id: 'ahead', message: { table: 0 }, createdAt: Date.now() + 60_000 });
+    const { client, outbox } = setup({ storage });
+    await outbox.clear();
+    await settle();
+    expect(outbox.getSnapshot()).toEqual([]);
+    expect(await storage.load()).toEqual([]);
+    client.connect();
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([]);
+  });
+
+  it("clear() in one tab drops another tab's entries, however far ahead their timestamps run", async () => {
+    vi.useRealTimers();
+    const storage = memoryStorage();
+    const name = `shared-${++n}`;
+    const a = setup({ storage, name });
+    const b = setup({ storage, name });
+    await a.outbox.ready;
+    await b.outbox.ready;
+    // Added faster than one per ms, so their timestamps run ahead of the clock.
+    for (let i = 0; i < 50; i++) void b.outbox.add({ table: i }, `b-${i}`);
+    await a.outbox.clear();
+    await vi.waitFor(() => expect(ids(b.outbox)).toEqual([]));
+    await vi.waitFor(async () => expect(await storage.load()).toEqual([]));
+    a.outbox.dispose();
+    b.outbox.dispose();
+  });
+
   it('moves a re-added id to the end', async () => {
     const { outbox } = setup();
     await outbox.ready;

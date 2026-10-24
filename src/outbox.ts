@@ -198,8 +198,10 @@ export function createWebSocketOutbox<M, In, const Out>(
   let loaded = false;
   // Removed (or acknowledged) before the stored entries were loaded: don't restore them.
   const removed = new Set<string>();
-  // Entries created before this were cleared, here or in another tab: don't restore them.
-  let clearedBefore = 0;
+  // Cleared, here or in another tab, before the stored entries were loaded: restore none.
+  let clearedBeforeLoad = false;
+  // Ids added since the latest `clear()` here began: the only stored entries it keeps.
+  let addedSinceClear: Set<string> | undefined;
   // Other tabs using the same outbox, which loaded the same entries: tell them what's gone. Not
   // on a server, where an open channel would keep the process alive.
   const channel =
@@ -227,13 +229,17 @@ export function createWebSocketOutbox<M, In, const Out>(
     if (entries.delete(id)) changed();
   }
 
-  function dropBefore(before: number) {
-    clearedBefore = Math.max(clearedBefore, before);
-    let changes = false;
-    for (const entry of entries.values()) {
-      if (entry.createdAt < before) changes = entries.delete(entry.id);
-    }
-    if (changes) changed();
+  /**
+   * Drop every entry held now, and its stored copy. Not by `createdAt`: that comes from the clock
+   * of whichever page added it, which can be ahead of this one's.
+   */
+  function dropAll() {
+    if (!loaded) clearedBeforeLoad = true;
+    const held = [...entries.keys()];
+    if (!held.length) return;
+    entries = new Map();
+    changed();
+    for (const id of held) storage.delete(id).catch(noop);
   }
 
   // Also deletes a stored entry that isn't loaded yet, so it doesn't come back.
@@ -269,14 +275,13 @@ export function createWebSocketOutbox<M, In, const Out>(
     .load()
     .then(records => {
       if (disposed) return;
+      // Entries added from now on sort after the stored ones, whichever clock stored them.
+      for (const record of records) lastCreated = Math.max(lastCreated, record.createdAt);
       // Entries added meanwhile are newer than the stored ones, unless one has the same id.
       entries = new Map(
         [
           ...records.filter(
-            record =>
-              record.createdAt >= clearedBefore &&
-              !entries.has(record.id) &&
-              !removed.has(record.id)
+            record => !clearedBeforeLoad && !entries.has(record.id) && !removed.has(record.id)
           ),
           ...entries.values()
         ]
@@ -308,8 +313,11 @@ export function createWebSocketOutbox<M, In, const Out>(
 
   if (channel) {
     channel.onmessage = ({ data }: MessageEvent<{ id?: string; before?: number } | null>) => {
-      if (data?.before) dropBefore(data.before);
-      else if (data?.id) drop(data.id);
+      // Another tab cleared: drop everything held now, whenever it was added.
+      if (data?.before) {
+        lastCreated = Math.max(lastCreated, data.before);
+        dropAll();
+      } else if (data?.id) drop(data.id);
     };
   }
 
@@ -338,6 +346,7 @@ export function createWebSocketOutbox<M, In, const Out>(
       // Re-adding an id moves it to the end, as a new message.
       entries.delete(id);
       entries.set(id, { ...record, sent: false });
+      addedSinceClear?.add(id);
       changed();
       flush();
       // Sent, with no ack to wait for: there's nothing to keep. Storing it now would outlive its
@@ -347,21 +356,23 @@ export function createWebSocketOutbox<M, In, const Out>(
     },
     remove: forget,
     clear() {
+      lastCreated = Math.max(Date.now(), lastCreated + 1);
+      const kept = (addedSinceClear = new Set<string>());
       // At once, like `remove()`: waiting for the stored entries would send them first.
-      const before = (lastCreated = Math.max(Date.now(), lastCreated + 1));
-      dropBefore(before);
-      channel?.postMessage({ before });
-      // Including what other tabs stored, but not what's added from now on.
+      dropAll();
+      channel?.postMessage({ before: lastCreated });
+      // Everything stored, by other tabs and earlier page loads too, but not what's added from
+      // now on.
       return storage
         .load()
         .then(records =>
           Promise.all(
-            records
-              .filter(record => record.createdAt < before)
-              .map(record => storage.delete(record.id))
+            records.filter(record => !kept.has(record.id)).map(record => storage.delete(record.id))
           )
         )
-        .then(noop);
+        .then(() => {
+          if (addedSinceClear === kept) addedSinceClear = undefined;
+        });
     },
     getSnapshot: () => snapshot,
     subscribe(listener) {

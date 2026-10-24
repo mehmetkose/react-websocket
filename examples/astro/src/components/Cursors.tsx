@@ -35,7 +35,7 @@ export function Cursors() {
             style={{
               left: `${others[id]!.x * 100}%`,
               top: `${others[id]!.y * 100}%`,
-              background: others[id]!.color
+              backgroundColor: others[id]!.color
             }}
           />
         ))}

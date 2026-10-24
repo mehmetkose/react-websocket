@@ -16,6 +16,7 @@ function createTabsWebSocket(options?: {
     topic?: (message: any) => string | null | undefined;
   };
   linger?: number;
+  session?: () => string | null | undefined;
 }): TabsWebSocket;
 ```
 
@@ -40,6 +41,7 @@ export const live = createWebSocket(url, { json: true, WebSocket: createTabsWebS
 | `topics.unsubscribe` | `(message) => string \| null \| undefined` | The topic an outgoing message unsubscribes from. It's forwarded only when no other tab holds the topic |
 | `topics.topic` | `(message) => string \| null \| undefined` | Optional. The topic of an incoming message, which then goes only to the tabs that hold it. A message on a topic no tab holds is dropped |
 | `linger` | `number` | Optional. How long the leading tab keeps the shared connection after the last tab lets go, in ms. Default `1000` |
+| `session` | `() => string \| null \| undefined` | Optional. Who is signed in, such as the user's id. Tabs share a connection only with tabs that return the same value, so after another user signs in, `close()` and then `connect()` open a connection of their own instead of joining the one the previous user authenticated. Read for every new socket |
 
 ## Returns
 

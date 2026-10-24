@@ -410,14 +410,39 @@ function cancel(run: Run) {
 ### The connection
 
 ```ts
+const isString = (value: unknown) => typeof value === 'string';
+
+/** A client's message, if it's JSON with the fields its type needs. */
+function parse(data: string): MediaOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if (
+      type === 'generate' &&
+      isString(message.runId) &&
+      isString(message.prompt) &&
+      (message.kind === 'image' || message.kind === 'video')
+    )
+      return message;
+    if (type === 'resume' && isString(message.runId) && Number.isInteger(message.after ?? 0))
+      return message;
+    if (type === 'cancel' && isString(message.runId)) return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 function connected(socket: WebSocket, userId: string) {
   const sockets = connections.get(userId) ?? new Set();
   connections.set(userId, sockets.add(socket));
   send(socket, { type: 'jobs', jobs: jobsByUser.get(userId) ?? [] });
+  socket.on('error', console.error);
 
   socket.on('message', data => {
     if (String(data) === 'ping') return socket.send('pong');
-    const message = JSON.parse(String(data)) as MediaOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     const found = runs.get(message.runId);
     const run = found?.userId === userId ? found : undefined;
 
@@ -466,6 +491,8 @@ server.listen(Number(process.env.PORT ?? 8080));
 ```
 
 The socket is on the same site as the app, so the browser sends the session cookie with the handshake, and `userFromCookie` is the check your app already does for every request. WebSockets aren't covered by CORS, so the `Origin` check is what stops another site from opening a socket with your user's cookies. See [Cookies](../guide/authentication.md#cookies).
+
+`parse` checks every message before the server uses it: JSON, a known `type`, and the fields that type needs. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server, and every user's jobs with it.
 
 ### The provider
 

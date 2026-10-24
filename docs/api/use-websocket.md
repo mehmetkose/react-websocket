@@ -95,7 +95,7 @@ Handlers belong to the component: they run only while it is mounted and `enabled
 | Field | Type | |
 | --- | --- | --- |
 | `status` | [`Status`](./types.md#status) | `'idle'`, `'connecting'`, `'open'`, `'reconnecting'` or `'closed'` |
-| `lastMessage` | `In \| undefined` | The most recent message, kept across reconnects |
+| `lastMessage` | `In \| undefined` | The most recent message, kept across reconnects and cleared by `close()` |
 | `attempt` | `number` | Consecutive failed attempts since the last stable connection (one that stayed open for `reconnect.minUptime`). `0` while open |
 | `send` | `(message: Out, options?: SendOptions) => boolean` | Sends now, or queues until open (see [`SendOptions`](./types.md#sendoptions)). Returns `true` if sent immediately |
 | `close` | `(code?: number, reason?: string) => void` | Closes and stops reconnecting, for every component sharing the connection |

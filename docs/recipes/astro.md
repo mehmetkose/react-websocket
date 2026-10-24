@@ -306,7 +306,8 @@ export default defineConfig({
 
 ```ts
 // demo-server.ts (trimmed)
-const wss = new WebSocketServer({ noServer: true });
+// The demo's messages are small: a bigger one closes its connection with code 1009.
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 
 /**
  * Accept a WebSocket upgrade on `/ws` if its token is valid. Returns `false` for other paths,

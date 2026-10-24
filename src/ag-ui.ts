@@ -426,6 +426,13 @@ export interface AgUiAgent<S> {
   ): string;
   /** Stop the run that's streaming, if any. */
   abort(): void;
+  /**
+   * Forget the thread, e.g. on logout or when another user signs in: its runs (with
+   * `runs.clear()`, which sends nothing), messages and state. The next run starts over from
+   * `state`, with a new thread id unless `threadId` was given. `abort()` a streaming run first
+   * to stop it on the server.
+   */
+  reset(): void;
   /** The thread as of the latest run. The same object until it changes. */
   getSnapshot(): AgUiThread<S>;
   /** Get notified when the thread changes. Compatible with `useSyncExternalStore`. */
@@ -474,7 +481,7 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
   client: WebSocketClient<In, Out>,
   options: AgUiAgentOptions<S, NoInfer<In>, NoInfer<Out>> = {}
 ): AgUiAgent<S> {
-  const threadId = options.threadId ?? randomId();
+  let threadId = options.threadId ?? randomId();
   const empty: AgUiThread<S> = {
     messages: [],
     state: options.state as S,
@@ -551,6 +558,14 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
       return runId;
     },
     abort,
+    reset() {
+      // Before the runs go, whose change shows `base`.
+      base = empty;
+      resynced.clear();
+      if (options.threadId === undefined) threadId = randomId();
+      runs.clear();
+      update();
+    },
     getSnapshot: () => snapshot,
     subscribe(listener) {
       listeners.add(listener);

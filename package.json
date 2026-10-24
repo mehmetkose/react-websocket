@@ -269,7 +269,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "1.9 kB",
+      "limit": "2 kB",
       "gzip": true
     },
     {
@@ -327,7 +327,7 @@
       "name": "react-websocket/tabs (createTabsWebSocket)",
       "path": "dist/tabs.js",
       "import": "{ createTabsWebSocket }",
-      "limit": "1.85 kB",
+      "limit": "1.9 kB",
       "gzip": true
     },
     {
@@ -341,14 +341,14 @@
       "name": "react-websocket/ag-ui (createAgUiAgent)",
       "path": "dist/ag-ui.js",
       "import": "{ createAgUiAgent }",
-      "limit": "3.85 kB",
+      "limit": "3.95 kB",
       "gzip": true
     },
     {
       "name": "react-websocket/outbox (createWebSocketOutbox)",
       "path": "dist/outbox.js",
       "import": "{ createWebSocketOutbox }",
-      "limit": "1.35 kB",
+      "limit": "1.4 kB",
       "gzip": true
     }
   ],

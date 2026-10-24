@@ -77,6 +77,7 @@ A `WebSocketFeeds<In>`, which is also a [`WebSocketTopics`](./create-websocket-t
 | --- | --- |
 | `on('message', listener)` | Listen to messages in order: numbered ones once each and without gaps, others as they arrive. Returns an unsubscribe function |
 | `position(topic)` | The number of the last message delivered on `topic`, while it's held |
+| `reset(topic?)` | Forget the position of `topic`, or of every topic, so the next subscription sends `after: undefined`. Call it on logout or when another user signs in, so the next user's messages start from their beginning and none is dropped as a duplicate of the previous user's |
 | `acquire(topic)` | Hold a subscription and the connection, as for topics. Returns a release function |
 | `active()` | The topics currently held |
 | `client` | The client |

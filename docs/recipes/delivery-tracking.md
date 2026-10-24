@@ -257,6 +257,7 @@ async function shrink(file: File) {
 - **Positions go through [`createWebSocketSendRate`](../api/create-websocket-send-rate.md)**, keyed `'gps'`: at most one a second, however often the phone reports, and down to one every five seconds when the send buffer fills on a weak signal. Between sends only the newest position is kept, so after a dead zone the server gets where the courier is, not where they've been.
 - **The proof of delivery goes through an [outbox](../guide/outbox.md).** It's stored in IndexedDB and sent until the server acknowledges it, through lost signal, reconnects and a closed app.
 - **The photo is shrunk first**, to 800 pixels at most, so it's quick to store and send.
+- **On sign-out, `proofs.clear()`.** Proofs wait in IndexedDB across reloads and go out as whichever courier's socket is open, so a shared device's next courier would otherwise send the previous one's: `void proofs.clear(); courier.close();`.
 
 ```tsx
 // CourierApp.tsx
@@ -409,14 +410,36 @@ function courier(socket: WebSocket, message: TrackOut) {
   send(socket, { type: 'ack', id: message.id });
 }
 
+const isString = (value: unknown) => typeof value === 'string';
+const isPosition = (position?: Partial<Position>) =>
+  Number.isFinite(position?.lat) && Number.isFinite(position?.lng);
+
+/** A message from either app, if it's JSON with the fields its type needs. */
+function parse(data: string): TrackOut | undefined {
+  try {
+    const message = JSON.parse(data);
+    const type = message?.type;
+    if ((type === 'subscribe' || type === 'unsubscribe') && isString(message.topic)) return message;
+    if (type === 'ping') return message;
+    if (type === 'gps' && isString(message.orderId) && isPosition(message.position)) return message;
+    if (type === 'delivered' && [message.id, message.orderId, message.photo].every(isString))
+      return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
 const server = createServer();
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (socket, request) => {
   // Authenticate both apps, as in the Authentication guide.
   const handle = request.url === '/courier' ? courier : customer;
+  socket.on('error', console.error);
   socket.on('message', data => {
-    const message = JSON.parse(String(data)) as TrackOut; // validate it in production
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
     if (message.type === 'ping') {
       return send(socket, { type: 'pong', id: message.id, time: Date.now() });
     }
@@ -432,6 +455,7 @@ server.listen(Number(process.env.PORT ?? 8080));
 
 - **A new subscriber gets the order's status and the last position at once**, so the map doesn't wait for the courier to move.
 - **A proof is stored once.** The outbox sends it again until it's acknowledged, so the server keeps the keys it has. Acknowledge only once the photo is stored.
+- **`parse` checks every message** before the server uses it: JSON, a known `type`, and the fields that type needs, such as a position's coordinates. Anything else closes only that socket, with `1003`, which the client doesn't retry. An error thrown in the listener would stop the server and drop every customer and courier.
 - **Check who's asking.** A customer may only subscribe to their own orders, and a courier may only send positions for orders assigned to them. Authenticate both apps, as in [Authentication](../guide/authentication.md).
 
 ### A simulated courier

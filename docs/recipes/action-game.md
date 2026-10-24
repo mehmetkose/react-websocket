@@ -175,6 +175,7 @@ server.on('connection', socket => {
     tokens: BURST
   };
   clients.set(id, client);
+  socket.on('error', console.error);
 
   socket.on('message', raw => {
     const data = String(raw);

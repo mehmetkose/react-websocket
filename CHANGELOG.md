@@ -6,6 +6,54 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Security
+
+Logging out, or another user signing in on the same page, no longer has to carry the previous user's data or queued
+messages into the next user's session. Before, the documented steps (`close()` on logout, `reconnect()` on an account
+switch) reset only the socket: the next user could see the previous user's last message, feed positions, runs and
+agent thread, and could send their queued outbox entries. See
+[Logging out and switching accounts](https://mehmetkose.github.io/react-websocket/guide/authentication#logging-out-and-switching-accounts).
+
+### Added
+
+- `feeds.reset(topic?)` forgets the position of a topic, or of every topic, so the next subscription starts from the
+  beginning instead of from the previous user's last message.
+- `runs.clear()` forgets every run, in memory and in storage, including unsent starts and pending cancels. It sends
+  nothing.
+- `agent.reset()` (AG-UI) forgets the thread, starts the next run from `state`, and picks a new thread id unless one
+  was given.
+- `createTabsWebSocket({ session })`: tabs share a connection only with tabs that return the same session, such as
+  the user's id, so the next user gets a connection of their own.
+
+### Changed
+
+- `close()` also clears `lastMessage`, as it already cleared the send queue and a `migrate()` target. Components
+  that render `lastMessage` show `undefined` after `close()` until a message arrives.
+
+### Fixed
+
+- `outbox.clear()` removes every entry that exists when it's called. It used to keep entries whose timestamps were
+  ahead of the clearing tab's clock, as after the clock is set back or after another tab added many entries at once,
+  and they were then sent on the next connection.
+
+### Documentation
+
+- The authentication guide covers logging out and switching accounts: call `close()` and reset what the managers
+  keep, then `connect()`, rather than `reconnect()`, which keeps the send queue. Servers should close a user's open
+  sockets when their session ends. `SECURITY.md` says the same.
+- The recipes' servers check every message before using it: JSON, a known `type`, and the fields that type needs.
+  Anything else closes only that client's socket with `1003`, which the client doesn't retry, where a malformed
+  message used to throw and stop the whole server. Every server socket gets an `error` listener, and the voice
+  assistant's connection to the provider does too.
+- The live notifications recipe refuses to start without a `SOCKET_SECRET` of at least 32 characters, where it used
+  to sign tokens with an empty key that anyone could reproduce. `verifyToken` rejects tokens that aren't strings or
+  don't have three parts, and compares the signatures' bytes, not their characters.
+- The team chat, collaborative whiteboard and delivery tracking recipes clear their outbox on sign-out, and the live
+  notifications recipe also forgets its feed position.
+- The Next.js, Astro and Remix examples' demo servers survive malformed messages, limit messages to 64 KiB, accept
+  only palette colors and on-pad cursor positions, and their cursors paint the color with `backgroundColor`, so a
+  peer can't make other viewers' browsers load a URL.
+
 ## [4.20.0] - 2026-10-22
 
 The library's code is the same as in 4.19.1. This release adds framework recipes to the documentation.

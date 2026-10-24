@@ -31,6 +31,13 @@ export interface TabsWebSocketOptions {
    * @default 1000
    */
   linger?: number;
+  /**
+   * Who is signed in, such as the user's id. Tabs share a connection only with tabs that return
+   * the same value, so when another user signs in, `close()` and then `connect()` open a
+   * connection of their own instead of joining the one the previous user authenticated. Read
+   * for every new socket.
+   */
+  session?: () => string | null | undefined;
 }
 
 /** The class from {@link createTabsWebSocket}: a `WebSocket`, plus a way to stop sharing. */
@@ -316,7 +323,11 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
         inner.onclose = event => this.#end(event.code, event.reason, event.wasClean);
         return;
       }
-      const key = `react-websocket-tabs:${this.url}\u0000${JSON.stringify(protocols ?? null)}`;
+      // The session goes first: Node routes channel messages by the name up to a NUL.
+      const session = options.session
+        ? `session=${encodeURIComponent(options.session() ?? '')}:`
+        : '';
+      const key = `react-websocket-tabs:${session}${this.url}\u0000${JSON.stringify(protocols ?? null)}`;
       agent(key, this.url, protocols);
       const channel = (this.#channel = new BroadcastChannel(key));
       channel.onmessage = event => this.#signal(event.data as Signal);

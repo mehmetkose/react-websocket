@@ -59,6 +59,7 @@ In Chrome, with tabs 1 and 2 showing `prices` and tab 3 showing `news`, prices r
 
 - **One URL, one connection.** Tabs share a connection when they connect to the same URL and protocols. A token in the URL that differs between tabs, as a [URL function](./authentication.md#token-in-the-url) gives, opens a connection per tab. Send the token in a [first message](./authentication.md#first-message-auth) instead.
 - **Same origin, same browser.** `BroadcastChannel` and locks are per origin and browser profile, so tabs on other origins, or in a private window, have their own connection.
+- **One user per connection.** A tab's `close()` lets go of the shared connection, which stays open while other tabs use it, and for `linger` after. Pass `session: () => currentUserId`, so that after another user signs in, `close()` and `connect()` open a connection of that user's own instead of joining the one the previous user authenticated. See [Logging out and switching accounts](./authentication.md#logging-out-and-switching-accounts).
 - **Each tab's own state.** Messages are delivered to each tab's client, which parses, validates and reduces them itself. Only the connection is shared.
 - **A leader in the background.** Browsers slow down timers in background tabs, and the leader is often one. The relay is driven by events, not timers, so it keeps up, but [heartbeats](./reconnecting.md#heartbeats) with short timeouts may fire late there.
 - **Where it can't share**, without `BroadcastChannel` or the Web Locks API, each tab opens its own connection, as without it.

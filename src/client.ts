@@ -724,7 +724,8 @@ function createClient<In = unknown, Out = unknown>(
     pinned = false;
     opened = false;
     unheldStop = refs === 0;
-    set({ status: 'closed', attempt: 0 });
+    // `close()` is the logout step: what was received for one user isn't shown to the next.
+    set({ status: 'closed', attempt: 0, lastMessage: undefined });
     rejectReady(new Error('WebSocket was closed'));
   }
 

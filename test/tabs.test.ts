@@ -62,6 +62,37 @@ afterEach(() => {
 });
 
 describe('createTabsWebSocket', () => {
+  it('opens a connection of its own for another session, so the next user never joins the last one', async () => {
+    let user = 'alice';
+    const a = client(tab({ session: () => user }));
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
+
+    // Logout, and another user signs in.
+    a.close();
+    user = 'bob';
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
+    a.send('from bob');
+    await vi.waitFor(() => expect(MockWebSocket.instances[1]!.sent).toEqual(['from bob']));
+    expect(MockWebSocket.instances[0]!.sent).toEqual([]);
+  });
+
+  it('shares one connection within a session', async () => {
+    const a = client(tab({ session: () => 'alice' }));
+    const b = client(tab({ session: () => 'alice' }));
+    a.connect();
+    b.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(b.getSnapshot().status).toBe('open'));
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
   it('opens one socket for every tab, and gives every tab its messages', async () => {
     const a = client(tab());
     const b = client(tab());

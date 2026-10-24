@@ -47,6 +47,7 @@ Returns an `AgUiAgent<S>`:
 | --- | --- |
 | `run(input?, options?)` | Start a run with the thread so far plus `input.messages`. `input` also takes `tools`, `context` and `forwardedProps`; `options.policy` overrides the default. A streaming run is aborted first. Returns the run id |
 | `abort()` | Stop the streaming run |
+| `reset()` | Forget the thread, e.g. on logout or when another user signs in: its runs (with [`runs.clear()`](./create-websocket-runs.md), which sends nothing), messages and state. The next run starts over from `state`, with a new thread id unless `threadId` was given. `abort()` a streaming run first to stop it on the server |
 | `getSnapshot()` | The thread, an [`AgUiThread<S>`](#aguithread). The same object until it changes |
 | `subscribe(listener)` | Get notified when the thread changes. Compatible with `useSyncExternalStore` |
 | `runs` | The [runs](./create-websocket-runs.md) underneath |
