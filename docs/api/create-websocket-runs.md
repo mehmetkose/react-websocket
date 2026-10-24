@@ -90,6 +90,7 @@ A `WebSocketRuns<Req, T>`:
 | `list()` | Every run it knows, oldest first, including the ones remembered from before a reload. A new array on every change |
 | `subscribe(listener)` | Get notified when a run changes. Compatible with `useSyncExternalStore` |
 | `delete(runId)` | Forget a run, aborting it first if it's streaming |
+| `clear()` | Forget every run, e.g. on logout or when another user signs in: their values, unsent starts and pending cancels, in memory and in `storage`. Sends nothing, so nothing of the previous user's goes out on a later connection; `abort()` the runs that should stop on the server first, while connected |
 | `client` | The client |
 | `dispose()` | Stop following runs and release the connection. Remembered runs stay remembered |
 

@@ -305,6 +305,43 @@ describe('createAgUiAgent', () => {
     });
   });
 
+  it('reset() forgets the thread, so the next run starts over with a new thread id', () => {
+    const { agent } = setup({ threadId: undefined });
+    const first = agent.run({ messages: [{ id: 'a1', role: 'user', content: 'private' }] });
+    MockWebSocket.last.open();
+    const firstThread = sent()[0]!.input.threadId;
+    emit(first, { type: 'RUN_STARTED', threadId: firstThread, runId: first });
+    emit(first, { type: 'STATE_SNAPSHOT', snapshot: { count: 5 } });
+    emit(first, { type: 'RUN_FINISHED', threadId: firstThread, runId: first });
+
+    const listener = vi.fn();
+    agent.subscribe(listener);
+    agent.reset();
+    expect(agent.getSnapshot()).toEqual({
+      messages: [],
+      state: { count: 0 },
+      status: 'idle',
+      stale: false
+    });
+    expect(listener).toHaveBeenCalledOnce();
+    expect(agent.runs.list()).toEqual([]);
+
+    const next = agent.run({ messages: [{ id: 'b1', role: 'user', content: 'hello' }] });
+    const input = sent().at(-1)!.input;
+    expect(input.threadId).not.toBe(firstThread);
+    expect(input).toMatchObject({ runId: next, state: { count: 0 } });
+    expect(input.messages).toEqual([{ id: 'b1', role: 'user', content: 'hello' }]);
+  });
+
+  it('reset() keeps the threadId it was given', () => {
+    const { agent } = setup();
+    agent.run({ messages: [{ id: 'a1', role: 'user', content: 'private' }] });
+    MockWebSocket.last.open();
+    agent.reset();
+    agent.run();
+    expect(sent().at(-1)!.input).toMatchObject({ threadId: 'thread-1', messages: [] });
+  });
+
   it('resumes a run after a reconnect', () => {
     const { agent } = setup();
     const runId = agent.run();

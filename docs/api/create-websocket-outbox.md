@@ -63,7 +63,7 @@ A `WebSocketOutbox<M>`:
 | --- | --- |
 | `add(message, id?)` | Add a message and send it as soon as the socket is open. Resolves with its id once it's stored (once IndexedDB has committed it), and rejects if storing failed (it's still sent from memory then, but won't survive a reload). Without `ack`, a message sent right away isn't stored, and it resolves at once. Pass `id` to use your own idempotency key, such as an order number. Adding an id again replaces that entry and moves it to the end |
 | `remove(id)` | Remove an entry without sending it again, e.g. when the user cancels it. Also works before stored entries are loaded. Other tabs' outboxes with the same `name` drop it too |
-| `clear()` | Remove every entry at once, including ones other tabs stored, e.g. on logout. Stored entries that weren't loaded yet are never sent, and other tabs' outboxes with the same `name` drop theirs. Resolves once they're deleted from storage |
+| `clear()` | Remove every entry at once, including ones other tabs stored, e.g. on logout: every entry that exists when it's called, whatever clock stored it. Stored entries that weren't loaded yet are never sent, and other tabs' outboxes with the same `name` drop theirs. Only entries added after the call stay. Resolves once they're deleted from storage |
 | `getSnapshot()` | The waiting entries, oldest first: [`OutboxEntry<M>[]`](#outboxentry). A new array on every change |
 | `subscribe(listener)` | Get notified when the entries change. Compatible with `useSyncExternalStore` |
 | `ready` | Resolves once entries stored by an earlier page load are back, and rejects if they couldn't be loaded. Nothing is sent before it settles |

@@ -225,6 +225,32 @@ describe('createWebSocketFeeds', () => {
     expect(thrown).toEqual([new Error('listener failed')]);
   });
 
+  it('reset() forgets positions, so the next user subscribes from the start', () => {
+    const { client, feeds, received } = setup();
+    feeds.acquire('room');
+    feeds.acquire('other');
+    MockWebSocket.last.open();
+    event(1);
+    event(2);
+    event(4, '4', 'other');
+    feeds.reset('other');
+    expect(feeds.position('other')).toBeUndefined();
+    expect(feeds.position('room')).toBe(2);
+    feeds.reset();
+    expect(feeds.position('room')).toBeUndefined();
+
+    // Logout, and another user signs in.
+    client.close();
+    client.connect();
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([
+      { type: 'subscribe', topic: 'room' },
+      { type: 'subscribe', topic: 'other' }
+    ]);
+    event(1, 'next user 1');
+    expect(received).toEqual(['1', '2', '4', 'next user 1']);
+  });
+
   it('stops after dispose()', () => {
     const { feeds, received } = setup();
     feeds.acquire('room');

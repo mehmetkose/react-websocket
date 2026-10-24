@@ -48,6 +48,12 @@ export interface WebSocketFeeds<In> extends WebSocketTopics {
   on(type: 'message', listener: (message: In, event: MessageEvent) => void): () => void;
   /** The sequence number of the last message delivered on `topic`, while it's held. */
   position(topic: string): number | undefined;
+  /**
+   * Forget the position of `topic`, or of every topic, e.g. on logout or when another user
+   * signs in: the next subscription sends `after: undefined`, so the server sends that user's
+   * messages from the start, and none is dropped as a duplicate of the previous user's.
+   */
+  reset(topic?: string): void;
 }
 
 /**
@@ -144,6 +150,15 @@ export function createWebSocketFeeds<In, const Out>(
       };
     },
     position: topic => last.get(topic),
+    reset(topic) {
+      if (topic === undefined) {
+        last.clear();
+        resuming.clear();
+      } else {
+        last.delete(topic);
+        resuming.delete(topic);
+      }
+    },
     dispose() {
       topics.dispose();
       for (const off of offs) off();

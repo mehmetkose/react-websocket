@@ -29,7 +29,10 @@ export type Status = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 export interface Snapshot<In> {
   /** Connection state. */
   readonly status: Status;
-  /** Most recent message (after `parse`/`json` and `schema`), kept across reconnects. */
+  /**
+   * Most recent message (after `parse`/`json` and `schema`), kept across reconnects and
+   * cleared by `close()`.
+   */
   readonly lastMessage: In | undefined;
   /**
    * Consecutive failed attempts since the last stable connection. A connection that closes
@@ -443,9 +446,10 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
    */
   connect(): void;
   /**
-   * Close the connection and stop reconnecting. The status becomes `closed` and the
-   * send queue is cleared. Mounted hooks stay mounted; call `connect()` or `reconnect()`
-   * to start again. Closed while no hook holds it, the next hook to mount starts it again.
+   * Close the connection and stop reconnecting. The status becomes `closed`, and the send
+   * queue, a `migrate()` target and `lastMessage` are cleared, so call it on logout. Mounted
+   * hooks stay mounted; call `connect()` or `reconnect()` to start again. Closed while no hook
+   * holds it, the next hook to mount starts it again.
    *
    * Like `WebSocket.close()`, it throws for a code or reason the socket rejects (browsers take
    * `1000` or `3000`–`4999`, and a reason up to 123 bytes), and then nothing has changed.
@@ -454,7 +458,8 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
   close(code?: number, reason?: string): void;
   /**
    * Drop the current socket (if any) and connect again immediately, resetting the
-   * backoff. Also restarts a `closed` client.
+   * backoff. Also restarts a `closed` client. The send queue and a `migrate()` target are
+   * kept: when another user signs in, call `close()` and then `connect()` instead.
    */
   reconnect(): void;
   /**

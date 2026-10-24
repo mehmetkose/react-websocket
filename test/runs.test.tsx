@@ -333,6 +333,46 @@ describe('createWebSocketRuns', () => {
     runs.dispose();
   });
 
+  it('clear() forgets every run, here and in storage, and sends nothing of them later', () => {
+    const { client, runs, storage } = setup();
+    client.connect();
+    runs.start('streaming', { runId: 'r1' });
+    runs.start('short', { runId: 'r2', policy: 'cancel' });
+    MockWebSocket.last.open();
+    token('r1', 1);
+    token('r2', 1);
+    // The connection drops: r2 waits to be cancelled, and r3 to be started, on the next one.
+    MockWebSocket.last.finishClose(1006);
+    runs.start('unsent', { runId: 'r3' });
+    expect(runs.list().map(run => run.runId)).toEqual(['r1', 'r2', 'r3']);
+
+    const listener = vi.fn();
+    runs.subscribe(listener);
+    runs.clear();
+    expect(runs.list()).toEqual([]);
+    expect(runs.get('r1')).toBeUndefined();
+    expect(listener).toHaveBeenCalledOnce();
+    expect(storage!.getItem('react-websocket-runs:chat')).toBeNull();
+
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([]);
+    // Still usable.
+    runs.start('next', { runId: 'r4' });
+    expect(sent()).toEqual([{ type: 'run', runId: 'r4', prompt: 'next' }]);
+  });
+
+  it('clear() takes back the cancels of remembered runs, before they go out on the next connection', () => {
+    const storage = memory();
+    storage.setItem('react-websocket-runs:chat', JSON.stringify({ old: 'cancel' }));
+    const { client, runs } = setup(storage);
+    runs.clear();
+    client.connect();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([]);
+  });
+
   it('stops after dispose()', () => {
     const { client, runs } = setup();
     runs.start('a', { runId: 'r1' });

@@ -133,7 +133,7 @@ Code `4000` is used by this library for a [heartbeat timeout](./reconnecting.md)
 
 ## Refreshing credentials
 
-When your app gets a new token (the user switched accounts, a token was revoked), call `reconnect()`. It drops the current socket and connects again right away, calling your URL function for a new URL:
+When the same user gets a new token (one was revoked), call `reconnect()`. It drops the current socket and connects again right away, calling your URL function for a new URL, and keeps what's queued:
 
 ```ts
 onTokenChanged(() => live.reconnect());
@@ -143,4 +143,24 @@ onTokenChanged(() => live.reconnect());
 
 For a token that is only being renewed, call `live.migrate()` instead. It opens the new connection, with a new URL from your function, and closes the old one only once the new one is open, so the status stays `open` throughout. See [Deploys](./reconnecting.md#deploys-without-reconnect-storms).
 
-After the user logs out, call `live.close()`. That closes the socket, stops reconnecting and clears the send queue. Mounted components stay mounted; the status stays `closed` until `connect()` or `reconnect()` is called.
+## Logging out and switching accounts
+
+When the user logs out, or another user signs in on the same page, nothing the client kept for the previous user should reach the next one. `live.close()` closes the socket, stops reconnecting, and clears the send queue, a `migrate()` target and `lastMessage`. The managers built on the client keep their own state, so reset theirs too, then call `connect()` once the next user has signed in:
+
+```ts
+function signOut() {
+  feeds.reset(); // numbered feeds: the last position on each topic
+  inbox.reset(); // state stores
+  cursors.leave(); // presence: stop sharing this user's state
+  runs.clear(); // runs: their values, unsent starts and remembered ids
+  agent.reset(); // AG-UI agents: the thread
+  void orders.clear(); // outboxes: every entry, in every tab and in storage
+  live.close();
+}
+```
+
+Reset only what your app uses. For an account switch, use `close()` and then `connect()`, not `reconnect()`, which keeps the send queue. With [shared tabs](./tabs.md), pass `session` to `createTabsWebSocket`, so the next user gets a connection of their own instead of the one the previous user authenticated.
+
+Mounted components stay mounted; the status stays `closed` until `connect()` or `reconnect()` is called.
+
+The server has a part too. A socket keeps the authority it was given when it connected until it closes, so when a session ends (a logout, possibly on another device, or a revoked session), close that user's open sockets on the server with a code your client doesn't retry, as the [live notifications recipe](../recipes/live-notifications.md) does.

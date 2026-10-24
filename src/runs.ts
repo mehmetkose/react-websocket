@@ -90,6 +90,13 @@ export interface WebSocketRuns<Req, T> {
   subscribe(listener: () => void): () => void;
   /** Forget a run, aborting it first if it's streaming. */
   delete(runId: string): void;
+  /**
+   * Forget every run, e.g. on logout or when another user signs in: their values, unsent start
+   * requests and pending cancels, here and in `storage`. Sends nothing, so nothing of the
+   * previous user's goes out on a later connection; `abort()` runs that should stop on the
+   * server first, while connected.
+   */
+  clear(): void;
   /** Stop following runs, and release the connection. Remembered runs stay remembered. */
   dispose(): void;
 }
@@ -160,6 +167,8 @@ export function createWebSocketRuns<Req, T, In, const Out>(
   const starting = new Map<string, Req>();
   const policies = new Map<string, RunPolicy>();
   const releases = new Map<string, () => void>();
+  // Cancels waiting for the next connection, each with a way to take it back.
+  const cancels = new Set<() => void>();
   const listeners = new Set<() => void>();
   let list: readonly AgentRun<T>[] = [];
 
@@ -229,11 +238,18 @@ export function createWebSocketRuns<Req, T, In, const Out>(
     // Not through the queue, which `queue: false` turns off: hold the connection, and send it
     // from an `open` listener, ahead of anything queued.
     const release = client.acquire();
+    const drop = () => {
+      cancels.delete(drop);
+      off();
+      release();
+    };
     const off = client.on('open', () => {
+      cancels.delete(drop);
       off();
       client.send(message(runId));
       release();
     });
+    cancels.add(drop);
   }
 
   function abort(runId: string) {
@@ -330,6 +346,24 @@ export function createWebSocketRuns<Req, T, In, const Out>(
         list = [...runs.values()];
         for (const listener of [...listeners]) listener();
       }
+    },
+    clear() {
+      for (const release of releases.values()) release();
+      releases.clear();
+      for (const drop of [...cancels]) drop();
+      // Runs found in storage that would be cancelled once nobody claims them.
+      stale.length = 0;
+      starting.clear();
+      policies.clear();
+      try {
+        storage?.removeItem(key);
+      } catch {
+        // Blocked storage: nothing was remembered there.
+      }
+      if (!runs.size) return;
+      runs.clear();
+      list = [];
+      for (const listener of [...listeners]) listener();
     },
     dispose() {
       for (const release of releases.values()) release();

@@ -1040,6 +1040,28 @@ describe('migrate()', () => {
 });
 
 describe('close()', () => {
+  it('clears lastMessage and the queue, so the next user after a logout gets nothing of the last one', () => {
+    let user = 'alice';
+    const ws = createWebSocket(() => `ws://x?user=${user}`, {
+      WebSocket: MockImpl,
+      reconnect: noJitter
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.receive('for alice');
+    MockWebSocket.last.finishClose(1006);
+    expect(ws.send('from alice')).toBe(false);
+    ws.close();
+    expect(ws.getSnapshot().lastMessage).toBeUndefined();
+
+    user = 'bob';
+    ws.connect();
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.url).toBe('ws://x?user=bob');
+    expect(MockWebSocket.last.sent).toEqual([]);
+    expect(ws.getSnapshot()).toMatchObject({ status: 'open', lastMessage: undefined });
+  });
+
   it('stops reconnecting, reports the close and clears the queue', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter });
     const onClose = vi.fn();

@@ -31,7 +31,7 @@ The client state that hooks render from. A new object is created on every change
 ```ts
 interface Snapshot<In> {
   readonly status: Status;
-  /** Most recent message (after parse/json and schema), kept across reconnects. */
+  /** Most recent message (after parse/json and schema), kept across reconnects and cleared by close(). */
   readonly lastMessage: In | undefined;
   /**
    * Consecutive failed attempts since the last stable connection. A connection that closes
