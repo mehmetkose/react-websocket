@@ -1,6 +1,6 @@
 {
   "name": "react-websocket",
-  "version": "4.20.0",
+  "version": "4.21.0",
   "description": "The real-time toolkit for React: a WebSocket hook with shared connections, auto-reconnect and typed messages, plus topics, state, requests, presence and AI agents",
   "type": "module",
   "main": "./dist/index.cjs",

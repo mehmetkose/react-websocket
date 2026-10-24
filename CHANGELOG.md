@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.21.0] - 2026-10-24
+
 ### Security
 
 Logging out, or another user signing in on the same page, no longer has to carry the previous user's data or queued
@@ -490,7 +492,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.20.0...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.21.0...HEAD
+[4.21.0]: https://github.com/mehmetkose/react-websocket/compare/4.20.0...4.21.0
 [4.20.0]: https://github.com/mehmetkose/react-websocket/compare/4.19.1...4.20.0
 [4.19.1]: https://github.com/mehmetkose/react-websocket/compare/4.19.0...4.19.1
 [4.19.0]: https://github.com/mehmetkose/react-websocket/compare/4.18.1...4.19.0
