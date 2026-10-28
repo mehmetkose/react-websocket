@@ -129,7 +129,7 @@ createWebSocket(url, {
 | `4000` | Heartbeat timeout | Set by this library when a `heartbeat.timeout` expires |
 | `4001`–`4999` | Application-defined | Your server's own meanings, e.g. `4001` for unauthorized |
 
-The client doesn't retry `1002` (protocol error), `1003` (unsupported data) or `1008`, and retries every other code. To change which codes are retried, see [`shouldReconnect`](./api/options.md#reconnect).
+The client doesn't retry `1002` (protocol error), `1003` (unsupported data) or `1008`, and retries every other code. To change which codes are retried, see [`shouldReconnect`](./api/options.md#reconnect). To have your server tell clients when to come back, or not to, see [Letting the server decide](./guide/reconnecting.md#letting-the-server-decide).
 
 ## `WebSocket is not defined`, or nothing connects in tests
 

@@ -12,6 +12,14 @@ All notable changes to this project are documented here. The format is based on
   a new pattern in the recipes: publish to a topic and await the server's answer with `createWebSocketRequests`,
   tell a refusal from an answer that never came, retry without publishing twice, and use the outbox instead for
   messages that must survive a reload.
+- [Letting the server decide](https://mehmetkose.github.io/react-websocket/guide/reconnecting#letting-the-server-decide),
+  a new section in the reconnecting guide: how a server tells clients to come back later, start over on a new
+  connection, or not come back, the three kinds of reconnect advice Bayeux servers such as Faye give, with the close
+  codes and messages that carry them.
+- [Headers, proxies and TLS](https://mehmetkose.github.io/react-websocket/guide/without-react#headers-proxies-and-tls)
+  in Node: a `ws` subclass that sends headers with a fresh token on every connection, connects through a proxy,
+  trusts a private certificate authority, and ends attempts that hang, which neither the client nor `ws` does on
+  its own when a proxy doesn't answer.
 
 ## [4.21.0] - 2026-10-24
 

@@ -142,6 +142,65 @@ createWebSocket(url, { WebSocket: globalThis.WebSocket });
 
 The immediate retry on `online` and `visibilitychange` only exists in browsers; in Node, reconnects follow the backoff alone.
 
+### Headers, proxies and TLS
+
+A browser [can't set headers](./authentication.md#browsers-cant-set-headers) on a WebSocket, but a Node client can, and it may also need a proxy or a private certificate authority. `ws` takes all of these as options, in a third constructor argument. The client only passes the URL and [`protocols`](../api/options.md#protocols), so put the options in a subclass:
+
+```ts
+// feed.ts
+import { readFileSync } from 'node:fs';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import WebSocket from 'ws';
+import { createWebSocket } from 'react-websocket/core';
+import { getFreshToken } from './auth';
+
+// Made once and shared by every connection.
+const proxy = process.env.HTTPS_PROXY;
+const agent = proxy ? new HttpsProxyAgent(proxy) : undefined;
+const ca = readFileSync('certs/internal-ca.pem');
+let token: string;
+
+class NodeWebSocket extends WebSocket {
+  constructor(url: string | URL, protocols?: string | string[]) {
+    super(url, protocols, { headers: { Authorization: `Bearer ${token}` }, agent, ca });
+    // End an attempt that hangs, at the proxy or at the server.
+    const timer = setTimeout(() => this.terminate(), 10_000);
+    this.once('open', () => clearTimeout(timer)).once('close', () => clearTimeout(timer));
+  }
+}
+
+export const feed = createWebSocket<{ event: string }>(
+  async () => {
+    token = await getFreshToken();
+    return 'wss://api.example.com/feed';
+  },
+  {
+    json: true,
+    WebSocket: NodeWebSocket as unknown as typeof globalThis.WebSocket,
+    binaryType: 'arraybuffer'
+  }
+);
+```
+
+The client constructs a socket for every connection attempt, reconnects and [`migrate()`](./reconnecting.md#deploys-without-reconnect-storms) included. A constructor can't wait for a token, so the [URL function](./authentication.md#token-in-the-url) fetches it: it runs right before each attempt and may be async. Each connection then sends a fresh token.
+
+The `ws` options that matter here:
+
+| Option | |
+| --- | --- |
+| `headers` | Sent with the upgrade request: `Authorization`, `Cookie`, or anything else your server reads |
+| `agent` | Connects through a proxy: [`https-proxy-agent`](https://www.npmjs.com/package/https-proxy-agent) for an HTTP proxy, [`socks-proxy-agent`](https://www.npmjs.com/package/socks-proxy-agent) for SOCKS |
+| `ca` | Trusts a private certificate authority. Add `cert` and `key` for mutual TLS |
+| `perMessageDeflate` | Compression. `ws` offers it by default and the server decides. Pass `false` for data that's already compressed, or an object to tune it |
+
+The rest are in the [`ws` documentation](https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketaddress-protocols-options).
+
+The timer matters in Node. A server that accepts the connection but never answers, or a proxy that never answers, would hold an attempt open forever: neither the client nor `ws` ends it on its own. `ws` has a `handshakeTimeout` option, but it doesn't start until the proxy has answered. `terminate()` ends the attempt with a `1006` close, and the client retries it with the usual backoff.
+
+:::warning Don't turn off certificate checks
+`rejectUnauthorized: false` gets past a certificate error by accepting any certificate, an attacker's included. Pass the certificate authority as `ca` instead.
+:::
+
 ## State libraries
 
 Connect a client to a store by forwarding events. Because the client is created at module level, nothing depends on React rendering.
