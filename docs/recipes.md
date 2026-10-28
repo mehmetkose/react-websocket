@@ -1,6 +1,6 @@
 ---
 title: 'React WebSocket recipes and real-world guides'
-description: 'Framework recipes for Next.js, Astro, Remix, Hono and Tornado, real-world guides that build whole real-time apps in React, client and server, and short patterns: message routing, request/response, presence and typing indicators, polling, optimistic sends, logging.'
+description: 'Framework recipes for Next.js, Astro, Remix, Hono and Tornado, real-world guides that build whole real-time apps in React, client and server, and short patterns: message routing, request/response, acknowledged publishes, presence and typing indicators, polling, optimistic sends, logging.'
 ---
 
 # Recipes
@@ -277,6 +277,163 @@ const user = await request<User>(api, 'getUser', { id: '42' });
 
 If the socket isn't open, the request is queued and sent on connect. The timer starts immediately, so pick a timeout that covers a reconnect. If the connection drops after the request was sent, the server may never reply; the timeout turns that into a rejection.
 
+## Publishing with an acknowledgement
+
+`send()` returns once the message is handed to the socket or queued. It can't tell you whether the server received the message, or whether it accepted it. Pub/sub clients such as Faye return a promise from `publish()` that settles when the server answers. [`createWebSocketRequests`](./api/create-websocket-requests.md) gives you the same promise: the server answers each publish with its id, and the promise resolves on that answer, or rejects on a refusal, a timeout or a lost connection.
+
+```ts
+// live.ts
+import { createWebSocket, createWebSocketRequests } from 'react-websocket';
+
+type LiveIn =
+  | { type: 'event'; topic: string; data: unknown }
+  | { type: 'published'; id: number }
+  | { type: 'refused'; id: number; reason: string };
+
+type LiveOut =
+  | { type: 'subscribe' | 'unsubscribe'; topic: string }
+  | { type: 'publish'; id: number; key: string; topic: string; data: unknown };
+
+/** A message to publish. `key` identifies it, so a retry isn't published twice. */
+export type Publish = { key: string; topic: string; data: unknown };
+
+/** The server said no, e.g. no permission for that topic. Sending it again won't help. */
+export class PublishRefused extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = 'PublishRefused';
+  }
+}
+
+export const live = createWebSocket<LiveIn, LiveOut>('wss://api.example.com/live', { json: true });
+
+export const publishes = createWebSocketRequests(live, {
+  send: (message: Publish, id) => ({ type: 'publish', id, ...message }),
+  reply: message => (message.type === 'event' ? undefined : message.id),
+  error: message => (message.type === 'refused' ? new PublishRefused(message.reason) : undefined),
+  timeout: 15_000
+});
+```
+
+Every publish carries two identifiers. `id` belongs to the request: the library generates a new one on every call, so the answer finds its promise. `key` is yours: keep it when you retry, and the server publishes each key once.
+
+```tsx
+// Composer.tsx
+import { useState } from 'react';
+import { PublishRefused, publishes } from './live';
+
+type Post = {
+  key: string;
+  text: string;
+  state: 'sending' | 'sent' | 'refused' | 'unconfirmed';
+  reason?: string;
+};
+
+export function Composer({ room }: { room: string }) {
+  const [text, setText] = useState('');
+  const [post, setPost] = useState<Post>();
+
+  // A retry passes the same key, so the server won't publish the message twice.
+  async function submit(text: string, key: string = crypto.randomUUID()) {
+    setPost({ key, text, state: 'sending' });
+    try {
+      await publishes.request({ key, topic: `room:${room}`, data: { text } });
+      setPost({ key, text, state: 'sent' });
+    } catch (error) {
+      if (error instanceof PublishRefused) {
+        setPost({ key, text, state: 'refused', reason: error.message });
+      } else {
+        setPost({ key, text, state: 'unconfirmed' });
+      }
+    }
+  }
+
+  return (
+    <>
+      <form
+        onSubmit={event => {
+          event.preventDefault();
+          submit(text);
+          setText('');
+        }}
+      >
+        <input value={text} onChange={event => setText(event.target.value)} />
+        <button disabled={!text || post?.state === 'sending'}>Send</button>
+      </form>
+      {post?.state === 'sending' && <p role="status">Sending…</p>}
+      {post?.state === 'sent' && <p role="status">Sent</p>}
+      {post?.state === 'refused' && <p role="alert">Not sent: {post.reason}</p>}
+      {post?.state === 'unconfirmed' && (
+        <p role="alert">
+          No answer from the server.{' '}
+          <button onClick={() => submit(post.text, post.key)}>Try again</button>
+        </p>
+      )}
+    </>
+  );
+}
+```
+
+What a failure means:
+
+- **Refused.** The server got the message and said no, and `error` turned its answer into a `PublishRefused`. Show the reason. Sending it again gets the same answer.
+- **Anything else.** A `TimeoutError`, a lost connection, or a request dropped from the send queue. The server may have published the message or not, so it's unconfirmed. Retrying with the same `key` is safe either way.
+- **Lost connections fail at once.** An answer can only arrive on the connection the publish went out on, so when that connection closes, the promise rejects right away instead of waiting for `timeout`.
+- **Offline.** A publish made while disconnected waits in the send queue and goes out on the next connection. Its `timeout` counts from the call, so pick one that covers a reconnect, or pass `{ volatile: true }` as the second argument of `request()` to fail at once instead.
+- **Acknowledged isn't received.** The answer means the server accepted the message and handed it out, not that every subscriber has it. Subscribers that were offline catch up through [numbered feeds](./guide/topics.md#numbered-feeds).
+
+On the server, answer every publish with its `id`: `refused` when it isn't allowed, `published` once it's handed out. Publish each `key` once, and answer a repeat with `published` again so the client's retry resolves:
+
+```ts
+// server.ts, with the `ws` package
+import { WebSocketServer } from 'ws';
+import { broadcast, mayPublish } from './topics'; // your own rules and fan-out
+
+type Publish = { type: 'publish'; id: number; key: string; topic: string; data: unknown };
+
+/** A publish message, if it has the fields it needs. */
+function parse(data: string): Publish | undefined {
+  try {
+    const message = JSON.parse(data);
+    if (
+      message?.type === 'publish' &&
+      Number.isInteger(message.id) &&
+      typeof message.key === 'string' &&
+      typeof message.topic === 'string'
+    )
+      return message;
+  } catch {
+    // Not JSON.
+  }
+  return undefined;
+}
+
+// Keys already published. A database table with an expiry in production.
+const published = new Set<string>();
+
+const wss = new WebSocketServer({ port: 8080 });
+
+wss.on('connection', socket => {
+  socket.on('error', console.error);
+  socket.on('message', data => {
+    const message = parse(String(data));
+    if (!message) return socket.close(1003, 'Invalid message');
+    const { id, key, topic } = message;
+    if (!mayPublish(socket, topic)) {
+      socket.send(JSON.stringify({ type: 'refused', id, reason: 'Not allowed in this room' }));
+      return;
+    }
+    if (!published.has(key)) {
+      published.add(key);
+      broadcast(topic, message.data);
+    }
+    socket.send(JSON.stringify({ type: 'published', id }));
+  });
+});
+```
+
+A request lives in memory: a reload loses it, and nothing retries it for you. For messages that must arrive, such as an order, use the [offline outbox](./guide/outbox.md) instead. It keeps each message in IndexedDB and sends it again on every new connection until the server acknowledges it. It has no promise per message, though, and no refusal: the server acknowledges everything it has handled, allowed or not, or the outbox would send a refused message forever. Report a refusal in a message of its own.
+
 ## Following a changing URL
 
 With `useWebSocket(url)`, a new URL closes the old connection and opens the new one. Build the URL from state:
@@ -423,6 +580,8 @@ useWebSocketEvent(chat, 'message', event => {
 ```
 
 Queued messages go out in order when the connection opens. To bound memory during a long outage, set [`queue: { limit }`](./api/options.md#queue). `close()` and giving up both clear the queue, so messages still marked `queued` at that point were never sent.
+
+To await the server's answer as a promise instead, with refusals and retries, see [Publishing with an acknowledgement](#publishing-with-an-acknowledgement).
 
 ## Pausing a connection
 

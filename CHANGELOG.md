@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- [Publishing with an acknowledgement](https://mehmetkose.github.io/react-websocket/recipes#publishing-with-an-acknowledgement),
+  a new pattern in the recipes: publish to a topic and await the server's answer with `createWebSocketRequests`,
+  tell a refusal from an answer that never came, retry without publishing twice, and use the outbox instead for
+  messages that must survive a reload.
+
 ## [4.21.0] - 2026-10-24
 
 ### Security

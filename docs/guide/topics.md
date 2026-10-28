@@ -163,6 +163,7 @@ release();
 ## See also
 
 - [`createWebSocketTopics`](../api/create-websocket-topics.md), [`createWebSocketFeeds`](../api/create-websocket-feeds.md) and [`useWebSocketTopic`](../api/use-websocket-topic.md)
+- [Publishing with an acknowledgement](../recipes.md#publishing-with-an-acknowledgement): publish to a topic and await the server's answer
 - [Message state](./state.md)
 - [Reconnecting and heartbeats](./reconnecting.md)
 - [Build a team chat app](../recipes/team-chat.md): numbered feeds for channels, with unread counts and catching up after a reconnect
