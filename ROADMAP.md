@@ -15,9 +15,6 @@ behavior change.
 
 ### Docs
 
-- **Publish with acknowledgement.** A recipe for awaiting the server's acknowledgement of a message, like
-  Faye's `publish().then()`. `createWebSocketRequests` already resolves on the acknowledgement and rejects on
-  an error reply or a timeout, and `react-websocket/outbox` covers messages that must arrive across reloads.
 - **Server-controlled reconnects.** A section in the reconnecting guide that maps the instructions a Faye
   server can give its clients onto what exists: "retry in N seconds" is a `1013` close with N as the reason
   (`retryAfter`), "reconnect fresh" is a message that calls `migrate()`, and "stop" is a close code of your
