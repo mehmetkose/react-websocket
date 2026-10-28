@@ -13,16 +13,6 @@ These come from comparing the client with [Faye](https://faye.jcoglan.com)'s. No
 with topics and requests, you describe your server's messages and the library keeps track of them. None is a
 behavior change.
 
-### Docs
-
-- **Server-controlled reconnects.** A section in the reconnecting guide that maps the instructions a Faye
-  server can give its clients onto what exists: "retry in N seconds" is a `1013` close with N as the reason
-  (`retryAfter`), "reconnect fresh" is a message that calls `migrate()`, and "stop" is a close code of your
-  own that `shouldReconnect` refuses.
-- **Headers, proxies, TLS and compression in Node.** The Node section of the without-React guide only shows
-  plain `ws`. Add a `ws` subclass that passes `headers`, a proxy `agent`, `ca` and `perMessageDeflate`, and
-  reads the token in its constructor so every reconnect sends a fresh one.
-
 ### Topics
 
 Each builds on the one before it, so they ship in this order.

@@ -18,6 +18,8 @@ The browser `WebSocket` constructor takes a URL and optional sub-protocols. Noth
 | [Cookies](#cookies) | When the socket is on the same site as your app. |
 | [First-message auth](#first-message-auth) | When the protocol expects an `auth` message after connecting. |
 
+A client running in Node can set headers. See [Headers, proxies and TLS](./without-react.md#headers-proxies-and-tls).
+
 ## Token in the URL
 
 Pass a function as the URL. It runs before **every** connection attempt, reconnects included, so each attempt can use a fresh token. It may be async:

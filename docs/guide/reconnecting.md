@@ -196,6 +196,80 @@ Both actions are on the hook result and on the client, and keep the same identit
 - `reconnect()` drops the current socket (if any) and connects again immediately, with the backoff reset. It also restarts a `closed` client.
 - `close(code?, reason?)` closes with `1000` by default and stops reconnecting. See [Shared clients](./shared-clients.md#closing-and-restarting).
 
+## Letting the server decide
+
+The client picks its own moment to reconnect, but sometimes the server knows better: it's overloaded, it's moving its clients elsewhere, or a client shouldn't come back at all. Bayeux servers such as [Faye](https://faye.jcoglan.com) and CometD send this as advice with their responses: `retry` after an interval, `handshake` to start over, or `none`. A WebSocket server can say the same three things with what's on this page:
+
+| The server says | It sends | The client |
+| --- | --- | --- |
+| Come back in N seconds | A `1013` close with N as the reason | Waits N seconds plus the usual backoff. See [Overloaded servers](#overloaded-servers-1013) |
+| Start over on a new connection | A message the client answers with `migrate()` | Opens a new connection, then closes the old one, with no gap. See [Deploys](#deploys-without-reconnect-storms) |
+| Don't come back | A close with a code that `shouldReconnect` refuses | Stops, and the status becomes `closed`. See [Giving up](#giving-up) |
+
+The first needs nothing on the client. The other two are a message listener and a `shouldReconnect`. Here the server turns away pages that are older than it, after a deploy that changed its messages:
+
+```ts
+// live.ts
+import { createWebSocket, retryableClose } from 'react-websocket';
+import { BUILD_ID } from './build';
+
+type LiveIn = { type: 'reconnect'; within: number } | { type: 'event'; data: unknown };
+
+// Our server's "don't come back" code. Pick yours from 4001–4999: the client closes with
+// 4000 itself on a heartbeat timeout.
+export const OUTDATED = 4426;
+
+export const live = createWebSocket<LiveIn>(`wss://api.example.com/live?build=${BUILD_ID}`, {
+  json: true,
+  reconnect: {
+    shouldReconnect: close => close.code !== OUTDATED && retryableClose(close)
+  }
+});
+
+live.on('message', message => {
+  if (message.type === 'reconnect') live.migrate({ within: message.within });
+});
+```
+
+Reconnecting can't help a page that's out of date, but reloading can. A `close` listener runs after the status has changed, so it can tell the user what to do:
+
+```tsx
+import { useState } from 'react';
+import { useWebSocketEvent } from 'react-websocket';
+import { live, OUTDATED } from './live';
+
+function UpdateBanner() {
+  const [outdated, setOutdated] = useState(false);
+  useWebSocketEvent(live, 'close', close => {
+    if (close.code === OUTDATED) setOutdated(true);
+  });
+  if (!outdated) return null;
+  return (
+    <div role="alert">
+      A new version is available. <button onClick={() => location.reload()}>Reload</button>
+    </div>
+  );
+}
+```
+
+On the server, with the [`ws`](https://github.com/websockets/ws) package:
+
+```ts
+// Come back in 30 seconds.
+socket.close(1013, '30');
+
+// Start over on a new connection, at a random moment in the next 10 seconds.
+socket.send(JSON.stringify({ type: 'reconnect', within: 10_000 }));
+
+// Don't come back.
+socket.close(4426, 'Outdated client');
+```
+
+- **Accept the connection first.** If the server refuses the upgrade request with an HTTP status, such as `401` or `503`, the browser doesn't pass the status on: the client sees a `1006` close and retries with the usual backoff. To advise a client that's connecting, accept the connection, then close it with a code. A connection that closes that soon [counts as a failed attempt](#servers-that-close-right-after-accepting), so `maxAttempts` still applies.
+- **Keep reasons short.** A close reason holds at most 123 bytes of UTF-8. Send a number or a few words, and keep the text users read on the client, chosen by code.
+- **Starting over with a close works too**, but with a gap: the status goes to `reconnecting`, `send()` queues, and what the server publishes meanwhile is missed, unless you use [numbered feeds](./topics.md#numbered-feeds). Either way, `open` listeners run on the new connection, so an auth handshake and [topic](./topics.md) subscriptions are sent again, as after a Bayeux handshake.
+- **Other ways to ask for a delay.** A server that's restarting can close with `1012` (Service Restart) and the delay in its reason instead. If yours says how long to wait in another way, pass your own [`retryAfter`](#overloaded-servers-1013).
+
 ## Showing it in the UI
 
 `status` and `attempt` are all you need for a connection banner:

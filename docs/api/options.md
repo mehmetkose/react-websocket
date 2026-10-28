@@ -61,6 +61,8 @@ import WebSocket from 'ws';
 createWebSocket(url, { WebSocket: WebSocket as unknown as typeof globalThis.WebSocket });
 ```
 
+To send headers, use a proxy or trust a private certificate authority, pass a subclass that adds `ws` options. See [Headers, proxies and TLS](../guide/without-react.md#headers-proxies-and-tls).
+
 In development, pass a class from [`createChaosWebSocket`](./chaos.md) to add latency, lost messages and dropped connections. See [Chaos testing](../guide/chaos.md).
 
 ## Messages
