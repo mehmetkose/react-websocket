@@ -47,9 +47,9 @@ No React needed: the client from `core`, small bindings that stand in for the ho
 
 #### [Hono](./recipes/hono.md)
 
-A chat room with a Hono server on Node.js, a Vite and React client, and message types both sides import.
+A chat room with a Hono server on Node.js, a Vite and React client, message types both sides import, and a bot in Node.
 
-`upgradeWebSocket`&nbsp;· Vite proxy&nbsp;· `createWebSocketState`&nbsp;· `heartbeat`
+`upgradeWebSocket`&nbsp;· Vite proxy&nbsp;· `createWebSocketState`&nbsp;· `createWebSocketRequests`&nbsp;· `migrate()`&nbsp;· `heartbeat`
 
 </section>
 
