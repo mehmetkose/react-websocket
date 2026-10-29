@@ -8,7 +8,8 @@
     "build": "vite build",
     "start": "NODE_ENV=production node server.ts",
     "typecheck": "tsc --noEmit",
-    "update-library": "npm --prefix ../.. run build && node -e \"require('fs').rmSync('node_modules/react-websocket', { recursive: true, force: true })\" && npm install"
+    "update-library": "npm --prefix ../.. run build && node -e \"require('fs').rmSync('node_modules/react-websocket', { recursive: true, force: true })\" && npm install",
+    "bot": "node bot.ts"
   },
   "engines": {
     "node": ">=22.18"
@@ -16,6 +17,7 @@
   "dependencies": {
     "@hono/node-server": "^2.1.4",
     "hono": "^4.13.13",
+    "https-proxy-agent": "^9.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-websocket": "file:../..",

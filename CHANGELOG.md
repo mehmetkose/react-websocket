@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- The [Hono example](https://github.com/mehmetkose/react-websocket/tree/main/examples/hono) and
+  [its recipe](https://mehmetkose.github.io/react-websocket/recipes/hono) use what 4.22.0 documented. Chat
+  messages are requests the server answers with `posted` or `refused`, and a retry with the same key isn't posted
+  twice. The server tells clients when to come back: a full room closes with `1013` and a delay, long-lived
+  connections are asked to `migrate()`, and a page built for an older protocol is closed with a code it doesn't
+  retry, and asks the user to reload. A new `bot.ts` joins from Node with a token in a header, through a proxy if
+  `HTTPS_PROXY` is set.
+
 ## [4.22.0] - 2026-10-28
 
 The library's code is the same as in 4.21.0. This release adds documentation that came from comparing the client
