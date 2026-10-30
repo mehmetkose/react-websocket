@@ -22,7 +22,7 @@
     "react-dom": "^19.3.0",
     "react-websocket": "file:../..",
     "ws": "^8.22.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
