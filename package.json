@@ -157,9 +157,9 @@
     "reconnect",
     "suspense"
   ],
-  "author": "Mehmet Kose <mehmet@sourcream.uk> (https://sourcream.uk/)",
+  "author": "Mehmet Kose <mehmetkose@duck.com> (https://mehmetkose.github.io/)",
   "maintainers": [
-    "Mehmet Kose <mehmet@sourcream.uk> (https://sourcream.uk/)"
+    "Mehmet Kose <mehmetkose@duck.com> (https://mehmetkose.github.io/)"
   ],
   "license": "MIT",
   "bugs": {

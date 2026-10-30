@@ -34,7 +34,7 @@ export function SeoHead() {
     '@type': 'Person',
     '@id': `${siteUrl}#author`,
     name: 'Mehmet Kose',
-    url: 'https://sourcream.uk/',
+    url: 'https://mehmetkose.github.io/',
     sameAs: ['https://github.com/mehmetkose']
   };
   const graph: Record<string, unknown>[] = [
