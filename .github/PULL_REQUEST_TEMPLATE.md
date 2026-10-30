@@ -4,7 +4,9 @@
 
 ## Checklist
 
-- [ ] Tests cover the change (`npm test`)
-- [ ] `npm run lint`, `npm run typecheck` and `npm run format:check` pass
+See [CONTRIBUTING.md](https://github.com/mehmetkose/react-websocket/blob/main/CONTRIBUTING.md) for details.
+
+- [ ] Tests cover the change
+- [ ] `npm run check && npm run test:coverage && npm run check:package && npm run size` passes
 - [ ] Docs updated (`docs/` and TSDoc on public APIs) if behavior or API changed
 - [ ] `CHANGELOG.md` entry added under **Unreleased** for user-facing changes
