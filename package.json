@@ -175,7 +175,7 @@
     "@rspress/core": "^2.0.23",
     "@size-limit/preset-small-lib": "^14.2.0",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^24.19.2",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
