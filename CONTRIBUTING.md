@@ -1,6 +1,8 @@
 # Contributing
 
-Thanks for helping improve react-websocket. Bug reports, documentation fixes, tests and features are all welcome.
+Thanks for helping improve react-websocket. Bug reports, documentation fixes, tests and features are all welcome, and so is help answering questions and reproducing bugs.
+
+Everyone taking part in this project, in issues, discussions, pull requests and reviews, is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## A note on response times
 
@@ -8,22 +10,36 @@ This project is maintained in spare time, and the maintainer has a lot of other 
 
 The fastest way to move things along is to help each other: reviewing open pull requests, reproducing reported bugs, and answering questions in issues and [discussions](https://github.com/mehmetkose/react-websocket/discussions) all make a real difference.
 
+## Ways to help
+
+- **Answer questions and reproduce bugs.** A minimal reproduction is often the hardest part of a fix, and anyone can write one.
+- **Review pull requests.** Trying a change in your own app and saying whether it works is useful, even if you don't know the codebase.
+- **Improve the docs.** If something confused you, fix it while you still remember what was confusing. Pages on the [documentation site](https://mehmetkose.github.io/react-websocket/) link to their source, so you can edit them on GitHub.
+- **Fix bugs and build features.** The [roadmap](ROADMAP.md) lists ideas that have been checked against the code. Say in an issue or discussion which one you'd like to take on, so two people don't build the same thing.
+
 ## Before you start
 
-- **Bugs:** [open an issue](https://github.com/mehmetkose/react-websocket/issues/new/choose) with a minimal reproduction, if there isn't one already.
+- **Questions** go in [discussions](https://github.com/mehmetkose/react-websocket/discussions), not issues.
+- **Bugs:** search the [existing issues](https://github.com/mehmetkose/react-websocket/issues) first, then [open an issue](https://github.com/mehmetkose/react-websocket/issues/new/choose) with a minimal reproduction.
 - **Features and API changes:** open an issue or discussion first, so we can agree on the design before you spend time on code.
+- **Small fixes**, such as typos, broken links and clearer wording, don't need an issue. Open a pull request.
 - **Security issues:** don't open a public issue. See [SECURITY.md](SECURITY.md).
 
 ## Setup
 
-You need Node.js 22.18 or later. The toolchain is [Vite+](https://viteplus.dev/), installed as a dev dependency, so `npm ci` is all the setup it needs.
+You need Node.js 22.18+ or 24.11+, the versions Vite+ supports. CI runs Node 22 and 24. The toolchain is [Vite+](https://viteplus.dev/), installed as a dev dependency, so `npm ci` is all the setup it needs. The Remix example needs Node.js 24.3 or later, and the Tornado example needs [uv](https://docs.astral.sh/uv/).
+
+[Fork the repository](https://github.com/mehmetkose/react-websocket/fork), then:
 
 ```sh
-git clone https://github.com/mehmetkose/react-websocket.git
+git clone https://github.com/<your-username>/react-websocket.git
 cd react-websocket
+git remote add upstream https://github.com/mehmetkose/react-websocket.git
 npm ci
 npm test
 ```
+
+Make your change on a branch named after it, such as `fix-reconnect-after-logout`. To bring in changes from `main`, run `git fetch upstream` and `git rebase upstream/main`.
 
 ## Scripts
 
@@ -31,7 +47,7 @@ npm test
 | --- | --- |
 | `npm test` | Run the test suite once |
 | `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with a coverage report (and enforce the thresholds) |
+| `npm run test:coverage` | Run tests with a coverage report, and enforce the coverage thresholds as CI does |
 | `npm run check` | Format check, lint and type-check in one pass (`vp check`) |
 | `npm run lint` | Oxlint, including the React hooks and React Compiler rules |
 | `npm run format` / `format:check` | Format with Oxfmt / check formatting |
@@ -40,6 +56,7 @@ npm test
 | `npm run check:package` | Build, then validate the package with publint and Are the Types Wrong |
 | `npm run size` | Build, then check bundle sizes against the size-limit budgets |
 | `npm run docs:dev` | Run the documentation site locally |
+| `npm run docs:build` | Build the documentation site |
 | `npm run example:tornado:server` | Start the Tornado example's WebSocket server with [uv](https://docs.astral.sh/uv/), which installs its dependencies |
 | `npm run example:tornado` | Start the Tornado example's Vite app against that server |
 | `npm run example:nextjs` | Build the library, install it into the Next.js example, and start the demo on http://localhost:3000 |
@@ -48,61 +65,57 @@ npm test
 | `npm run example:remix` | Build the library, install it into the Remix 3 example, and start the demo on http://localhost:44100 |
 | `npm run example:game` | Build the library, install it into the game example, and start its server and Vite app on http://localhost:5180 |
 
-Before opening a pull request, run:
+## Running the checks
+
+Before opening a pull request, run what CI runs:
 
 ```sh
-npm run check && npm test && npm run check:package && npm run size
+npm run check && npm run test:coverage && npm run check:package && npm run size
 ```
 
-CI runs the same checks, plus the tests against React 18.
+CI also runs the tests on Node 22, and against React 18. To test against React 18 locally:
+
+```sh
+npm i --no-save react@18 react-dom@18 @types/react@18 @types/react-dom@18
+npm test
+npm ci # back to React 19
+```
 
 ## Project layout
 
 ```
 src/
-  types.ts     Public types, options and MessageError (with TSDoc: it's the IDE documentation)
-  client.ts    createWebSocket: connection, reconnect, queue, heartbeat, decoding, ready
-  core.ts      The react-websocket/core entry (no React)
-  react.ts     The hooks and the URL-keyed registry of shared clients
-  sendrate.ts  createWebSocketSendRate: keyed sends at a rate that adapts to congestion
-  feeds.ts     createWebSocketFeeds: topics with numbered messages, deduplicated and resumed
-  runs.ts      createWebSocketRuns: streamed runs that resume after a reconnect or a reload
-  presence.ts  createWebSocketPresence: per-peer state, throttled, refreshed and expired
-  index.ts     The main entry (core + hooks), built with a 'use client' banner
-  chaos.ts     The react-websocket/chaos entry: a WebSocket wrapper that injects faults
-  timeline.ts  The react-websocket/timeline entry: snapshot interpolation and input prediction
-  outbox.ts    The react-websocket/outbox entry: messages stored until acknowledged
-  ag-ui.ts     The react-websocket/ag-ui entry: AG-UI events, JSON Patch, and agents on runs
-  tabs.ts      The react-websocket/tabs entry: one WebSocket shared by every tab
-  replay.ts    The react-websocket/replay entry: record sessions and replay them
-  devtools.ts  The react-websocket/devtools entry: a development panel for every client
-  webtransport.ts  The react-websocket/webtransport entry: WebTransport behind the WebSocket API
+  types.ts      Public types, options and MessageError, with TSDoc: it's the IDE documentation
+  client.ts     createWebSocket: connection, reconnect, queue, heartbeat, decoding, ready
+  react.ts      The hooks, and the URL-keyed registry of shared clients
+  core.ts       The react-websocket/core entry: the client and the managers, without React
+  index.ts      The main entry (core + hooks), built with a 'use client' banner
+  *.ts          One file per feature: topics.ts, state.ts, requests.ts, runs.ts, presence.ts, …
 test/
-  mock.ts          MockWebSocket: a controllable fake WebSocket
-  core.test.ts     The client, without React
-  react.test.tsx   The hooks (jsdom)
-  ssr.test.tsx     Server rendering (Node environment)
-  chaos.test.ts    The chaos WebSocket, alone and with the client
-  timeline.test.ts The timeline, with fake timers standing in for the clock
-  sendrate.test.ts The adaptive send rate, with a settable bufferedAmount and chaos latency
-  outbox.test.tsx  The outbox, with memory storage and fake-indexeddb
-  feeds.test.tsx   Numbered feeds: duplicates, gaps, snapshots and resuming
-  runs.test.tsx    Resumable runs: reconnects, reloads, policies, and useAgentRun
-  ag-ui.test.tsx   JSON Patch, the AG-UI reducer, and agents over the mock socket
-  presence.test.tsx  Presence: throttling, refresh, expiry and the hook
-  tabs.test.ts       Shared tabs, with Node's BroadcastChannel and a fake Web Locks API
-  replay.test.ts     Recording through the mock socket, and replaying through the client
-  devtools.test.tsx  The devtools panel, with every kind of source
-  webtransport.test.ts  WebTransport framing, datagrams and fallbacks, with a fake WebTransport
-docs/          The VitePress documentation site
-examples/
-  tornado/     Vite + React chat against a Tornado server, using src/ directly
-  nextjs/      Next.js demo of every feature, with its own WebSocket server and the built package
-  hono/        Vite + React chat against a Hono server, sharing message types, with the built package
-  astro/       Astro islands demo of every feature, with its own WebSocket server and the built package
-  remix/       Remix 3 demo of every feature with react-websocket/core (no React), with the built package
-  game/        Multiplayer canvas game: a Node server with a fixed tick, the timeline and a chaos panel
+  mock.ts       MockWebSocket: a controllable fake WebSocket
+  *.test.ts(x)  core.test.ts for the client, react.test.tsx for the hooks, ssr.test.tsx for
+                server rendering, and a file for each feature, named after it
+docs/           The documentation site (Rspress): guide/, api/ and recipes/
+examples/       Example apps: nextjs, astro, remix, hono, game and tornado
 ```
+
+Some features ship as their own entry points, such as `react-websocket/chaos` and `react-websocket/outbox`, so apps that don't use them don't download them. A new entry point needs:
+
+- an entry in `exports` in `package.json`,
+- a build entry in `vite.config.ts`,
+- a size budget in `size-limit` in `package.json`,
+- an alias in `rspress.config.ts`, so demos in the docs use the source.
+
+## Writing code
+
+Oxfmt and Oxlint enforce formatting and the hooks rules. All the tool settings live in `vite.config.ts`. Beyond that:
+
+- **Keep the library dependency-free and small.** Every entry point has a size budget. If a change needs more, trim what's cheap to trim, then raise the budget in the same pull request and say why.
+- **Keep it safe in every React mode:** StrictMode, `<Activity>`, concurrent rendering and server rendering, on React 18 and 19.
+- **Keep `react-websocket/core` free of React,** so it works in Node and in other frameworks.
+- **Document public APIs with TSDoc** in `src/types.ts` or `src/react.ts`. It's what users see in their editor.
+- **Avoid breaking changes.** The library follows [semver](https://semver.org/), so a breaking change means a major version. If you think one is needed, discuss it in an issue first.
+- **Comment the why, not the what.** Match the existing style of short comments.
 
 ## Writing tests
 
@@ -110,7 +123,7 @@ examples/
 - **Use fake timers** (`vi.useFakeTimers()`) for anything involving reconnect delays, heartbeats or the deferred close after unmount. Pass `jitter: 0` for exact delays. Suspense tests need real timers, because React schedules retries itself.
 - **Give each test a unique URL** (see `uniqueUrl()` in `react.test.tsx`), since hooks with the same URL share a client.
 - **Wrap updates in `act()`** in React tests.
-- **Keep React 18 working.** CI also runs the suite against React 18. Tests that need React 19 APIs must be skipped there, using the helpers at the top of `react.test.tsx`:
+- **Keep React 18 working.** Tests that need React 19 APIs must be skipped on React 18, using the helpers at the top of `react.test.tsx`:
 
   ```ts
   const itReact19 = it.skipIf(typeof use !== 'function');
@@ -119,37 +132,59 @@ examples/
 
 - **Name regression tests after the issue** they cover (`'#46: changing the url reconnects to the new one'`).
 
-## Pull request checklist
+## Writing docs
 
-- [ ] Tests cover the change, and `npm test` passes.
-- [ ] Lint, formatting, types, package checks and size budgets pass (see above).
-- [ ] Public API changes have TSDoc in `src/types.ts` or `src/react.ts`, and the relevant pages in `docs/` are updated.
-- [ ] `CHANGELOG.md` has an entry under the unreleased version.
-- [ ] The PR description explains the why, and links the issue it fixes.
+- Guides are in `docs/guide/`, the API reference in `docs/api/`, and recipes in `docs/recipes/` and `docs/recipes.md`. Run `npm run docs:dev` to preview them, and make sure `npm run docs:build` succeeds.
+- Demos in the docs import `react-websocket` by name and get the current source from `src/`, so they show your change without a build.
+- When an option or behavior changes, update its guide page, its API page and its TSDoc together.
+- Oxfmt doesn't format Markdown, so format tables and code examples by hand. Users copy the code examples, so make sure they're correct.
 
-Keep pull requests focused: one fix or feature per PR is much quicker to review.
+## Changing the examples
 
-## Code style
+All the examples except Tornado install the built package from the repository root (`"react-websocket": "file:../.."`). `npm run example:<name>` rebuilds the library and reinstalls it before starting the example.
 
-Oxfmt and Oxlint enforce formatting and the hooks rules. All the tool settings live in `vite.config.ts`. Beyond that:
+The root lint and type-check skip these examples, since they need their own dependencies. When you change one, run its own type-check:
 
-- Keep the library dependency-free and the bundles small; the size budgets will tell you.
-- Match the existing comment style: short comments that explain *why*, not *what*.
-- Behaviour must be safe under StrictMode, `<Activity>`, concurrent rendering and server rendering.
+```sh
+npm --prefix examples/hono run typecheck
+```
+
+## Changelog
+
+Add an entry under `## [Unreleased]` in `CHANGELOG.md` for every change users will notice: fixes, new features, behavior changes and documentation. The changelog follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), with the sections Added, Changed, Fixed, Removed, Security and Documentation.
+
+Write entries for users: what changed and what it means for their app, with a link to the docs when there's a page about it. Tests, CI and refactors that users can't see don't need an entry. Don't change the version in `package.json`: it's set when a release is made.
+
+## Commits and pull requests
+
+- **Keep each pull request to one change.** One fix or feature per pull request is much quicker to review.
+- **Write commit messages and pull request titles in the imperative and in sentence case**, without a prefix or a final period: `Reset per-user state on logout and account switch`. Use the commit body to explain why, when it isn't obvious.
+- **Explain why in the description**, and link the issue it fixes (`Fixes #123`). The [pull request template](.github/PULL_REQUEST_TEMPLATE.md) has a checklist.
+- **Leave "Allow edits by maintainers" on**, so small fixes can be pushed to your branch instead of going back and forth.
+- **After a review, push new commits** instead of force-pushing, so reviewers can see what changed.
+- **CI must pass** before a pull request is merged.
+
+### Using AI tools
+
+AI coding assistants are fine to use, but you're responsible for what you submit: understand every line, run the checks, and make sure the description says what the change does. Please don't open issues or pull requests you haven't reviewed yourself.
 
 ## Releasing
 
 For maintainers:
 
-1. Pick the version from the `Unreleased` entries, following semver: a patch when they only fix things, a minor when
-   they add something, a major when they break something. Update `version` in `package.json`
-   (`npm version <major|minor|patch> --no-git-tag-version`).
-2. Move the `Unreleased` entries in `CHANGELOG.md` under the new version and date, and update its compare links.
-3. Commit, push, and make sure CI is green on `main`.
-4. Create a GitHub release with a tag matching the version (for example `3.0.0`), using the changelog entry as notes.
+1. Pick the version from the `[Unreleased]` entries, following semver: a patch when they only fix things, a minor when they add something, a major when they break something.
+2. On a branch named `release-X.Y.Z`, open a release pull request that:
+   - sets the version with `npm version X.Y.Z --no-git-tag-version`, which updates `package.json` and `package-lock.json`,
+   - updates the `react-websocket` version in each `examples/*/package-lock.json`,
+   - moves the `[Unreleased]` entries in `CHANGELOG.md` under `## [X.Y.Z] - YYYY-MM-DD`, adds the version's compare link, and points the `[Unreleased]` link at the new tag.
+3. Merge it once CI passes, and wait for CI to pass on `main`.
+4. Publish a GitHub release whose tag matches the version, without a `v` prefix, with the changelog entry as notes:
 
-Only number a version you're about to publish. A version the changelog lists but npm never got can't be installed, and
-its compare link has no tag to point at: until a release, changes stay under `Unreleased`.
+   ```sh
+   gh release create X.Y.Z --target <merge commit> --title X.Y.Z --notes-file notes.md
+   ```
+
+Only number a version you're about to publish. A version the changelog lists but npm never got can't be installed, and its compare link has no tag to point at: until a release, changes stay under `[Unreleased]`.
 
 Publishing the release runs `.github/workflows/release.yml`, which runs every check (`prepublishOnly`) and publishes to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements) through npm trusted publishing. No npm token is stored in the repository. One-time setup: on npmjs.com, add a trusted publisher for this repository with the workflow `release.yml` and environment `npm`, and create the `npm` environment in the GitHub repository settings.
 
