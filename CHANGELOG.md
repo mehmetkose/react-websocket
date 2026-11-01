@@ -6,8 +6,21 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.22.1] - 2026-10-30
+
+The library's code is the same as in 4.22.0. This release corrects the author details npm shows, and updates the
+examples.
+
+### Changed
+
+- The package's author and maintainer are now `Mehmet Kose <mehmetkose@duck.com>` with
+  [mehmetkose.github.io](https://mehmetkose.github.io/), replacing an email address and website that were wrong.
+
 ### Documentation
 
+- The Next.js, Astro and Remix examples use dependency versions that fix published security advisories: `next`
+  16.4.2 and `zod` 4.6.7, and in the Astro example `undici` 8.12.3, `qs` 6.16.1, `body-parser` 2.4.0 and `fast-uri`
+  3.1.9. The Remix example overrides `esbuild` to 0.28.2, since `remix` still asks for 0.27.
 - The [Hono example](https://github.com/mehmetkose/react-websocket/tree/main/examples/hono) and
   [its recipe](https://mehmetkose.github.io/react-websocket/recipes/hono) use what 4.22.0 documented. Chat
   messages are requests the server answers with `posted` or `refused`, and a retry with the same key isn't posted
@@ -522,7 +535,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.0...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.1...HEAD
+[4.22.1]: https://github.com/mehmetkose/react-websocket/compare/4.22.0...4.22.1
 [4.22.0]: https://github.com/mehmetkose/react-websocket/compare/4.21.0...4.22.0
 [4.21.0]: https://github.com/mehmetkose/react-websocket/compare/4.20.0...4.21.0
 [4.20.0]: https://github.com/mehmetkose/react-websocket/compare/4.19.1...4.20.0
