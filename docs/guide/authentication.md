@@ -153,7 +153,7 @@ When the user logs out, or another user signs in on the same page, nothing the c
 function signOut() {
   feeds.reset(); // numbered feeds: the last position on each topic
   inbox.reset(); // state stores
-  cursors.leave(); // presence: stop sharing this user's state
+  cursors.leave(); // presence: stop sharing this user's state (close() forgets the peers)
   runs.clear(); // runs: their values, unsent starts and remembered ids
   agent.reset(); // AG-UI agents: the thread
   void orders.clear(); // outboxes: every entry, in every tab and in storage
