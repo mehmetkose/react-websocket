@@ -374,6 +374,10 @@ export function createChaosWebSocket(options: ChaosOptions = {}): ChaosWebSocket
       if (code !== undefined && code !== 1000 && !(code >= 3000 && code <= 4999)) {
         throw new DOMException(`Invalid close code ${code}`, 'InvalidAccessError');
       }
+      // Checked here: the wrapped socket would throw only later, with this one left CLOSING.
+      if (new TextEncoder().encode(reason).length > 123) {
+        throw new DOMException('Close reason longer than 123 bytes', 'SyntaxError');
+      }
       if (this.#state >= CLOSING) return;
       const connecting = this.#state === CONNECTING;
       this.#state = CLOSING;
@@ -423,6 +427,9 @@ export function createChaosWebSocket(options: ChaosOptions = {}): ChaosWebSocket
     #stall() {
       if (this.#state !== OPEN || this.#stalled) return;
       this.#stalled = true;
+      // Sends still on the way never leave either.
+      this.#unsent += this.#outgoing.bytes();
+      this.#outgoing.clear();
       log('chaos: stalled', this.url);
     }
 

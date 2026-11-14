@@ -146,7 +146,8 @@ export function createWebTransportSocket(
         this.#fallBack(protocols);
         return;
       }
-      void this.#connect(protocols);
+      // A fallback that throws, e.g. for protocols the WebSocket rejects, fails the connection.
+      this.#connect(protocols).catch(() => this.#fail());
     }
 
     get readyState() {
@@ -164,10 +165,14 @@ export function createWebTransportSocket(
       if (this.#state !== OPEN) return;
       if (this.#inner) return this.#inner.send(data);
       if (data instanceof Blob || this.#chain) {
-        const chain = (this.#chain ?? Promise.resolve()).then(async () => {
-          this.#write(...bytes(data instanceof Blob ? await data.arrayBuffer() : data));
-          if (this.#chain === chain) this.#chain = undefined;
-        });
+        const chain = (this.#chain ?? Promise.resolve())
+          .then(async () => {
+            this.#write(...bytes(data instanceof Blob ? await data.arrayBuffer() : data));
+            if (this.#chain === chain) this.#chain = undefined;
+          })
+          // A Blob that can't be read fails the connection, as in browsers, rather than
+          // holding up every send after it.
+          .catch(() => this.#fail());
         this.#chain = chain;
         return;
       }
@@ -228,10 +233,7 @@ export function createWebTransportSocket(
         this.#transport = undefined;
         // Closed while connecting: `close()` reports its own code.
         if (this.#state !== CONNECTING) return;
-        if (options.fallback === false) {
-          this.dispatchEvent(new Event('error'));
-          return this.#end(1006, '', false);
-        }
+        if (options.fallback === false) return this.#fail();
         fallingBack = true;
         return this.#fallBack(protocols);
       } finally {
@@ -240,10 +242,7 @@ export function createWebTransportSocket(
       transport.closed.then(
         // A session ended without a code reports 0: like a WebSocket closed without a status.
         info => this.#end(info.closeCode || 1005, info.reason ?? '', true),
-        () => {
-          this.dispatchEvent(new Event('error'));
-          this.#end(1006, '', false);
-        }
+        () => this.#fail()
       );
       this.#state = OPEN;
       this.dispatchEvent(new Event('open'));
@@ -324,6 +323,14 @@ export function createWebTransportSocket(
       if (this.#state !== OPEN) return;
       if (data instanceof ArrayBuffer && this.binaryType === 'blob') data = new Blob([data]);
       this.dispatchEvent(new MessageEvent('message', { data }));
+    }
+
+    /** As a WebSocket that fails: `error`, then `close` with 1006. Ends a session still open. */
+    #fail() {
+      if (this.#state === CLOSED) return;
+      this.#transport?.close();
+      this.dispatchEvent(new Event('error'));
+      this.#end(1006, '', false);
     }
 
     #end(code: number, reason: string, wasClean: boolean) {

@@ -271,8 +271,9 @@ export function createRecordingWebSocket(
 
     close(code?: number, reason?: string) {
       if (this.state >= CLOSING) return;
-      this.state = CLOSING;
+      // First, so that a code the socket rejects throws before anything has changed.
       this.#inner.close(code, reason);
+      this.state = CLOSING;
     }
   }
 
@@ -334,7 +335,10 @@ export function createReplayWebSocket(
     }
 
     static reset() {
-      for (const socket of live) socket.#stop();
+      for (const socket of live) {
+        socket.#stop();
+        socket.#finished();
+      }
       next = 0;
       sent = [];
       done = new Promise<void>(resolve => (finish = resolve));
@@ -372,7 +376,7 @@ export function createReplayWebSocket(
       if (this.state >= CLOSING) return;
       this.state = CLOSING;
       this.#stop();
-      setTimeout(() => this.ended(code, reason, true), 0);
+      setTimeout(() => this.#end(code, reason, true), 0);
     }
 
     #schedule(): void {
@@ -404,16 +408,19 @@ export function createReplayWebSocket(
       if (event.type === 'open') this.opened(event.protocol);
       else if (event.type === 'message') this.received(decode(event.data, this.binaryType));
       else if (event.type === 'error') this.dispatchEvent(new Event('error'));
-      else if (event.type === 'close') {
-        this.#stop();
-        return this.ended(event.code, event.reason, event.wasClean);
-      }
+      else if (event.type === 'close') return this.#end(event.code, event.reason, event.wasClean);
       this.#schedule();
     }
 
     #stop() {
       clearTimeout(this.#timer);
       this.#index = this.#events.length;
+    }
+
+    /** Finished once the close event is out, so `done` comes after it. */
+    #end(code: number, reason: string, wasClean: boolean) {
+      this.#stop();
+      this.ended(code, reason, wasClean);
       this.#finished();
     }
 

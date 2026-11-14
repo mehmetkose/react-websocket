@@ -94,6 +94,17 @@ describe('without faults', () => {
     expect(MockWebSocket.last.sent).toEqual([]);
   });
 
+  it('throws like a browser on a close reason over 123 bytes, before anything has changed', () => {
+    const socket = new (chaos())('ws://x');
+    MockWebSocket.last.open();
+    expect(thrown(() => socket.close(1000, 'é'.repeat(62)))).toMatchObject({
+      name: 'SyntaxError'
+    });
+    expect(socket.readyState).toBe(1);
+    socket.close(1000, 'é'.repeat(61));
+    expect(MockWebSocket.last.closedWith).toEqual({ code: 1000, reason: 'é'.repeat(61) });
+  });
+
   it('lets constructor errors through without tracking the socket', () => {
     const logger = vi.fn();
     const Chaos = chaos({ logger });
@@ -358,6 +369,20 @@ describe('stalls', () => {
     inner.receive('after');
     vi.advanceTimersByTime(1000);
     expect(events).toEqual(['open']);
+  });
+
+  it('keep the sends still on the way, like a dead connection', () => {
+    const Chaos = chaos({ latency: 100 });
+    const socket = new Chaos('ws://x');
+    const inner = MockWebSocket.last;
+    inner.open();
+    vi.advanceTimersByTime(100);
+    socket.send('in flight');
+    vi.advanceTimersByTime(50);
+    Chaos.stall();
+    vi.advanceTimersByTime(1000);
+    expect(inner.sent).toEqual([]);
+    expect(socket.bufferedAmount).toBe(9);
   });
 
   it('close without a handshake', () => {
