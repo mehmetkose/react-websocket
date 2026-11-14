@@ -1136,6 +1136,25 @@ describe('close()', () => {
     release();
     other();
   });
+
+  it('stays open after reconnect() while nothing holds it, as after connect()', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    MockWebSocket.last.open();
+    ws.close(); // logout
+    ws.reconnect(); // login, with no hook mounted
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(60_000);
+    expect(ws.getSnapshot().status).toBe('open');
+    expect(MockWebSocket.last.closedWith).toBeUndefined();
+
+    ws.close();
+    const release = ws.acquire(); // reference-counted again after close()
+    MockWebSocket.last.open();
+    release();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('idle');
+  });
 });
 
 describe('heartbeat', () => {

@@ -731,6 +731,8 @@ function createClient<In = unknown, Out = unknown>(
 
   function reconnect() {
     if (!getImpl()) return;
+    // With nothing holding it, the new connection would close soon after opening.
+    if (refs === 0) pinned = true;
     clearTimeout(retryTimer);
     retryTimer = undefined;
     stopSocketTimers();

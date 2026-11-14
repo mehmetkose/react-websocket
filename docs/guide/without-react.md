@@ -50,7 +50,7 @@ prices.close();
 | --- | --- |
 | `connect()` | Start connecting and keep the connection open, even with no hooks using it, until `close()` |
 | `close(code?, reason?)` | Close, stop reconnecting and clear the queue. Status becomes `closed` |
-| `reconnect()` | Drop the socket and connect again now. Also restarts a `closed` client |
+| `reconnect()` | Drop the socket and connect again now. Also restarts a `closed` client, which then stays connected until `close()` while no hook holds it |
 | `migrate({ url?, within? })` | Move to a new connection without a gap; see [Deploys](./reconnecting.md#deploys-without-reconnect-storms) |
 | `send(message)` | Send now (returns `true`) or queue until open (returns `false`) |
 | `on(type, listener)` | Listen to `open`, `message`, `close` or `error`. Returns an unsubscribe function |
