@@ -318,6 +318,33 @@ describe('createWebSocketResponder', () => {
     expect(allSent()).toEqual([]);
   });
 
+  it('ignores a request from the old connection still validating when migrate() switches', async () => {
+    const schema: StandardSchemaV1<unknown, In> = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: value =>
+          new Promise(resolve => setTimeout(() => resolve({ value: value as In }), 10))
+      }
+    };
+    const { client, tools } = connected({}, { schema });
+    const handler = vi.fn(() => 'pong');
+    tools.onRequest('ping', handler);
+    const old = MockWebSocket.last;
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    // A browser's message event names the socket it arrived on.
+    const event = new MessageEvent('message', {
+      data: JSON.stringify({ type: 'call', id: 1, method: 'ping' })
+    });
+    Object.defineProperty(event, 'target', { value: old });
+    old.onmessage!(event);
+    MockWebSocket.last.open();
+    await vi.runAllTimersAsync();
+    expect(handler).not.toHaveBeenCalled();
+    expect(allSent()).toEqual([]);
+  });
+
   it('drops requests when the heartbeat times out', () => {
     const { tools } = connected({}, { heartbeat: { interval: 1000, timeout: 500 } });
     tools.onRequest('approve');
