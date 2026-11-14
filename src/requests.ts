@@ -91,6 +91,16 @@ export interface WebSocketRequests<Req, In> {
 // and resolve each other's requests with one reply.
 const lastIds = new WeakMap<WebSocketClient<any, any>, number>();
 
+/** @internal Method key on the client for what the devtools show, such as its queue length. */
+const INSPECT = Symbol.for('react-websocket.inspect');
+
+/** How many messages `client` holds in its send queue, if it tells. */
+const queued = (client: WebSocketClient<any, any>) =>
+  (client as unknown as Record<symbol, (() => { queued: number }) | undefined>)[INSPECT]?.().queued;
+
+// The longest delay `setTimeout` takes; anything longer fires at once.
+const MAX_TIMEOUT = 2 ** 31 - 1;
+
 const noop = () => {};
 
 interface Pending<In> {
@@ -127,6 +137,7 @@ export function createWebSocketRequests<Req, In, const Out>(
   options: WebSocketRequestsOptions<Req, NoInfer<In>, NoInfer<Out>>
 ): WebSocketRequests<Req, In> {
   const waiting = new Map<string, Pending<In>>();
+  let disposed = false;
 
   function endWhere(
     test: (entry: Pending<In>) => boolean,
@@ -182,6 +193,11 @@ export function createWebSocketRequests<Req, In, const Out>(
       done(true, signal.reason);
       return noop;
     }
+    if (disposed) {
+      // Nothing listens for its reply anymore.
+      done(true, new Error('Requests were disposed'));
+      return noop;
+    }
 
     if (client.getSnapshot().status === 'closed') {
       // Closed until someone reconnects it. Holding it would start it again, or leave it idle.
@@ -198,7 +214,8 @@ export function createWebSocketRequests<Req, In, const Out>(
 
     function arm() {
       clearTimeout(timer);
-      if (timeout > 0 && timeout < Infinity) {
+      // Longer than `setTimeout` can wait counts as forever, instead of firing at once.
+      if (timeout > 0 && timeout <= MAX_TIMEOUT) {
         timer = setTimeout(
           () =>
             entry.end(
@@ -244,9 +261,11 @@ export function createWebSocketRequests<Req, In, const Out>(
     signal?.addEventListener('abort', onAbort, { once: true });
     arm();
 
-    if (client.getSnapshot().status === 'idle') {
-      // Idle after acquiring: it can't connect here (a server render).
-      entry.end(true, new Error('WebSocket is idle: request not sent'));
+    const { status } = client.getSnapshot();
+    if (status === 'idle' || status === 'closed') {
+      // Acquiring didn't start it: it can't connect here (a server render), or it failed at
+      // once (e.g. an invalid URL).
+      entry.end(true, new Error(`WebSocket is ${status}: request not sent`));
     } else {
       try {
         const sent = client.send(options.send(message, id), {
@@ -263,7 +282,9 @@ export function createWebSocketRequests<Req, In, const Out>(
         // Open but not sent: `maxBuffered` dropped it, and nothing will send it later.
         else if (client.socket?.readyState === 1)
           entry.end(true, new Error('WebSocket send buffer is full: request dropped'));
-        else if (requestOptions.volatile)
+        // Not open and not queued either: `volatile`, or a client created with `queue: false`,
+        // whose queue is always empty.
+        else if (requestOptions.volatile || queued(client) === 0)
           entry.end(true, new Error('WebSocket is not open: request dropped'));
       } catch (error) {
         entry.end(true, error);
@@ -337,6 +358,7 @@ export function createWebSocketRequests<Req, In, const Out>(
     },
     pending: () => waiting.size,
     dispose() {
+      disposed = true;
       offs.forEach(off => off());
       endWhere(
         () => true,
