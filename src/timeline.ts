@@ -64,8 +64,8 @@ export interface WebSocketTimelineOptions<S, I, In, Out> {
   buffer?: number;
   /**
    * Take the server clock from `createWebSocketLatency` on the same client. Its pongs must use
-   * the same clock as snapshot `time`. Without it, or before the first pong with a time, the
-   * server clock is estimated from when snapshots arrive.
+   * the same clock as snapshot `time`. Without it, or before the first pong with a time on the
+   * current connection, the server clock is estimated from when snapshots arrive.
    */
   latency?: Pick<WebSocketLatency, 'getSnapshot' | 'serverNow'>;
   /** Send inputs tagged with a sequence number, and predict their effect until the server confirms them. */
@@ -164,6 +164,9 @@ export function createWebSocketTimeline<In, const Out, S, I = never>(
   let rendered = -Infinity;
   // A new connection opened: its first snapshot replaces the buffer.
   let stale = false;
+  // What `latency` measured before the current connection opened: the clock of a server that
+  // may have restarted since.
+  let measuredBefore: unknown;
   let seq = 0;
   let pending: { seq: number; input: I }[] = [];
   let prediction: S | undefined;
@@ -200,7 +203,7 @@ export function createWebSocketTimeline<In, const Out, S, I = never>(
     const measured = latency?.getSnapshot();
     // The server time of a snapshot arriving now: half a round trip behind the server's clock.
     const edge =
-      measured?.offset !== undefined && measured.rtt !== undefined
+      measured !== measuredBefore && measured?.offset !== undefined && measured.rtt !== undefined
         ? latency!.serverNow() - measured.rtt / 2
         : performance.now() + arrival;
     rendered = Math.max(rendered, edge - (typeof delay === 'function' ? delay() : delay));
@@ -255,6 +258,7 @@ export function createWebSocketTimeline<In, const Out, S, I = never>(
       pending = [];
       folded = -1;
       stale = true;
+      measuredBefore = latency?.getSnapshot();
     }),
     // A `snapshot` that throws leaves the timeline unchanged; the client re-throws it asynchronously.
     client.on('message', message => {

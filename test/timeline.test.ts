@@ -180,6 +180,34 @@ describe('render time', () => {
     expect(timeline.renderTime()).toBe(Date.now() + 10_000 - 50 - 100);
   });
 
+  it("doesn't take the server clock from latency measured on the previous connection", () => {
+    const game = client();
+    const latency = createWebSocketLatency(game, {
+      ping: id => ({ type: 'ping', id }),
+      pong: m => (m.type === 'pong' ? { id: m.id, time: m.time } : undefined)
+    });
+    const timeline = createWebSocketTimeline(game, {
+      snapshot: m => (m.type === 'snapshot' ? { time: m.time, state: m.x } : undefined),
+      latency
+    });
+    game.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(100);
+    MockWebSocket.last.receive(JSON.stringify({ type: 'pong', id: 1, time: Date.now() + 9950 }));
+    snap(Date.now() + 10_000, 0);
+    expect(timeline.renderTime()).toBe(Date.now() + 10_000 - 50 - 100);
+
+    // The server restarted, and its clock with it.
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open(); // pings again
+    snap(100, 1);
+    expect(timeline.renderTime()).toBe(0); // from arrivals until the new server's pong
+    vi.advanceTimersByTime(100);
+    MockWebSocket.last.receive(JSON.stringify({ type: 'pong', id: 2, time: 150 }));
+    expect(timeline.renderTime()).toBe(50); // its clock, 200, half a round trip behind, minus delay
+  });
+
   it('reads a delay function on every call, and never goes backward', () => {
     let delay = 100;
     const { timeline } = connected({ delay: () => delay });

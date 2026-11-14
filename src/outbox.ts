@@ -204,12 +204,14 @@ export function createWebSocketOutbox<M, In, const Out>(
   let addedSinceClear: Set<string> | undefined;
   // Other tabs using the same outbox, which loaded the same entries: tell them what's gone. Not
   // on a server, where an open channel would keep the process alive.
-  const channel =
+  let channel =
     typeof window !== 'undefined' && typeof BroadcastChannel === 'function'
       ? new BroadcastChannel(`react-websocket-outbox:${options.name}`)
       : undefined;
   let disposed = false;
   let release: (() => void) | undefined;
+  // The socket that entries marked `sent` went out on. On any other, they go out again.
+  let sentOn: WebSocket | null = null;
   // A strictly increasing `createdAt`, so entries added in the same ms keep their order.
   let lastCreated = 0;
 
@@ -250,13 +252,20 @@ export function createWebSocketOutbox<M, In, const Out>(
   }
 
   function flush() {
+    const socket = client.socket;
     // The socket, not the status, which reads `open` while the server closes it. Not `volatile`
     // either, which can be a datagram that never arrives.
-    if (!loaded || disposed || client.socket?.readyState !== 1) return;
+    if (!loaded || disposed || socket?.readyState !== 1) return;
+    // A new connection, including after `migrate()`, where the status stays `open`.
+    if (socket !== sentOn) {
+      unsend();
+      sentOn = socket;
+    }
     const now = Date.now();
     let sent = false;
     for (const entry of [...entries.values()]) {
-      if (entry.sent) continue;
+      // Sent, removed or replaced meanwhile, by `onExpire` or a listener.
+      if (entry.sent || entries.get(entry.id) !== entry) continue;
       if (now - entry.createdAt > maxAge) {
         forget(entry.id).catch(noop);
         options.onExpire?.(entry);
@@ -322,12 +331,12 @@ export function createWebSocketOutbox<M, In, const Out>(
   }
 
   const offs = [
-    () => channel?.close(),
-    // Also after `migrate()`, where the status stays `open`.
-    client.on('open', () => {
-      unsend();
-      flush();
-    }),
+    () => {
+      // A closed channel throws on `postMessage`, which `remove()` and `clear()` still call.
+      channel?.close();
+      channel = undefined;
+    },
+    client.on('open', flush),
     client.subscribe(() => {
       if (client.getSnapshot().status !== 'open') unsend();
     }),

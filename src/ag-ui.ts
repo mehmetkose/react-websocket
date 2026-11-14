@@ -257,7 +257,7 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
   const known = (id: string | undefined) => thread.messages.some(m => m.id === id);
   switch (e.type) {
     case 'RUN_STARTED':
-      return { ...thread, status: 'running', error: undefined, result: undefined };
+      return { ...thread, status: 'running', step: undefined, error: undefined, result: undefined };
     case 'RUN_FINISHED':
       return { ...thread, status: 'finished', step: undefined, result: e.result };
     case 'RUN_ERROR':
@@ -283,8 +283,9 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
       };
     case 'TEXT_MESSAGE_CHUNK':
     case 'REASONING_MESSAGE_CHUNK': {
-      // Only the first chunk of a message must carry its id.
-      const id = e.messageId ?? thread.messages.at(-1)?.id;
+      // Only the first chunk of a message must carry its id. Activity events can come between
+      // chunks without ending the message.
+      const id = e.messageId ?? thread.messages.filter(m => m.role !== 'activity').at(-1)?.id;
       const role = e.type === 'TEXT_MESSAGE_CHUNK' ? (e.role ?? 'assistant') : 'reasoning';
       const next = known(id) ? thread : message(role);
       return { ...next, messages: updateMessage(next, id, m => appendText(m, e.delta)) };
@@ -496,6 +497,8 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
   const event = options.event ?? isEnvelope;
   // Now or never: not queued, and not `volatile`, which can be a datagram that never arrives.
   const send = (message: unknown) => client.socket?.readyState === 1 && client.send(message as Out);
+  // Running, without the step, error or result the thread had before.
+  const started = (thread: AgUiThread<S>) => applyAgUiEvent(thread, { type: 'RUN_STARTED' });
 
   const runs = createWebSocketRuns<RunAgentInput, AgUiThread<S>, In, Out>(client, {
     name: options.name ?? 'ag-ui',
@@ -504,7 +507,8 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
     cancel: options.cancel ?? (runId => ({ type: 'cancel', runId }) as Out),
     event: message => event(message),
     done: message => ENDS.has(event(message)!.event.type),
-    initial: empty,
+    // A run followed again after a reload streams before its events replay.
+    initial: started(empty),
     reduce: (thread, message) => applyAgUiEvent(thread, event(message)!.event),
     policy: options.policy,
     storage: options.storage
@@ -514,7 +518,7 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
     const latest = runs.list().at(-1);
     let next = latest ? latest.value : base;
     if (latest?.status === 'aborted' && next.status === 'running')
-      next = { ...next, status: 'aborted' };
+      next = { ...next, status: 'aborted', step: undefined };
     // Once each time the state goes stale, or on a later event if the socket wasn't open.
     if (latest && !latest.value.stale) resynced.delete(latest.runId);
     else if (latest && options.resync && !resynced.has(latest.runId)) {
@@ -553,7 +557,7 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
           context: input.context ?? [],
           forwardedProps: input.forwardedProps ?? {}
         },
-        { runId, initial: { ...base, status: 'running' }, policy: runOptions?.policy }
+        { runId, initial: started(base), policy: runOptions?.policy }
       );
       return runId;
     },
