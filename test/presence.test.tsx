@@ -78,6 +78,24 @@ describe('createWebSocketPresence', () => {
     expect(sent()).toHaveLength(4);
   });
 
+  it('refreshes only while connected', () => {
+    const { client, presence } = setup({ timeout: 3000 });
+    client.connect();
+    MockWebSocket.last.open();
+    presence.set({ x: 1, y: 1 });
+    client.close();
+    vi.advanceTimersByTime(60_000);
+    expect(vi.getTimerCount()).toBe(0);
+
+    client.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(1000);
+    expect(sent()).toEqual([
+      { type: 'cursor', cursor: { x: 1, y: 1 } },
+      { type: 'cursor', cursor: { x: 1, y: 1 } }
+    ]);
+  });
+
   it('tracks the other peers, and forgets those that leave or go quiet', () => {
     const { client, presence } = setup({ timeout: 5000 });
     client.connect();
@@ -98,6 +116,29 @@ describe('createWebSocketPresence', () => {
     peerMoves('a', null); // already gone
     MockWebSocket.last.receive(JSON.stringify({ type: 'chat' }));
     expect(presence.getSnapshot()).toEqual([]);
+  });
+
+  it('keeps the peers through a reconnect, and forgets them on close()', () => {
+    const { client, presence } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    peerMoves('a', { x: 1, y: 1 });
+    MockWebSocket.last.finishClose(1006);
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    expect(presence.getSnapshot().map(({ peer }) => peer)).toEqual(['a']);
+
+    const listener = vi.fn();
+    presence.subscribe(listener);
+    client.close(); // the logout step: the next user doesn't see these peers
+    expect(presence.getSnapshot()).toEqual([]);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    client.connect();
+    MockWebSocket.last.open();
+    peerMoves('b', { x: 2, y: 2 });
+    vi.advanceTimersByTime(30_000);
+    expect(presence.getSnapshot()).toEqual([]); // and peers still expire
   });
 
   it('leave() stops sharing, cancels a pending update and says goodbye', () => {
@@ -131,6 +172,17 @@ describe('createWebSocketPresence', () => {
     peerMoves('a', { x: 1, y: 1 });
     expect(sent()).toHaveLength(1);
     expect(presence.getSnapshot()).toEqual([]);
+  });
+
+  it('ignores set() after dispose()', () => {
+    const { client, presence } = setup();
+    client.connect();
+    MockWebSocket.last.open();
+    presence.dispose();
+    presence.set({ x: 1, y: 1 });
+    vi.advanceTimersByTime(60_000);
+    expect(sent()).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 

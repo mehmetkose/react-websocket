@@ -92,6 +92,7 @@ export function createWebSocketPresence<P, In, const Out>(
   options: WebSocketPresenceOptions<P, NoInfer<In>, NoInfer<Out>>
 ): WebSocketPresence<P> {
   const timeout = options.timeout ?? 30_000;
+  const refresh = options.refresh ?? timeout / 3;
   const interval = 1000 / (options.maxRate ?? 20);
   const peers = new Map<string, PresencePeer<P>>();
   const listeners = new Set<() => void>();
@@ -100,21 +101,28 @@ export function createWebSocketPresence<P, In, const Out>(
   let own: { state: P } | undefined;
   let lastSent = -Infinity;
   let sendTimer: Timer;
-  let refreshTimer: ReturnType<typeof setInterval> | undefined;
+  let refreshTimer: Timer;
   let expiryTimer: Timer;
+  let disposed = false;
 
   function changed() {
     snapshot = [...peers.values()];
     for (const listener of [...listeners]) listener();
   }
 
-  function sendNow() {
+  function stopSending() {
     clearTimeout(sendTimer);
-    sendTimer = undefined;
+    clearTimeout(refreshTimer);
+    sendTimer = refreshTimer = undefined;
+  }
+
+  function sendNow() {
+    stopSending();
     if (!own) return;
     lastSent = Date.now();
-    // Volatile: a new connection gets the newest state from the `open` listener instead.
-    client.send(options.send(own.state), VOLATILE);
+    // Volatile: a new connection gets the newest state from the `open` listener instead. Refresh
+    // only after a send that went out, so no timer runs while disconnected.
+    if (client.send(options.send(own.state), VOLATILE)) refreshTimer = setTimeout(sendNow, refresh);
   }
 
   function expire() {
@@ -143,14 +151,23 @@ export function createWebSocketPresence<P, In, const Out>(
         expiryTimer ??= setTimeout(expire, timeout);
       }
       changed();
+    }),
+    client.subscribe(() => {
+      // `close()` is the logout step, and a client that gave up hears from no one: forget the
+      // peers instead of showing them until they time out.
+      if (client.getSnapshot().status !== 'closed' || !peers.size) return;
+      peers.clear();
+      clearTimeout(expiryTimer);
+      expiryTimer = undefined;
+      changed();
     })
   ];
 
   return {
     client,
     set(state) {
+      if (disposed) return;
       own = { state };
-      refreshTimer ??= setInterval(sendNow, options.refresh ?? timeout / 3);
       if (sendTimer !== undefined) return; // the newest goes out when it fires
       const wait = lastSent + interval - Date.now();
       if (wait <= 0) sendNow();
@@ -158,10 +175,7 @@ export function createWebSocketPresence<P, In, const Out>(
     },
     leave() {
       own = undefined;
-      clearTimeout(sendTimer);
-      sendTimer = undefined;
-      clearInterval(refreshTimer);
-      refreshTimer = undefined;
+      stopSending();
       if (options.leave) client.send(options.leave(), VOLATILE);
     },
     getSnapshot: () => snapshot,
@@ -172,9 +186,8 @@ export function createWebSocketPresence<P, In, const Out>(
       };
     },
     dispose() {
-      own = undefined;
-      clearTimeout(sendTimer);
-      clearInterval(refreshTimer);
+      disposed = true;
+      stopSending();
       clearTimeout(expiryTimer);
       for (const off of offs) off();
     }

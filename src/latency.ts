@@ -110,6 +110,8 @@ export function createWebSocketLatency<In, const Out>(
     stop();
     inFlight.clear();
     samples = [];
+    // An earlier `open` listener may have closed the connection already.
+    if (client.getSnapshot().status !== 'open') return;
     ping();
     timer = setInterval(ping, interval);
   }
