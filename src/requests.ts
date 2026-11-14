@@ -31,7 +31,7 @@ export interface WebSocketRequestsOptions<Req, In, Out> {
   cancel?: (id: number) => Out;
   /**
    * Default time to wait for a reply, in ms. For a stream, the time to wait for each reply,
-   * including the first. `Infinity` waits forever.
+   * including the first. `Infinity`, or anything over about 24.8 days, waits forever.
    * @default 10000
    */
   timeout?: number;

@@ -140,7 +140,10 @@ const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 /** @internal Method key on a socket that sends `volatile` messages as datagrams (WebTransport). */
 const DATAGRAM = Symbol.for('react-websocket.datagram');
 
-/** @internal Method key for what `react-websocket/devtools` shows that the snapshot doesn't. */
+/**
+ * @internal Method key for what `react-websocket/devtools` shows that the snapshot doesn't. Requests
+ * read its queue length too, to tell a dropped message from a queued one.
+ */
 const INSPECT = Symbol.for('react-websocket.inspect');
 
 function createClient<In = unknown, Out = unknown>(

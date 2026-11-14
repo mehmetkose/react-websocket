@@ -124,7 +124,7 @@ What `at()` returns, by render time:
 
 ## Behavior
 
-- **Clock.** The render time is `edge - delay`, where `edge` is the server time of a snapshot arriving now. With `latency`, that's `serverNow() - rtt / 2`, so `delay` doesn't depend on the player's ping. Without it, or before the first pong with a time, it's estimated from the least delayed of the buffered snapshots. Your pongs and your snapshots must use the same server clock.
+- **Clock.** The render time is `edge - delay`, where `edge` is the server time of a snapshot arriving now. With `latency`, that's `serverNow() - rtt / 2`, so `delay` doesn't depend on the player's ping. Without it, or before the first pong with a time on the current connection (a restarted server may have another clock), it's estimated from the least delayed of the buffered snapshots. Your pongs and your snapshots must use the same server clock.
 - **Never backward.** `renderTime()` holds still instead of going backward, for example when a `delay` function grows or the clock estimate improves.
 - **Ordering.** A snapshot whose `time` isn't after the newest one is ignored, along with its `ack`.
 - **Inputs.** Inputs are sent with `volatile`, so they're never queued or replayed after a reconnect. Only inputs that were sent are predicted. Sequence numbers start at 1 and keep counting across reconnects and `reset()`, so a server that resumes sessions always sees them increase.

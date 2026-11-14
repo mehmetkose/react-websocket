@@ -58,7 +58,7 @@ A request registered without a handler waits for a person. [`useAgentApproval`](
 | `options.respond` | `(id, result: R) => Out` | Builds the reply. Annotate `result`: its type is what handlers return |
 | `options.error` | `(id, error: unknown) => Out` | Builds the error reply. See [Errors](#errors) |
 | `options.cancel` | `(message: In) => number \| string \| null \| undefined` | Optional. The id of a request the server withdrew, or `undefined` if the message isn't a cancellation |
-| `options.timeout` | `number` | Optional. Time to answer a request, in ms. Default `Infinity`: the server times out its own requests, and people take a while to decide |
+| `options.timeout` | `number` | Optional. Time to answer a request, in ms. Default `Infinity`: the server times out its own requests, and people take a while to decide. Anything over about 24.8 days waits forever too |
 
 Handlers receive `params` typed as `request` returns them. If they're optional in your message type, handlers get `params | undefined`. Ids are typed `number | string`, so your `Out` type must accept both.
 
