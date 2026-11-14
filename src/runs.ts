@@ -227,8 +227,9 @@ export function createWebSocketRuns<Req, T, In, const Out>(
   function follow(runId: string, policy: RunPolicy, value = options.initial) {
     policies.set(runId, policy);
     remember(runId, policy);
-    set(runId, { value });
+    // Held before listeners hear of it, so one that ends it at once releases it.
     releases.set(runId, feeds.acquire(runId));
+    set(runId, { value });
   }
 
   function cancel(runId: string) {
@@ -275,8 +276,9 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       const previous = status;
       status = client.getSnapshot().status;
       if (previous !== 'open' || status === 'open') return;
-      // The connection dropped: runs that shouldn't outlive it stop here.
-      for (const [runId, policy] of policies) if (policy === 'cancel') abort(runId);
+      // The connection dropped: runs that shouldn't outlive it stop here. Not those that listeners
+      // start meanwhile, which wait for the next connection.
+      for (const [runId, policy] of [...policies]) if (policy === 'cancel') abort(runId);
     }),
     feeds.dispose
   ];

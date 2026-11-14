@@ -152,6 +152,29 @@ describe('createWebSocketRuns', () => {
     expect(runs.get('r1')?.value).toBe('t1 ');
   });
 
+  it('leaves alone a run started after the connection dropped, such as the next in a queue', () => {
+    const { client, runs } = setup();
+    client.connect();
+    runs.start('first', { runId: 'r1', policy: 'cancel' });
+    MockWebSocket.last.open();
+    // Each prompt starts once the one before it has ended.
+    const queue = ['second', 'third'];
+    let next = 2;
+    runs.subscribe(() => {
+      if (queue.length && runs.list().every(run => run.status !== 'streaming')) {
+        runs.start(queue.shift()!, { runId: `r${next++}`, policy: 'cancel' });
+      }
+    });
+    MockWebSocket.last.finishClose(1006);
+    expect(runs.list().map(run => run.status)).toEqual(['aborted', 'streaming']);
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    expect(sent()).toContainEqual({ type: 'run', runId: 'r2', prompt: 'second' });
+    expect(sent().filter(message => message.type === 'cancel')).toEqual([
+      { type: 'cancel', runId: 'r1' }
+    ]);
+  });
+
   it('holds the connection until a cancel goes out, even with nothing else holding it', () => {
     const { client, runs } = setup();
     runs.start('hello', { runId: 'r1', policy: 'cancel' });
@@ -268,6 +291,25 @@ describe('createWebSocketRuns', () => {
     runs.delete('r1');
     expect(runs.get('r1')).toBeUndefined();
     expect(runs.list()).toEqual([]);
+  });
+
+  it('holds nothing for a run that a listener stops as it starts', () => {
+    const { client, runs } = setup();
+    const release = client.acquire();
+    MockWebSocket.last.open();
+    // Over budget: stop every run.
+    runs.subscribe(() => {
+      for (const run of runs.list()) if (run.status === 'streaming') runs.abort(run.runId);
+    });
+    runs.start('hello', { runId: 'r1' });
+    expect(runs.get('r1')?.status).toBe('aborted');
+    expect(sent()).toEqual([
+      { type: 'run', runId: 'r1', prompt: 'hello' },
+      { type: 'cancel', runId: 'r1' }
+    ]);
+    release();
+    vi.advanceTimersByTime(0);
+    expect(client.getSnapshot().status).toBe('idle');
   });
 
   it('ends a run with the error an event carries', () => {

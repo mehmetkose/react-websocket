@@ -84,10 +84,9 @@ export function createWebSocketTopics<const Out>(
     if (options.unsubscribe) client.send(options.unsubscribe(topic));
   }
 
-  // `open` listeners run before the client flushes its queue.
+  // `open` listeners run before the client flushes its queue. Topics already subscribed on this
+  // socket, from a listener that ran before this one, aren't sent again.
   const off = client.on('open', () => {
-    sentOn = client.socket;
-    sent = new Set();
     for (const topic of counts.keys()) subscribe(topic);
   });
 
