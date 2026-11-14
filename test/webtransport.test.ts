@@ -220,6 +220,27 @@ describe('createWebTransportSocket', () => {
     client.close();
   });
 
+  it("doesn't leave a failed session's closed promise unhandled, which browsers reject too", async () => {
+    // Like a browser: a session that fails rejects `closed` along with `ready`.
+    class Failing extends FakeTransport {
+      closed = new Promise<never>((_, reject) => this.ready.catch(reject));
+    }
+    vi.stubGlobal('WebTransport', Failing);
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const { client } = await connected();
+      FakeTransport.last.rejectReady(new Error('UDP blocked'));
+      await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(unhandled).toEqual([]);
+      client.close();
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+
   it('falls back after `timeout` when no session comes', async () => {
     vi.useFakeTimers();
     const { client } = await connected({ timeout: 1000 });

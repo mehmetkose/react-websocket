@@ -217,6 +217,8 @@ export function createWebTransportSocket(
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         transport = this.#transport = new WebTransport(mapUrl(this.url), options.transport);
+        // A session that fails rejects `closed` too, before anything listens to it.
+        transport.closed.catch(() => {});
         await Promise.race([
           transport.ready,
           new Promise((_, reject) => (timer = setTimeout(reject, timeout, new Error('timeout'))))
