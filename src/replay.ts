@@ -70,9 +70,15 @@ export interface ReplayWebSocket extends Statics {
   readonly prototype: WebSocket;
   /** What the app sent during the replay, by connection, as recorded data. */
   readonly sent: readonly RecordedData[][];
-  /** Resolves once every recorded connection has been played to its end. */
+  /**
+   * Resolves once every recorded connection has been played to its end, after its last `close`
+   * event.
+   */
   readonly done: Promise<void>;
-  /** Start again from the first recorded connection. */
+  /**
+   * Start again from the first recorded connection. Connections still playing stop where they are,
+   * without a `close` event.
+   */
   reset(): void;
 }
 

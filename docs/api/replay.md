@@ -4,7 +4,7 @@ description: 'react-websocket/replay: createRecordingWebSocket records WebSocket
 
 # react-websocket/replay
 
-Record WebSocket sessions and play them back without a server. Both functions return `WebSocket` classes to pass as the [`WebSocket`](./options.md#websocket) option. The entry has no React dependency and no imports, and is about 1.7 kB min+gzip. The guide is [Recording and replay](../guide/replay.md).
+Record WebSocket sessions and play them back without a server. Both functions return `WebSocket` classes to pass as the [`WebSocket`](./options.md#websocket) option. The entry has no React dependency and no imports, and is about 1.8 kB min+gzip. The guide is [Recording and replay](../guide/replay.md).
 
 ## createRecordingWebSocket
 
@@ -39,8 +39,8 @@ function createReplayWebSocket(
 | Member | |
 | --- | --- |
 | `sent` | What the app sent during the replay, one array per connection, as recorded data |
-| `done` | Resolves once every recorded connection has been played to its end |
-| `reset()` | Start again from the first recorded connection |
+| `done` | Resolves once every recorded connection has been played to its end, after its last `close` event |
+| `reset()` | Start again from the first recorded connection. Connections still playing stop where they are, without a `close` event |
 
 Each socket it creates replays the next recorded connection. One beyond the end of the recording fails with an `error` and a `1006` close. `bufferedAmount` is `0`, and `send()` throws while connecting, like a real socket.
 

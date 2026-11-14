@@ -20,7 +20,7 @@ function createTabsWebSocket(options?: {
 }): TabsWebSocket;
 ```
 
-Available only from `react-websocket/tabs`. It has no React dependency and no imports, and its size (about 1.7 kB min+gzip) is separate from the main entry's. The guide is [One connection across tabs](../guide/tabs.md).
+Available only from `react-websocket/tabs`. It has no React dependency and no imports, and its size (about 1.9 kB min+gzip) is separate from the main entry's. The guide is [One connection across tabs](../guide/tabs.md).
 
 ## Usage
 

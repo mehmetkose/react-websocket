@@ -57,5 +57,6 @@ A `WebTransportWebSocket`: a class with the `WebSocket` interface, plus:
 | `close(code, reason)` | Closes the session with that code and reason |
 | The session closes | A `close` event with its code and reason. Without a code, `1005`. When it fails, an `error` and `1006` |
 | `bufferedAmount` | Bytes handed to the stream and not yet written |
+| A `Blob` that can't be read, or a fallback `WebSocket` that throws (for example on protocols it rejects) | An `error`, then a `1006` close, as when a browser's WebSocket fails |
 | No session within `timeout`, or it fails | Falls back to a WebSocket for this connection and the ones after it |
 | No `window` | The constructor throws, so nothing connects during a server render |
