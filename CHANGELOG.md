@@ -11,8 +11,9 @@ when a connection drops, closes or switches while something else is under way.
 
 ### Fixed
 
-- `reconnect()` after `close()` keeps the client connected while no hook holds it, as `connect()` does. It used to
-  close the new connection 5 seconds after it opened.
+- `reconnect()` after `close()` takes back the hold of `connect()`: a client started with `connect()` stays connected
+  again until `close()`, even with no hook holding it. It used to close the new connection 5 seconds after it
+  opened.
 - A request made while the socket isn't open, on a client created with `queue: false` (or `queue.limit` 0), rejects
   right away and sends nothing, like a volatile one. It used to wait for its timeout, forever with
   `timeout: Infinity`, and then send a cancel for an id the server never got.

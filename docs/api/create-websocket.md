@@ -83,7 +83,7 @@ The full picture, including backoff and heartbeats, is in [Reconnecting and hear
 | `on(type, listener)` | Listen to `'open'`, `'message'`, `'close'` or `'error'`. Returns an unsubscribe function |
 | `connect()` | Connect, and stay connected until `close()` even with no hooks mounted |
 | `close(code?, reason?)` | Close, stop reconnecting, and clear the queue, a `migrate()` target and `lastMessage`. Status becomes `'closed'`. Call it on logout. Throws, like `WebSocket.close()`, for a code the browser rejects (it takes `1000` or `3000`–`4999`), and then nothing has changed |
-| `reconnect()` | Drop the socket and connect again now, resetting the backoff. Also restarts a `'closed'` client, which then stays connected until `close()` while no hook holds it. Keeps the queue and a `migrate()` target: when another user signs in, `close()` and then `connect()` instead |
+| `reconnect()` | Drop the socket and connect again now, resetting the backoff. Also restarts a `'closed'` client: one that `connect()` had started stays connected again until `close()`, even with no hook holding it. Keeps the queue and a `migrate()` target: when another user signs in, `close()` and then `connect()` instead |
 | `migrate({ url?, within? })` | Move to a new connection without a gap, at a random moment within `within` ms, for example when the server asks before a deploy. See [Deploys](../guide/reconnecting.md#deploys-without-reconnect-storms) |
 | `ready` | Promise that resolves once connected. See [Suspense](../guide/suspense.md) |
 | `getSnapshot()` | Current `{ status, lastMessage, attempt }` |

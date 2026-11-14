@@ -458,9 +458,9 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
   close(code?: number, reason?: string): void;
   /**
    * Drop the current socket (if any) and connect again immediately, resetting the
-   * backoff. Also restarts a `closed` client; while no hook holds it, it then stays connected
-   * until `close()`, as after `connect()`. The send queue and a `migrate()` target are kept:
-   * when another user signs in, call `close()` and then `connect()` instead.
+   * backoff. Also restarts a `closed` client: one that `connect()` had started stays connected
+   * again until `close()`, even with no hook holding it. The send queue and a `migrate()` target
+   * are kept: when another user signs in, call `close()` and then `connect()` instead.
    */
   reconnect(): void;
   /**

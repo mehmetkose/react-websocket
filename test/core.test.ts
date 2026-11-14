@@ -1155,6 +1155,50 @@ describe('close()', () => {
     vi.runAllTimers();
     expect(ws.getSnapshot().status).toBe('idle');
   });
+
+  it("doesn't hold a client after reconnect() when connect() didn't", async () => {
+    // The Suspense guide's error boundary: hooks held the client, it closed, the fallback
+    // replaced them, and its retry button calls reconnect().
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    const release = ws.acquire();
+    MockWebSocket.last.open();
+    ws.close();
+    release();
+    ws.reconnect();
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    vi.runAllTimers(); // no hook came back
+    expect(ws.getSnapshot().status).toBe('idle');
+
+    // A new token while nothing holds the client, as in the authentication guide.
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    ws.reconnect();
+    MockWebSocket.last.open();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('idle');
+  });
+
+  it('holds a client again after reconnect() when close() let go of connect()', () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 1 }
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().status).toBe('closed'); // gave up, still held by connect()
+    ws.close();
+    ws.close();
+    ws.reconnect();
+    MockWebSocket.last.open();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('open');
+  });
 });
 
 describe('heartbeat', () => {
