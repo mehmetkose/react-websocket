@@ -237,6 +237,15 @@ describe('createWebSocketResponder', () => {
     expect(sent()).toEqual([]);
   });
 
+  it('waits through a timeout longer than setTimeout can take', () => {
+    const { tools } = connected();
+    tools.onRequest('approve');
+    call(1, 'approve', { timeout: 30 * 24 * 3_600_000 }); // a month
+    vi.advanceTimersByTime(3_600_000);
+    expect(tools.getSnapshot()).toHaveLength(1);
+    expect(sent()).toEqual([]);
+  });
+
   it('drops a request the server cancels, without replying', () => {
     const { tools } = connected();
     let signal!: AbortSignal;
@@ -280,6 +289,32 @@ describe('createWebSocketResponder', () => {
     expect(waiting!.respond({ ok: true })).toBe(false);
     resolve('late'); // never sent to the next connection
     await flush();
+    expect(allSent()).toEqual([]);
+  });
+
+  it('answers nothing after migrate() switches, even from a listener that runs first', () => {
+    const client = createWebSocket<In, Out>(`ws://responder/${++n}`, {
+      WebSocket: MockImpl,
+      json: true
+    });
+    const answers: boolean[] = [];
+    // Subscribed before the responder, so it hears of the switch before the responder does.
+    client.subscribe(() => {
+      for (const request of tools.getSnapshot()) answers.push(request.respond({ ok: true }));
+    });
+    const tools = createWebSocketResponder(client, {
+      request: message => (message.type === 'call' ? message : undefined),
+      respond: (id, result: Result) => ({ type: 'result', id, result }),
+      error: (id, error) => ({ type: 'result', id, error: String(error) })
+    });
+    tools.onRequest('approve');
+    client.connect();
+    MockWebSocket.last.open();
+    call(1, 'approve');
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    MockWebSocket.last.open();
+    expect(answers).toEqual([false]);
     expect(allSent()).toEqual([]);
   });
 

@@ -126,6 +126,9 @@ interface Entry {
 
 const abortError = (message: string) => new DOMException(message, 'AbortError');
 
+// The longest delay `setTimeout` takes; anything longer fires at once.
+const MAX_TIMEOUT = 2 ** 31 - 1;
+
 /**
  * Answer requests the server sends: run a handler for tools that only exist in the browser
  * (selection, clipboard, geolocation), or let a person answer, e.g. to approve an agent's action.
@@ -194,6 +197,7 @@ export function createWebSocketResponder<Q extends RequestFields, R, In, const O
       return;
     }
 
+    const socket = client.socket;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let done = false;
@@ -206,7 +210,8 @@ export function createWebSocketResponder<Q extends RequestFields, R, In, const O
       clearTimeout(timer);
       if (waiting.includes(request)) setWaiting(waiting.filter(entry => entry !== request));
       if (reason !== undefined) controller.abort(reason);
-      return build ? reply(id, build) : false;
+      // Only on the connection it arrived on, also when answered before `subscribe` below drops it.
+      return build && socket === client.socket ? reply(id, build) : false;
     }
 
     // An answer from outside the handler makes the handler's work moot.
@@ -225,7 +230,7 @@ export function createWebSocketResponder<Q extends RequestFields, R, In, const O
     };
     // Registered before the handler runs, so a handler that closes the socket drops its own request.
     entries.set(key, {
-      socket: client.socket,
+      socket,
       drop: reason => {
         settle(null, reason);
       },
@@ -233,7 +238,8 @@ export function createWebSocketResponder<Q extends RequestFields, R, In, const O
     });
 
     const timeout = incoming.timeout ?? options.timeout ?? Infinity;
-    if (timeout > 0 && timeout < Infinity) {
+    // Longer than `setTimeout` can wait counts as forever, instead of firing at once.
+    if (timeout > 0 && timeout <= MAX_TIMEOUT) {
       timer = setTimeout(
         () =>
           fail(
