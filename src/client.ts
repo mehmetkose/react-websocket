@@ -526,6 +526,8 @@ function createClient<In = unknown, Out = unknown>(
     wanted = false;
     opened = false;
     unheldStop = refs === 0;
+    // Closed while nothing holds it: it waits for the next holder, not for a stale teardown.
+    clearTimeout(teardownTimer);
     unbindWindow();
     stopMigrating();
     pending = [];
@@ -731,6 +733,7 @@ function createClient<In = unknown, Out = unknown>(
     pinned = false;
     opened = false;
     unheldStop = refs === 0;
+    clearTimeout(teardownTimer); // as in `fail()`
     // `close()` is the logout step: what was received for one user isn't shown to the next.
     set({ status: 'closed', attempt: 0, lastMessage: undefined });
     rejectReady(new Error('WebSocket was closed'));

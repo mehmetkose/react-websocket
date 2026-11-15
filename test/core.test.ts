@@ -1410,6 +1410,25 @@ describe('acquire()', () => {
     expect(MockWebSocket.last.closedWith).toBeDefined();
   });
 
+  it('stays closed after close() in the grace period of a connection nobody holds', async () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(1000);
+    ws.close(); // logout
+    const rejected = ws.ready;
+    await expect(rejected).rejects.toThrow('closed');
+    vi.advanceTimersByTime(10_000); // past the grace period
+    expect(ws.getSnapshot().status).toBe('closed');
+    expect(ws.ready).toBe(rejected); // reading it doesn't connect again
+    await Promise.resolve();
+    expect(MockWebSocket.instances).toHaveLength(1);
+    const release = ws.acquire(); // the next hook to mount still opens it
+    expect(MockWebSocket.instances).toHaveLength(2);
+    release();
+  });
+
   it('closes after ready resolves when the last holder left while connecting', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
     const release = ws.acquire();
