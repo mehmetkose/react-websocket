@@ -339,6 +339,54 @@ describe('shared URL clients', () => {
   });
 });
 
+describe('shared URL clients over time', () => {
+  it('keeps the socket when one component unmounts as another using the URL mounts', () => {
+    const url = uniqueUrl();
+    const { rerender } = render(<Status key="a" url={url} />);
+    act(() => MockWebSocket.last.open());
+    rerender(<Status key="b" url={url} />); // a route change: one commit
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(MockWebSocket.last.closedWith).toBeUndefined();
+    expect(screen.getByRole('button').textContent).toBe('open:-');
+  });
+
+  it('opens a new socket for a component that mounts after the last one tore it down', () => {
+    const url = uniqueUrl();
+    const first = render(<Status url={url} />);
+    act(() => MockWebSocket.last.open());
+    first.unmount();
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.last.closedWith).toBeDefined();
+    render(<Status url={url} />);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    act(() => MockWebSocket.last.open());
+    expect(screen.getByRole('button').textContent).toBe('open:-');
+  });
+
+  it('has one socket at a time while `enabled` toggles under StrictMode', () => {
+    const url = uniqueUrl();
+    const view = (enabled: boolean) => (
+      <StrictMode>
+        <Status url={url} enabled={enabled} />
+      </StrictMode>
+    );
+    const { rerender } = render(view(true));
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances).toHaveLength(1);
+    rerender(view(false));
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.last.closedWith).toBeDefined();
+    expect(screen.getByRole('button').textContent).toBe('idle:-');
+    rerender(view(true));
+    act(() => vi.runAllTimers());
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(MockWebSocket.instances.filter(socket => !socket.closedWith)).toHaveLength(1);
+    act(() => MockWebSocket.last.open());
+    expect(screen.getByRole('button').textContent).toBe('open:-');
+  });
+});
+
 describe('conflicting options for a shared URL', () => {
   let warn: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
