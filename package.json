@@ -296,7 +296,7 @@
       "name": "react-websocket/chaos (createChaosWebSocket)",
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",
-      "limit": "2.1 kB",
+      "limit": "2.2 kB",
       "gzip": true
     },
     {

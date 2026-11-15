@@ -148,6 +148,20 @@ function closeEvent(code: number, reason: string, wasClean: boolean): Event {
     : Object.assign(new Event('close'), init);
 }
 
+// Tasks a background tab doesn't throttle, as it does timers (to about one a second).
+let channel: MessageChannel | undefined;
+const posted: (() => void)[] = [];
+function post(run: () => void) {
+  if (!channel) {
+    channel = new MessageChannel();
+    channel.port1.onmessage = () => posted.shift()?.();
+    // Node: the port mustn't keep the process alive.
+    (channel.port1 as { unref?: () => void }).unref?.();
+  }
+  posted.push(run);
+  channel.port2.postMessage(null);
+}
+
 /**
  * Events delayed in order: each runs in its own task, no earlier than the one before it,
  * because a WebSocket never reorders. With no delay and nothing waiting, it runs right away.
@@ -155,17 +169,29 @@ function closeEvent(code: number, reason: string, wasClean: boolean): Event {
 function createQueue() {
   let items: { at: number; run: () => void; data?: Data }[] = [];
   let timer: Timer | undefined;
+  // Bumped by `clear()`, so a task already posted does nothing.
+  let turn = 0;
+  let waiting = false;
   function next() {
     const head = items[0];
-    if (timer !== undefined || !head) return;
-    timer = setTimeout(() => {
+    if (waiting || !head) return;
+    waiting = true;
+    const mine = turn;
+    const run = () => {
+      if (mine !== turn) return;
+      waiting = false;
       timer = undefined;
       try {
         items.shift()!.run();
       } finally {
         next();
       }
-    }, head.at - Date.now());
+    };
+    const wait = head.at - Date.now();
+    // Already due in a hidden tab: a timer each would let events pile up behind each other.
+    const hidden = typeof document === 'object' && document.visibilityState === 'hidden';
+    if (wait <= 0 && hidden && typeof MessageChannel === 'function') return post(run);
+    timer = setTimeout(run, wait);
   }
   return {
     push(delay: number, run: () => void, data?: Data) {
@@ -177,6 +203,8 @@ function createQueue() {
       items = [];
       clearTimeout(timer);
       timer = undefined;
+      waiting = false;
+      turn++;
     },
     bytes: () =>
       items.reduce((sum, item) => sum + (item.data === undefined ? 0 : size(item.data)), 0)

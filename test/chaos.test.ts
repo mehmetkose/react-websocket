@@ -159,6 +159,29 @@ describe('latency', () => {
     expect(inner.sent).toEqual(numbers.map(String));
   });
 
+  it('keeps up in a background tab, where timers run about once a second', async () => {
+    // Like a browser throttling a hidden tab: no timer runs sooner than a second.
+    const setTimer = globalThis.setTimeout;
+    vi.stubGlobal('setTimeout', ((run: () => void, ms?: number) =>
+      setTimer(run, Math.max(ms ?? 0, 1000))) as typeof setTimeout);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    try {
+      const socket = new (chaos({ latency: 100 }))('ws://x');
+      const received: unknown[] = [];
+      socket.onmessage = event => received.push(event.data);
+      const inner = MockWebSocket.last;
+      inner.open();
+      await vi.advanceTimersByTimeAsync(1000);
+      const numbers = [...Array(20).keys()];
+      for (const n of numbers) inner.receive(n); // a second of snapshots, as in a game
+      await vi.advanceTimersByTimeAsync(1000);
+      // Not one a second: those already due go out each in its own task, in order.
+      await vi.waitFor(() => expect(received).toEqual(numbers), { timeout: 500, interval: 5 });
+    } finally {
+      delete (document as { visibilityState?: unknown }).visibilityState;
+    }
+  });
+
   it('closes after pending sends, and stops delivering', () => {
     const socket = new (chaos({ latency: 100 }))('ws://x');
     const events = record(socket);

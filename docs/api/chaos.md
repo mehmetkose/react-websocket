@@ -73,7 +73,7 @@ The methods work whether the random faults are `enabled` or not. Each call to `c
 ## Behavior
 
 - **Faults**
-  - **`latency`** delays each event in order, each in its own task.
+  - **`latency`** delays each event in order, each in its own task. In a hidden tab, where browsers run timers about once a second, events already due go out without waiting for a timer each, so they don't pile up.
   - **`refuse`** fires `error`, then `close` with code `1006`, without creating the real socket. It never fires synchronously from the constructor.
   - **`drop`** fires `error`, then `close` with code `1006`. It closes the real socket with `4999 'chaos'`.
   - **`stall`** keeps `readyState` at `OPEN` and discards everything in both directions, including sends still held back by `latency`. The real socket's `close` event is swallowed. Closing a stalled socket closes the real one with your code at once, and fires `close` with code `1006` a task later.
