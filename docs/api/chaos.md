@@ -50,7 +50,7 @@ Durations are in ms. A `[min, max]` range picks a uniformly random value each ti
 | `seed` | `number` | Optional. Makes the random faults repeatable. Default: unseeded (`Math.random`) |
 | `logger` | `(message, ...details) => void` | Optional. Called for every injected fault, e.g. `console.warn` |
 | `enabled` | `boolean` | Optional. `false` turns the random faults off without forgetting them. Default `true` |
-| `latency` | `number \| [min, max]` | Optional. One-way delay for the handshake, every incoming message and every send. Order is kept. Default `0` |
+| `latency` | `number \| [min, max]` | Optional. One-way delay for the handshake, every incoming message and every send. Order is kept. Paused while the tab is hidden. Default `0` |
 | `loss` | `number \| { in?, out? }` | Optional. Probability that a message is lost, in both directions or per direction. Default `0` |
 | `refuse` | `number` | Optional. Probability that a connection attempt fails before opening. Default `0` |
 | `drop` | `number \| [min, max] \| false` | Optional. Each open connection drops after this long. Default `false` |
@@ -73,7 +73,7 @@ The methods work whether the random faults are `enabled` or not. Each call to `c
 ## Behavior
 
 - **Faults**
-  - **`latency`** delays each event in order, each in its own task. In a hidden tab, where browsers run timers about once a second, events already due go out without waiting for a timer each, so they don't pile up.
+  - **`latency`** delays each event in order, each in its own task. Not in a hidden tab: browsers hold its timers back by a second to a minute, which would turn the delay into that, so events go out in order without it.
   - **`refuse`** fires `error`, then `close` with code `1006`, without creating the real socket. It never fires synchronously from the constructor.
   - **`drop`** fires `error`, then `close` with code `1006`. It closes the real socket with `4999 'chaos'`.
   - **`stall`** keeps `readyState` at `OPEN` and discards everything in both directions, including sends still held back by `latency`. The real socket's `close` event is swallowed. Closing a stalled socket closes the real one with your code at once, and fires `close` with code `1006` a task later.

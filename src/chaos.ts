@@ -12,6 +12,7 @@ export interface ChaosFaults {
   /**
    * One-way delay in ms, added to the handshake (`open`), to every incoming message and to every
    * send. Order is preserved, as on a real connection. A round trip takes about twice this.
+   * Paused while the tab is hidden, where browsers hold timers back by up to a minute.
    * @default 0
    * @example
    * ```ts
@@ -148,7 +149,7 @@ function closeEvent(code: number, reason: string, wasClean: boolean): Event {
     : Object.assign(new Event('close'), init);
 }
 
-// Tasks a background tab doesn't throttle, as it does timers (to about one a second).
+// Tasks a hidden tab doesn't hold back, as it does timers.
 let channel: MessageChannel | undefined;
 const posted: (() => void)[] = [];
 function post(run: () => void) {
@@ -162,9 +163,28 @@ function post(run: () => void) {
   channel.port2.postMessage(null);
 }
 
+const hidden = () =>
+  typeof document === 'object' &&
+  document.visibilityState === 'hidden' &&
+  typeof MessageChannel === 'function';
+
+// Queues waiting on a timer: when the tab is hidden, they go on without it.
+const timed = new Set<() => void>();
+let watching = false;
+function watch() {
+  if (watching || typeof document !== 'object') return;
+  watching = true;
+  document.addEventListener('visibilitychange', () => {
+    if (hidden()) for (const hurry of [...timed]) hurry();
+  });
+}
+
 /**
  * Events delayed in order: each runs in its own task, no earlier than the one before it,
  * because a WebSocket never reorders. With no delay and nothing waiting, it runs right away.
+ *
+ * A hidden tab holds timers back by a second to a minute, so a delay would last that long and
+ * a heartbeat would give up. There, events run in order without the delay.
  */
 function createQueue() {
   let items: { at: number; run: () => void; data?: Data }[] = [];
@@ -172,26 +192,35 @@ function createQueue() {
   // Bumped by `clear()`, so a task already posted does nothing.
   let turn = 0;
   let waiting = false;
+  function stopTimer() {
+    clearTimeout(timer);
+    timer = undefined;
+    timed.delete(hurry);
+  }
+  function run(mine: number) {
+    if (mine !== turn) return;
+    waiting = false;
+    stopTimer();
+    try {
+      items.shift()!.run();
+    } finally {
+      next();
+    }
+  }
+  function hurry() {
+    stopTimer();
+    const mine = turn;
+    post(() => run(mine));
+  }
   function next() {
     const head = items[0];
     if (waiting || !head) return;
     waiting = true;
     const mine = turn;
-    const run = () => {
-      if (mine !== turn) return;
-      waiting = false;
-      timer = undefined;
-      try {
-        items.shift()!.run();
-      } finally {
-        next();
-      }
-    };
-    const wait = head.at - Date.now();
-    // Already due in a hidden tab: a timer each would let events pile up behind each other.
-    const hidden = typeof document === 'object' && document.visibilityState === 'hidden';
-    if (wait <= 0 && hidden && typeof MessageChannel === 'function') return post(run);
-    timer = setTimeout(run, wait);
+    if (hidden()) return post(() => run(mine));
+    timer = setTimeout(run, head.at - Date.now(), mine);
+    timed.add(hurry);
+    watch();
   }
   return {
     push(delay: number, run: () => void, data?: Data) {
@@ -201,8 +230,7 @@ function createQueue() {
     },
     clear() {
       items = [];
-      clearTimeout(timer);
-      timer = undefined;
+      stopTimer();
       waiting = false;
       turn++;
     },

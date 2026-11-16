@@ -53,8 +53,8 @@ when a connection drops, closes or switches while something else is under way.
   rejection, which error trackers reported on every fallback.
 - `react-websocket/chaos`: `close()` with a reason over 123 bytes throws `SyntaxError`, like a browser, where it used
   to leave the socket closing for good. A stall also holds back the sends still delayed by `latency`. With
-  `latency`, a page in a background tab no longer falls behind until its heartbeat gives up: browsers run its timers
-  about once a second, and events already due no longer wait for one each.
+  `latency`, a page in a background tab no longer falls behind until its heartbeat gives up: browsers hold its timers
+  back by a second to a minute, so `latency` now pauses while the tab is hidden.
 - `react-websocket/replay`: the recorder's `close()` with a code the browser rejects throws and leaves it open, where
   it used to leave it closing and ignoring its messages. A replay's `done` resolves after the last `close` event,
   not before it.

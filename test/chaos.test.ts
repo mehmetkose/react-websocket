@@ -3,6 +3,9 @@ import { createWebSocket, MessageError, type StandardSchemaV1 } from '../src/cor
 import { MockImpl, MockWebSocket } from './mock';
 
 const noJitter = { jitter: 0, minDelay: 1000, maxDelay: 30_000 };
+// Real time, past the fake timers: for tasks that don't use timers.
+const realSetTimeout = globalThis.setTimeout;
+const tasksRun = () => new Promise(resolve => realSetTimeout(resolve, 20));
 
 beforeEach(() => {
   MockWebSocket.reset();
@@ -159,27 +162,72 @@ describe('latency', () => {
     expect(inner.sent).toEqual(numbers.map(String));
   });
 
-  it('keeps up in a background tab, where timers run about once a second', async () => {
-    // Like a browser throttling a hidden tab: no timer runs sooner than a second.
-    const setTimer = globalThis.setTimeout;
-    vi.stubGlobal('setTimeout', ((run: () => void, ms?: number) =>
-      setTimer(run, Math.max(ms ?? 0, 1000))) as typeof setTimeout);
-    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
-    try {
+  describe('in a hidden tab, whose timers wait a second to a minute', () => {
+    let state = 'visible';
+    beforeEach(() => {
+      state = 'visible';
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+      // Like Safari holding back a hidden tab's timers: none runs within a minute.
+      const setTimer = globalThis.setTimeout;
+      vi.stubGlobal('setTimeout', ((run: () => void, ms?: number, ...args: unknown[]) =>
+        setTimer(
+          run,
+          state === 'hidden' ? Math.max(ms ?? 0, 60_000) : ms,
+          ...args
+        )) as typeof setTimeout);
+    });
+    afterEach(() => {
+      delete (document as { visibilityState?: unknown }).visibilityState;
+    });
+    const soon = { timeout: 500, interval: 5 };
+
+    it('goes on without the delay, in order, so a heartbeat gets its pong', async () => {
+      state = 'hidden';
       const socket = new (chaos({ latency: 100 }))('ws://x');
       const received: unknown[] = [];
       socket.onmessage = event => received.push(event.data);
       const inner = MockWebSocket.last;
       inner.open();
-      await vi.advanceTimersByTimeAsync(1000);
+      await vi.waitFor(() => expect(socket.readyState).toBe(WebSocket.OPEN), soon);
+      socket.send('ping');
+      await vi.waitFor(() => expect(inner.sent).toEqual(['ping']), soon);
       const numbers = [...Array(20).keys()];
       for (const n of numbers) inner.receive(n); // a second of snapshots, as in a game
+      inner.receive('pong');
+      await vi.waitFor(() => expect(received).toEqual([...numbers, 'pong']), soon);
+    });
+
+    it('moves on events already waiting on a timer when the tab is hidden', async () => {
+      const socket = new (chaos({ latency: 5000 }))('ws://x');
+      const received: unknown[] = [];
+      socket.onmessage = event => received.push(event.data);
+      const inner = MockWebSocket.last;
+      inner.open();
+      await vi.advanceTimersByTimeAsync(5000);
+      inner.receive('a');
+      inner.receive('b');
       await vi.advanceTimersByTimeAsync(1000);
-      // Not one a second: those already due go out each in its own task, in order.
-      await vi.waitFor(() => expect(received).toEqual(numbers), { timeout: 500, interval: 5 });
-    } finally {
-      delete (document as { visibilityState?: unknown }).visibilityState;
-    }
+      expect(received).toEqual([]); // visible: the delay holds
+      state = 'hidden';
+      document.dispatchEvent(new Event('visibilitychange'));
+      inner.receive('c');
+      await vi.waitFor(() => expect(received).toEqual(['a', 'b', 'c']), soon);
+    });
+
+    it('still keeps sends back from a stall', async () => {
+      state = 'hidden';
+      const Chaos = chaos({ latency: 100 });
+      const socket = new Chaos('ws://x');
+      const inner = MockWebSocket.last;
+      inner.open();
+      await vi.waitFor(() => expect(socket.readyState).toBe(WebSocket.OPEN), soon);
+      socket.send('lost');
+      Chaos.stall();
+      await tasksRun();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(inner.sent).toEqual([]);
+      expect(socket.bufferedAmount).toBe(4);
+    });
   });
 
   it('closes after pending sends, and stops delivering', () => {
