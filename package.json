@@ -239,7 +239,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "1.8 kB",
+      "limit": "1.9 kB",
       "gzip": true
     },
     {
@@ -249,7 +249,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "1.7 kB",
+      "limit": "1.8 kB",
       "gzip": true
     },
     {
@@ -259,7 +259,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "1.2 kB",
+      "limit": "1.25 kB",
       "gzip": true
     },
     {
@@ -279,7 +279,7 @@
       "ignore": [
         "react"
       ],
-      "limit": "750 B",
+      "limit": "780 B",
       "gzip": true
     },
     {
@@ -296,7 +296,7 @@
       "name": "react-websocket/chaos (createChaosWebSocket)",
       "path": "dist/chaos.js",
       "import": "{ createChaosWebSocket }",
-      "limit": "2.1 kB",
+      "limit": "2.3 kB",
       "gzip": true
     },
     {

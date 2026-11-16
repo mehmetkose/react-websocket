@@ -6,6 +6,7 @@ import {
   useWebSocketState,
   useWebSocketTopic
 } from '../src';
+import type { StandardSchemaV1 } from '../src/core';
 import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
 
 type In =
@@ -287,5 +288,104 @@ describe('createWebSocketFeeds', () => {
       event(3, 'again');
     });
     expect(container.textContent).toBe('hi,there,again');
+  });
+});
+
+// Transitions that meet another one under way: a resume, a release or a `migrate()` switch.
+describe('transitions under way', () => {
+  const receive = (socket: MockWebSocket, seq: number) =>
+    socket.receive(JSON.stringify({ type: 'event', topic: 'room', seq, text: String(seq) }));
+
+  it('counts afresh after reset() with a resume in flight, and asks again at the next gap', () => {
+    const { feeds, received } = setup({ resume: true });
+    feeds.acquire('room');
+    MockWebSocket.last.open();
+    event(1);
+    event(3); // asks for 2
+    feeds.reset('room');
+    event(2); // the answer, counted from the start
+    event(3);
+    event(5);
+    expect(received).toEqual(['1', '2', '3']);
+    expect(sent()).toEqual([
+      { type: 'subscribe', topic: 'room' },
+      { type: 'resume', topic: 'room', after: 1 },
+      { type: 'resume', topic: 'room', after: 3 }
+    ]);
+  });
+
+  it('subscribes from the start after a release with a resume in flight, and asks again at a gap', () => {
+    const { client, feeds, received } = setup({ resume: true });
+    client.connect(); // something else keeps the connection
+    const release = feeds.acquire('room');
+    MockWebSocket.last.open();
+    event(1);
+    event(3); // asks for 2
+    release();
+    vi.advanceTimersByTime(0);
+    feeds.acquire('room');
+    event(10);
+    event(12);
+    expect(received).toEqual(['1', '10']);
+    expect(sent()).toEqual([
+      { type: 'subscribe', topic: 'room' },
+      { type: 'resume', topic: 'room', after: 1 },
+      { type: 'unsubscribe', topic: 'room' },
+      { type: 'subscribe', topic: 'room' },
+      { type: 'resume', topic: 'room', after: 10 }
+    ]);
+  });
+
+  it("delivers once what the connection migrate() replaced was still validating, and drops the new one's replay", async () => {
+    const slow: StandardSchemaV1<unknown, In> = {
+      '~standard': {
+        version: 1,
+        vendor: 'test',
+        validate: value =>
+          new Promise(resolve => setTimeout(() => resolve({ value: value as In }), 10))
+      }
+    };
+    const client = createWebSocket<In, Out>(`ws://feeds/${++n}`, {
+      WebSocket: MockImpl,
+      json: true,
+      schema: slow
+    });
+    const feeds = createWebSocketFeeds(client, {
+      subscribe: (topic, after) => ({ type: 'subscribe', topic, after }),
+      sequence: message => (message.type === 'event' ? message : undefined)
+    });
+    const received: string[] = [];
+    feeds.on('message', message => {
+      if (message.type === 'event') received.push(message.text);
+    });
+    feeds.acquire('room');
+    client.connect();
+    const first = MockWebSocket.last;
+    first.open();
+    receive(first, 1);
+    await vi.advanceTimersByTimeAsync(10);
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    receive(first, 2); // before the switch, still validating after it
+    second.open(); // subscribes after 1, the last one delivered
+    receive(second, 2); // so the server sends 2 again
+    receive(second, 3);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(received).toEqual(['1', '2', '3']);
+    expect(sent(second)).toEqual([{ type: 'subscribe', topic: 'room', after: 1 }]);
+    expect(feeds.position('room')).toBe(3);
+  });
+
+  it("doesn't ask for missing messages on a connection that isn't open", () => {
+    const { client, feeds, received } = setup({ resume: true });
+    feeds.acquire('room');
+    MockWebSocket.last.open();
+    event(1);
+    const socket = MockWebSocket.last;
+    client.close();
+    receive(socket, 3); // arrives as it closes: not delivered, so nothing to ask for
+    expect(received).toEqual(['1']);
+    expect(sent(socket)).toEqual([{ type: 'subscribe', topic: 'room' }]);
   });
 });

@@ -72,7 +72,7 @@ In React, [`useWebSocketStream`](./use-websocket-stream.md) folds the replies in
 | `options.error` | `(message: In) => unknown` | Optional. Return anything but `undefined` to reject the request (or end the stream) with it, e.g. for an error reply |
 | `options.done` | `(message: In) => boolean` | Optional, needed by `stream()`. `true` for the last reply of a stream. That reply is yielded too |
 | `options.cancel` | `(id: number) => Out` | Optional. Builds the message that tells the server to stop working on request `id`. See [Cancel](#behavior) |
-| `options.timeout` | `number` | Optional. Default time to wait for a reply, in ms. For a stream, the time to wait for each reply, including the first. `Infinity` waits forever. Default `10000` |
+| `options.timeout` | `number` | Optional. Default time to wait for a reply, in ms. For a stream, the time to wait for each reply, including the first. `Infinity`, or anything over about 24.8 days, waits forever. Default `10000` |
 
 ## Returns
 
@@ -83,7 +83,7 @@ In React, [`useWebSocketStream`](./use-websocket-stream.md) folds the replies in
 | `request(message, options?)` | Send `message` and return a promise of its reply. See below |
 | `stream(message, options?)` | Send `message` and return an `AsyncIterableIterator<In>` of its replies, up to and including the one `done` matches. Throws a `TypeError` without `done` |
 | `pending()` | Number of requests and streams waiting for a reply |
-| `dispose()` | Reject every pending request, end every stream with an error, send `cancel` for each, and stop listening. Only for managers created dynamically |
+| `dispose()` | Reject every pending request, end every stream with an error, send `cancel` for each, and stop listening. Later requests reject. Only for managers created dynamically |
 | `client` | The client |
 
 ### request options
@@ -105,7 +105,7 @@ In React, [`useWebSocketStream`](./use-websocket-stream.md) folds the replies in
 
 - **Rejects, never hangs.** A request rejects on timeout (a `DOMException` named `TimeoutError`), when `error` returns a value, when its signal aborts, when the connection it was sent on closes, on `close()`, when the client gives up, and on `dispose()`. A stream throws in the same cases.
 - **Lost connections.** A reply can only arrive on the connection the request was sent on. When that connection closes, including through `reconnect()`, the request rejects instead of waiting through the reconnect.
-- **Queued while disconnected.** A request made while connecting or reconnecting waits in the client's send queue and goes out when the socket opens. Its timeout runs from the call. With `volatile`, or on a `closed` client, it rejects right away, and a `closed` client stays closed. So does a request dropped by `maxBuffered` while open. If it's dropped from the queue before it's sent (replaced by a newer request with the same `key`, evicted by `queue.limit`, or older than `maxAge`), it rejects then. On a client created with `queue: false`, the request is dropped and only rejects on timeout, so pass `volatile` there.
+- **Queued while disconnected.** A request made while connecting or reconnecting waits in the client's send queue and goes out when the socket opens. Its timeout runs from the call. With `volatile`, on a `closed` client, or when starting the client fails at once (e.g. an invalid URL), it rejects right away, and a `closed` client stays closed. So does a request dropped by `maxBuffered` while open. If it's dropped from the queue before it's sent (replaced by a newer request with the same `key`, evicted by `queue.limit`, or older than `maxAge`), it rejects then. On a client created with `queue: false`, it rejects right away too, and nothing is sent.
 - **Unique ids per client.** Ids count up per client, shared by every manager on it, so two managers on one client never send the same id.
 - **Holds the connection.** A pending request or stream holds the client like a mounted hook, so it works without React. The client is released when the request settles or the stream ends.
 - **Streams.** `stream()` sends right away, like `request()`. Replies that arrive before the loop reads them are buffered, so a slow loop misses nothing. A stream is read once, by one loop. `request()` with `done` set still resolves with the first reply.

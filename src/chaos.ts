@@ -12,6 +12,7 @@ export interface ChaosFaults {
   /**
    * One-way delay in ms, added to the handshake (`open`), to every incoming message and to every
    * send. Order is preserved, as on a real connection. A round trip takes about twice this.
+   * Paused while the tab is hidden, where browsers hold timers back by up to a minute.
    * @default 0
    * @example
    * ```ts
@@ -148,24 +149,78 @@ function closeEvent(code: number, reason: string, wasClean: boolean): Event {
     : Object.assign(new Event('close'), init);
 }
 
+// Tasks a hidden tab doesn't hold back, as it does timers.
+let channel: MessageChannel | undefined;
+const posted: (() => void)[] = [];
+function post(run: () => void) {
+  if (!channel) {
+    channel = new MessageChannel();
+    channel.port1.onmessage = () => posted.shift()?.();
+    // Node: the port mustn't keep the process alive.
+    (channel.port1 as { unref?: () => void }).unref?.();
+  }
+  posted.push(run);
+  channel.port2.postMessage(null);
+}
+
+const hidden = () =>
+  typeof document === 'object' &&
+  document.visibilityState === 'hidden' &&
+  typeof MessageChannel === 'function';
+
+// Queues waiting on a timer: when the tab is hidden, they go on without it.
+const timed = new Set<() => void>();
+let watching = false;
+function watch() {
+  if (watching || typeof document !== 'object') return;
+  watching = true;
+  document.addEventListener('visibilitychange', () => {
+    if (hidden()) for (const hurry of [...timed]) hurry();
+  });
+}
+
 /**
  * Events delayed in order: each runs in its own task, no earlier than the one before it,
  * because a WebSocket never reorders. With no delay and nothing waiting, it runs right away.
+ *
+ * A hidden tab holds timers back by a second to a minute, so a delay would last that long and
+ * a heartbeat would give up. There, events run in order without the delay.
  */
 function createQueue() {
   let items: { at: number; run: () => void; data?: Data }[] = [];
   let timer: Timer | undefined;
+  // Bumped by `clear()`, so a task already posted does nothing.
+  let turn = 0;
+  let waiting = false;
+  function stopTimer() {
+    clearTimeout(timer);
+    timer = undefined;
+    timed.delete(hurry);
+  }
+  function run(mine: number) {
+    if (mine !== turn) return;
+    waiting = false;
+    stopTimer();
+    try {
+      items.shift()!.run();
+    } finally {
+      next();
+    }
+  }
+  function hurry() {
+    stopTimer();
+    const mine = turn;
+    post(() => run(mine));
+  }
   function next() {
     const head = items[0];
-    if (timer !== undefined || !head) return;
-    timer = setTimeout(() => {
-      timer = undefined;
-      try {
-        items.shift()!.run();
-      } finally {
-        next();
-      }
-    }, head.at - Date.now());
+    if (waiting || !head) return;
+    waiting = true;
+    const mine = turn;
+    if (hidden()) return post(() => run(mine));
+    timer = setTimeout(run, head.at - Date.now(), mine);
+    timed.add(hurry);
+    watch();
   }
   return {
     push(delay: number, run: () => void, data?: Data) {
@@ -175,8 +230,9 @@ function createQueue() {
     },
     clear() {
       items = [];
-      clearTimeout(timer);
-      timer = undefined;
+      stopTimer();
+      waiting = false;
+      turn++;
     },
     bytes: () =>
       items.reduce((sum, item) => sum + (item.data === undefined ? 0 : size(item.data)), 0)
@@ -374,6 +430,10 @@ export function createChaosWebSocket(options: ChaosOptions = {}): ChaosWebSocket
       if (code !== undefined && code !== 1000 && !(code >= 3000 && code <= 4999)) {
         throw new DOMException(`Invalid close code ${code}`, 'InvalidAccessError');
       }
+      // Checked here: the wrapped socket would throw only later, with this one left CLOSING.
+      if (new TextEncoder().encode(reason).length > 123) {
+        throw new DOMException('Close reason longer than 123 bytes', 'SyntaxError');
+      }
       if (this.#state >= CLOSING) return;
       const connecting = this.#state === CONNECTING;
       this.#state = CLOSING;
@@ -423,6 +483,9 @@ export function createChaosWebSocket(options: ChaosOptions = {}): ChaosWebSocket
     #stall() {
       if (this.#state !== OPEN || this.#stalled) return;
       this.#stalled = true;
+      // Sends still on the way never leave either.
+      this.#unsent += this.#outgoing.bytes();
+      this.#outgoing.clear();
       log('chaos: stalled', this.url);
     }
 

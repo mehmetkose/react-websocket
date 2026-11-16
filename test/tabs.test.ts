@@ -272,6 +272,74 @@ describe('createTabsWebSocket', () => {
     );
   });
 
+  it("doesn't keep the shared socket for a tab's socket that closed before the leader heard of it", async () => {
+    const Shared = tab({ linger: 200 });
+    const a = client(Shared);
+    const b = client(Shared);
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
+
+    // b asks to connect as the shared socket closes: b's socket closes with it, and the leader,
+    // hearing from it only now, opens a new shared socket for it.
+    b.connect();
+    MockWebSocket.last.finishClose(1012);
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => {
+      expect(a.getSnapshot().status).toBe('open');
+      expect(b.getSnapshot().status).toBe('open');
+    });
+
+    // Nothing holds it once a and b let go.
+    a.close();
+    b.close();
+    await vi.waitFor(() =>
+      expect(MockWebSocket.last.closedWith).toEqual({ code: 1000, reason: undefined })
+    );
+  });
+
+  it('stops listening for pagehide once its sockets are closed', async () => {
+    const listen = vi.spyOn(window, 'addEventListener');
+    const unlisten = vi.spyOn(window, 'removeEventListener');
+    const a = client(tab());
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const pagehide = listen.mock.calls.find(([type]) => type === 'pagehide')![1];
+    a.close();
+    await vi.waitFor(() => expect(unlisten).toHaveBeenCalledWith('pagehide', pagehide));
+    listen.mockRestore();
+    unlisten.mockRestore();
+  });
+
+  it('leads again after dispose(), once the tab that led goes away', async () => {
+    const first = tab();
+    const a = client(first);
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
+
+    // This tab waits to lead, is disposed (e.g. a hot reload), and connects again.
+    const Shared = tab();
+    const b = client(Shared);
+    b.connect();
+    await vi.waitFor(() => expect(b.getSnapshot().status).toBe('open'));
+    Shared.dispose();
+    b.reconnect();
+    await vi.waitFor(() => expect(b.getSnapshot().status).toBe('open'));
+
+    // The leading tab goes away: this one leads, with the agent it has now.
+    first.dispose();
+    a.close();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(b.getSnapshot().status).toBe('open'));
+    b.send('from the new leader');
+    await vi.waitFor(() => expect(MockWebSocket.last.sent).toEqual(['from the new leader']));
+  });
+
   it('opens its own socket where the Web Locks API is missing', async () => {
     setLocks(undefined);
     const a = client(tab());

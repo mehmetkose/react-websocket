@@ -216,6 +216,37 @@ describe('createWebSocketOutbox', () => {
     expect((await storage.load()).map(record => record.id)).toEqual(['fresh']);
   });
 
+  it('sends nothing more once onExpire clears the outbox', async () => {
+    const { outbox } = setup({ maxAge: 60_000, onExpire: () => void outbox.clear() });
+    await outbox.ready;
+    outbox.add({ table: 1 }, 'stale');
+    vi.advanceTimersByTime(60_001);
+    outbox.add({ table: 2 }, 'fresh');
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([]);
+    expect(outbox.getSnapshot()).toEqual([]);
+  });
+
+  it('sends each message once per connection, even when an earlier open listener adds one', async () => {
+    const client = createWebSocket<In, Out>(`ws://outbox/${++n}`, {
+      WebSocket: MockImpl,
+      json: true
+    });
+    // Runs before the outbox's own `open` listener.
+    client.on('open', () => void outbox.add({ table: 0 }, 'hello'));
+    const outbox = createWebSocketOutbox(client, {
+      name: `orders-${n}`,
+      storage: memoryStorage(),
+      send: (order: Order, id) => ({ type: 'order', id, order }),
+      ack: message => (message.type === 'ack' ? message.id : null)
+    });
+    await outbox.ready;
+    outbox.add({ table: 1 }, 'a');
+    MockWebSocket.last.open();
+    expect(sent().map(message => message.id)).toEqual(['a', 'hello']);
+    expect(outbox.getSnapshot()).toMatchObject([{ sent: true }, { sent: true }]);
+  });
+
   it('holds the connection while messages wait, and releases it when they are acknowledged', async () => {
     const { client, outbox } = setup();
     await outbox.ready;
@@ -382,6 +413,18 @@ describe('createWebSocketOutbox', () => {
     client.connect();
     MockWebSocket.last.open();
     expect(sent()).toEqual([]);
+  });
+
+  it('remove() and clear() still delete stored messages after dispose()', async () => {
+    const { outbox, storage } = setup();
+    await outbox.ready;
+    await outbox.add({ table: 1 }, 'a');
+    await outbox.add({ table: 2 }, 'b');
+    outbox.dispose();
+    await outbox.remove('a');
+    expect((await storage.load()).map(record => record.id)).toEqual(['b']);
+    await outbox.clear();
+    expect(await storage.load()).toEqual([]);
   });
 
   it('keeps messages in memory where there is no IndexedDB', async () => {

@@ -163,6 +163,22 @@ describe('createWebSocketLatency', () => {
     vi.advanceTimersByTime(5000);
     expect(sent()).toHaveLength(1);
   });
+
+  it('stays paused when an earlier open listener closed the connection', () => {
+    const client = createWebSocket<In, Out>(`ws://latency/${++n}`, {
+      WebSocket: MockImpl,
+      json: true
+    });
+    client.on('open', () => client.close());
+    createWebSocketLatency(client, {
+      ping: id => ({ type: 'ping', id }),
+      pong: () => undefined,
+      interval: 1000
+    });
+    client.connect();
+    MockWebSocket.last.open();
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
 
 describe('useWebSocketLatency', () => {

@@ -50,7 +50,7 @@ Durations are in ms. A `[min, max]` range picks a uniformly random value each ti
 | `seed` | `number` | Optional. Makes the random faults repeatable. Default: unseeded (`Math.random`) |
 | `logger` | `(message, ...details) => void` | Optional. Called for every injected fault, e.g. `console.warn` |
 | `enabled` | `boolean` | Optional. `false` turns the random faults off without forgetting them. Default `true` |
-| `latency` | `number \| [min, max]` | Optional. One-way delay for the handshake, every incoming message and every send. Order is kept. Default `0` |
+| `latency` | `number \| [min, max]` | Optional. One-way delay for the handshake, every incoming message and every send. Order is kept. Paused while the tab is hidden. Default `0` |
 | `loss` | `number \| { in?, out? }` | Optional. Probability that a message is lost, in both directions or per direction. Default `0` |
 | `refuse` | `number` | Optional. Probability that a connection attempt fails before opening. Default `0` |
 | `drop` | `number \| [min, max] \| false` | Optional. Each open connection drops after this long. Default `false` |
@@ -73,17 +73,17 @@ The methods work whether the random faults are `enabled` or not. Each call to `c
 ## Behavior
 
 - **Faults**
-  - **`latency`** delays each event in order, each in its own task.
+  - **`latency`** delays each event in order, each in its own task. Not in a hidden tab: browsers hold its timers back by a second to a minute, which would turn the delay into that, so events go out in order without it.
   - **`refuse`** fires `error`, then `close` with code `1006`, without creating the real socket. It never fires synchronously from the constructor.
   - **`drop`** fires `error`, then `close` with code `1006`. It closes the real socket with `4999 'chaos'`.
-  - **`stall`** keeps `readyState` at `OPEN` and discards everything in both directions. The real socket's `close` event is swallowed. Closing a stalled socket closes the real one with your code at once, and fires `close` with code `1006` a task later.
+  - **`stall`** keeps `readyState` at `OPEN` and discards everything in both directions, including sends still held back by `latency`. The real socket's `close` event is swallowed. Closing a stalled socket closes the real one with your code at once, and fires `close` with code `1006` a task later.
   - **`corrupt`** cuts text at a random point and appends U+FFFD, so it never parses as JSON. It cuts an `ArrayBuffer` or `Blob` short. Any other data becomes `'�'`.
   - **`drop` and `stall` together:** the first to come wins. A stalled connection can still drop later.
 - **Seeds.** Each connection gets its own random sequences, one for its lifecycle (refusal, open delay, lifetimes), one for incoming and one for outgoing messages. With the same `seed` and options, the nth connection gets the same faults no matter how much traffic earlier ones carried.
 - **No faults, no delay.** With no faults set, or `enabled: false`, events pass through synchronously.
 - **Like a browser**
   - `send()` throws `InvalidStateError` while connecting, and does nothing after `close()`.
-  - `close()` throws `InvalidAccessError` for codes other than `1000` and `3000`–`4999`.
+  - `close()` throws `InvalidAccessError` for codes other than `1000` and `3000`–`4999`, and `SyntaxError` for a reason over 123 bytes, before anything changes.
   - `bufferedAmount` includes sends held back by `latency` and anything sent into a stall.
 - **Not on the server.** Without the `WebSocket` option and outside a browser, constructing it throws, so a client using it fails as during any [server render](../guide/ssr.md).
 - **Not a `WebSocket`.** `instanceof WebSocket` is `false`. Events have the chaos socket as their `target`.

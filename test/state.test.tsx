@@ -255,3 +255,80 @@ describe('useWebSocketState', () => {
     expect(screen.getByRole('paragraph').textContent).toBe('3');
   });
 });
+
+// Transitions that meet another one under way: a waiting frame, a failing reducer, a reconnect.
+describe('transitions under way', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('leaves the state as it was when the reducer throws, and reduces the next message', () => {
+    const thrown: unknown[] = [];
+    vi.spyOn(globalThis, 'queueMicrotask').mockImplementation(callback => {
+      try {
+        callback();
+      } catch (error) {
+        thrown.push(error);
+      }
+    });
+    const client = createWebSocket<Tick>(uniqueUrl(), { WebSocket: MockImpl, json: true });
+    const store = createWebSocketState(client, {
+      initialState: {} as Prices,
+      reduce: (state, { symbol, price }) => {
+        if (price < 0) throw new Error('bad price');
+        return { ...state, [symbol]: price };
+      },
+      batch: 'frame'
+    });
+    const listener = vi.fn();
+    store.subscribe(listener);
+    client.connect();
+    MockWebSocket.last.open();
+    tick('ACME', 1);
+    tick('ACME', -1);
+    tick('INIT', 2);
+    vi.advanceTimersToNextFrame();
+    expect(store.getState()).toEqual({ ACME: 1, INIT: 2 });
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(thrown).toEqual([new Error('bad price')]);
+  });
+
+  it('says nothing when reset() undoes changes still waiting for their frame', () => {
+    const { store } = connected('frame');
+    const listener = vi.fn();
+    store.subscribe(listener);
+    tick('ACME', 1);
+    store.reset(); // nobody heard of ACME yet
+    vi.advanceTimersToNextFrame();
+    expect(listener).not.toHaveBeenCalled();
+    tick('ACME', 2);
+    vi.advanceTimersToNextFrame();
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(store.getState()).toEqual({ ACME: 2 });
+  });
+
+  it('reduces messages from the connection a migrate() switch replaced, then the new one', () => {
+    const { client, store } = connected();
+    const first = MockWebSocket.last;
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    first.receive(JSON.stringify({ symbol: 'ACME', price: 1 })); // before the switch
+    second.open();
+    second.receive(JSON.stringify({ symbol: 'ACME', price: 2 }));
+    expect(store.getState()).toEqual({ ACME: 2 });
+  });
+
+  it('keeps its state through close() and connect(), until reset()', () => {
+    const { client, store } = connected();
+    tick('ACME', 1);
+    client.close();
+    expect(store.getState()).toEqual({ ACME: 1 });
+    client.connect();
+    MockWebSocket.last.open();
+    tick('INIT', 2);
+    expect(store.getState()).toEqual({ ACME: 1, INIT: 2 });
+    store.reset();
+    expect(store.getState()).toBe(store.initialState);
+  });
+});

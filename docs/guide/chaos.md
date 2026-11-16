@@ -49,7 +49,7 @@ Every fault is off until you set it.
 
 | Option | What happens | What it tests |
 | --- | --- | --- |
-| `latency: 200` or `[50, 400]` | The handshake, every incoming message and every send is delayed by this many ms. Order is kept. A round trip takes twice as long | Loading states, request timeouts, a heartbeat `timeout` shorter than the round trip |
+| `latency: 200` or `[50, 400]` | The handshake, every incoming message and every send is delayed by this many ms. Order is kept. A round trip takes twice as long. Paused while the tab is hidden, where browsers hold timers back by up to a minute | Loading states, request timeouts, a heartbeat `timeout` shorter than the round trip |
 | `loss: 0.05` or `{ in, out }` | Each message is lost with this probability, in both directions or only one | Missing updates, request `TimeoutError`, resyncing |
 | `refuse: 0.3` | Each connection attempt fails before opening, with `error` and then `close` code `1006`. The server never sees it | Backoff, `attempt`, `maxAttempts`, Suspense fallbacks on `ready` |
 | `drop: [10_000, 30_000]` | Each open connection dies after a random time in this range, with `error` and then `close` code `1006` | The reconnecting UI, the send queue, topic resubscribes, requests dropped by a disconnect |

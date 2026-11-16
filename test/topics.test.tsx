@@ -59,6 +59,17 @@ describe('createWebSocketTopics', () => {
     release();
   });
 
+  it('subscribes once to a topic acquired as the socket opens', () => {
+    const { client, topics } = setup();
+    // A store listener runs before `open` listeners, on a socket that's already open.
+    client.subscribe(() => {
+      if (client.getSnapshot().status === 'open' && !topics.active().length) topics.acquire('a');
+    });
+    client.connect();
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([{ type: 'sub', topic: 'a' }]);
+  });
+
   it('subscribes immediately when already open', () => {
     const { client, topics } = setup();
     client.connect();

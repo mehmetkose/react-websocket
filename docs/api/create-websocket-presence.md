@@ -65,4 +65,5 @@ A `WebSocketPresence<P>`:
 
 - **Volatile.** Updates are sent with `volatile`, so none is queued while disconnected; a new connection gets the current state from an `open` listener.
 - **Expiry.** A peer is removed `timeout` ms after its last update, by a single timer for the next one due.
+- **Closing.** `close()`, or giving up on reconnecting, forgets the other peers at once. Through a reconnect, peers are kept until they time out or send again.
 - **Connection.** It doesn't open the connection; `useWebSocketPresence` holds it while mounted.

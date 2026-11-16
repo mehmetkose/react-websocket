@@ -108,6 +108,26 @@ describe('createRecordingWebSocket', () => {
     socket.close();
   });
 
+  it('stays open when the socket it wraps rejects a close code', () => {
+    class Strict extends MockWebSocket {
+      close(code?: number, reason?: string) {
+        if (code === 1006) throw new DOMException('Invalid close code', 'InvalidAccessError');
+        super.close(code, reason);
+      }
+    }
+    const Recorder = createRecordingWebSocket({ WebSocket: as(Strict) });
+    const socket = new Recorder('ws://chat');
+    const received: unknown[] = [];
+    socket.onmessage = event => received.push(event.data);
+    MockWebSocket.last.open();
+    expect(() => socket.close(1006)).toThrow('Invalid close code');
+    expect(socket.readyState).toBe(1);
+    MockWebSocket.last.receive('still open');
+    expect(received).toEqual(['still open']);
+    socket.close(4000, 'bye');
+    expect(MockWebSocket.last.closedWith).toEqual({ code: 4000, reason: 'bye' });
+  });
+
   it('saves the recording as a JSON file', () => {
     const Recorder = createRecordingWebSocket({ WebSocket: MockImpl });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
@@ -204,6 +224,18 @@ describe('createReplayWebSocket', () => {
     vi.advanceTimersByTime(10_000);
     expect(closes).toEqual([4001]);
     expect(Replay.sent).toEqual([[]]);
+  });
+
+  it('resolves done after the close event of a connection the app closes', async () => {
+    const Replay = createReplayWebSocket({ ...chat, connections: chat.connections.slice(1) });
+    const socket = new Replay('ws://chat');
+    const events: string[] = [];
+    socket.onclose = () => events.push('close');
+    void Replay.done.then(() => events.push('done'));
+    vi.advanceTimersByTime(10);
+    socket.close();
+    await vi.runAllTimersAsync();
+    expect(events).toEqual(['close', 'done']);
   });
 
   it('takes chaos on top, for faults that never happened in the recording', () => {

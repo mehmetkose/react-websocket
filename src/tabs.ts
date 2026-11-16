@@ -145,7 +145,6 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
   // The sockets this tab has on shared ones. A tab that goes away tells the leading tab,
   // which would otherwise keep their topics and the shared socket for them.
   const live = new Set<() => void>();
-  let hiding = false;
   const onPageHide = () => {
     for (const leave of [...live]) leave();
   };
@@ -241,7 +240,7 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       }
     }
 
-    agents.set(key, {
+    const self = {
       channel,
       stop() {
         clearTimeout(lingerTimer);
@@ -252,9 +251,11 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
         }
         release?.();
       }
-    });
+    };
+    agents.set(key, self);
     void navigator.locks.request(key, () => {
-      if (!agents.has(key)) return;
+      // Stopped by `dispose()`, even if the URL has a new agent in this tab since.
+      if (agents.get(key) !== self) return;
       channel.onmessage = event => handle(event.data as Signal);
       // Sockets that were using the tab that led before start over with this one.
       post({ t: 'leader' });
@@ -288,11 +289,9 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
     #state: WebSocket['readyState'] = CONNECTING;
     #channel: BroadcastChannel | undefined;
     // The page is going away, or into the back/forward cache: let go of the shared socket, and
-    // close, so a page that comes back connects again.
+    // close, so a page that comes back connects again. After `close()`, it ends by itself.
     #leave = () => {
-      if (this.#state >= CLOSING) return; // `close()` told the leader already
-      this.#post({ t: 'disconnect', id: this.#id });
-      this.#end(1001, '', false);
+      if (this.#state < CLOSING) this.#end(1001, '', false);
     };
     // Without `BroadcastChannel` or locks: a socket of this tab's own.
     #inner: WebSocket | undefined;
@@ -333,10 +332,8 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       channel.onmessage = event => this.#signal(event.data as Signal);
       this.#post({ t: 'connect', id: this.#id });
       live.add(this.#leave);
-      if (!hiding) {
-        hiding = true;
-        addEventListener('pagehide', onPageHide);
-      }
+      // While any socket is live; adding it again does nothing.
+      addEventListener('pagehide', onPageHide);
     }
 
     get readyState() {
@@ -404,9 +401,13 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
 
     #end(code: number, reason: string, wasClean: boolean) {
       if (this.#state === CLOSED) return;
+      // Not through `close()`: tell the leader, which may count this socket still, such as one
+      // it heard from only after the shared socket closed.
+      if (this.#state < CLOSING) this.#post({ t: 'disconnect', id: this.#id });
       this.#state = CLOSED;
       this.#channel?.close();
       live.delete(this.#leave);
+      if (!live.size) removeEventListener('pagehide', onPageHide);
       this.dispatchEvent(closeEvent(code, reason, wasClean));
     }
   }

@@ -1136,6 +1136,69 @@ describe('close()', () => {
     release();
     other();
   });
+
+  it('stays open after reconnect() while nothing holds it, as after connect()', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    ws.connect();
+    MockWebSocket.last.open();
+    ws.close(); // logout
+    ws.reconnect(); // login, with no hook mounted
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(60_000);
+    expect(ws.getSnapshot().status).toBe('open');
+    expect(MockWebSocket.last.closedWith).toBeUndefined();
+
+    ws.close();
+    const release = ws.acquire(); // reference-counted again after close()
+    MockWebSocket.last.open();
+    release();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('idle');
+  });
+
+  it("doesn't hold a client after reconnect() when connect() didn't", async () => {
+    // The Suspense guide's error boundary: hooks held the client, it closed, the fallback
+    // replaced them, and its retry button calls reconnect().
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    const release = ws.acquire();
+    MockWebSocket.last.open();
+    ws.close();
+    release();
+    ws.reconnect();
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    vi.runAllTimers(); // no hook came back
+    expect(ws.getSnapshot().status).toBe('idle');
+
+    // A new token while nothing holds the client, as in the authentication guide.
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    ws.reconnect();
+    MockWebSocket.last.open();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('idle');
+  });
+
+  it('holds a client again after reconnect() when close() let go of connect()', () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 1 }
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot().status).toBe('closed'); // gave up, still held by connect()
+    ws.close();
+    ws.close();
+    ws.reconnect();
+    MockWebSocket.last.open();
+    vi.runAllTimers();
+    expect(ws.getSnapshot().status).toBe('open');
+  });
 });
 
 describe('heartbeat', () => {
@@ -1347,6 +1410,25 @@ describe('acquire()', () => {
     expect(MockWebSocket.last.closedWith).toBeDefined();
   });
 
+  it('stays closed after close() in the grace period of a connection nobody holds', async () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
+    void ws.ready;
+    await Promise.resolve();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(1000);
+    ws.close(); // logout
+    const rejected = ws.ready;
+    await expect(rejected).rejects.toThrow('closed');
+    vi.advanceTimersByTime(10_000); // past the grace period
+    expect(ws.getSnapshot().status).toBe('closed');
+    expect(ws.ready).toBe(rejected); // reading it doesn't connect again
+    await Promise.resolve();
+    expect(MockWebSocket.instances).toHaveLength(1);
+    const release = ws.acquire(); // the next hook to mount still opens it
+    expect(MockWebSocket.instances).toHaveLength(2);
+    release();
+  });
+
   it('closes after ready resolves when the last holder left while connecting', () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl });
     const release = ws.acquire();
@@ -1468,5 +1550,239 @@ describe('reported issues', () => {
       expect(MockWebSocket.instances).toHaveLength(0);
       expect(ws.getSnapshot().status).toBe('closed');
     });
+  });
+});
+
+// Transitions that meet another one under way: a wait, a ping, a handoff or a validation.
+describe('transitions under way', () => {
+  const heartbeat = { interval: 1000, message: 'ping', pong: 'pong', timeout: 500 };
+  const slowSchema: StandardSchemaV1<unknown, string> = {
+    '~standard': {
+      version: 1,
+      vendor: 'test',
+      validate: v => new Promise(resolve => setTimeout(() => resolve({ value: v as string }), 10))
+    }
+  };
+
+  it('retries a later drop when online, after a handoff replaced a wait the server asked for', () => {
+    const url = 'ws://online-after-handoff'; // other tests' clients wake up on `online` too
+    const mine = () => MockWebSocket.instances.filter(socket => socket.url === url);
+    const ws = createWebSocket(url, { WebSocket: MockImpl, reconnect: noJitter });
+    ws.connect();
+    const first = MockWebSocket.last;
+    first.open();
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    first.finishClose(1013, '60'); // the server asks for a minute
+    second.open(); // the handoff replaces that wait
+    second.finishClose(1006);
+    window.dispatchEvent(new Event('online'));
+    expect(mine()).toHaveLength(3);
+    ws.close();
+  });
+
+  it('starts the backoff over when reconnect() restarts a client that gave up', () => {
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 2 }
+    });
+    ws.connect();
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.finishClose();
+    vi.advanceTimersByTime(2000);
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot()).toMatchObject({ status: 'closed', attempt: 2 });
+    ws.reconnect();
+    expect(ws.getSnapshot()).toMatchObject({ status: 'connecting', attempt: 0 });
+    MockWebSocket.last.finishClose();
+    expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt: 1 });
+    const sockets = MockWebSocket.instances.length;
+    vi.advanceTimersByTime(1000); // minDelay again, not the third step of the backoff
+    expect(MockWebSocket.instances).toHaveLength(sockets + 1);
+    ws.close();
+  });
+
+  it("stops pinging the socket reconnect() replaced, and its ping's timeout", () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter, heartbeat });
+    ws.connect();
+    const first = MockWebSocket.last;
+    first.open();
+    vi.advanceTimersByTime(1000); // a ping waits for its pong
+    expect(first.sent).toEqual(['ping']);
+    ws.reconnect();
+    const second = MockWebSocket.last;
+    second.open();
+    vi.advanceTimersByTime(600); // past the old ping's timeout
+    expect(second.closedWith).toBeUndefined();
+    expect(ws.getSnapshot().status).toBe('open');
+    vi.advanceTimersByTime(400);
+    expect(first.sent).toEqual(['ping']);
+    expect(second.sent).toEqual(['ping']);
+    ws.close();
+  });
+
+  it('sends no wake-up ping while connecting', () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, reconnect: noJitter, heartbeat });
+    ws.connect();
+    window.dispatchEvent(new Event('online'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    MockWebSocket.last.open();
+    expect(MockWebSocket.last.sent).toEqual([]);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    ws.close();
+  });
+
+  it('drops the new connection of a handoff when reconnect() comes first', () => {
+    const ws = createWebSocket('ws://a', { WebSocket: MockImpl, reconnect: noJitter });
+    ws.connect();
+    MockWebSocket.last.open();
+    ws.migrate({ url: 'ws://b' });
+    vi.advanceTimersByTime(0);
+    const handoff = MockWebSocket.last;
+    ws.reconnect();
+    expect(handoff.closedWith).toBeDefined();
+    const next = MockWebSocket.last;
+    expect(next).not.toBe(handoff);
+    handoff.open(); // too late
+    next.open();
+    expect(ws.socket).toBe(next);
+    expect(next.url).toBe('ws://b'); // reconnect() keeps the migrate() target
+    ws.close();
+  });
+
+  it('drops the new connection of a handoff when the client gives up first', () => {
+    const ws = createWebSocket('ws://a', {
+      WebSocket: MockImpl,
+      reconnect: { ...noJitter, maxAttempts: 0 }
+    });
+    ws.connect();
+    const first = MockWebSocket.last;
+    first.open();
+    ws.migrate();
+    vi.advanceTimersByTime(0);
+    const handoff = MockWebSocket.last;
+    first.finishClose(1006);
+    expect(ws.getSnapshot().status).toBe('closed');
+    expect(handoff.closedWith).toBeDefined();
+    handoff.open();
+    expect(ws.getSnapshot().status).toBe('closed');
+    expect(ws.socket).toBeNull();
+  });
+
+  it("ignores a handoff's URL that resolves after a retry started", async () => {
+    const ws = createWebSocket('ws://a', { WebSocket: MockImpl, reconnect: noJitter });
+    ws.connect();
+    const first = MockWebSocket.last;
+    first.open();
+    const resolvers: ((url: string) => void)[] = [];
+    ws.migrate({ url: () => new Promise<string>(resolve => resolvers.push(resolve)) });
+    vi.advanceTimersByTime(0); // the handoff waits for its URL
+    first.finishClose(1006);
+    vi.advanceTimersByTime(1000); // the retry asks for a URL too
+    expect(resolvers).toHaveLength(2);
+    resolvers[0]!('ws://late');
+    resolvers[1]!('ws://b');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(MockWebSocket.instances.map(socket => socket.url)).toEqual(['ws://a', 'ws://b']);
+    MockWebSocket.last.open();
+    expect(ws.getSnapshot().status).toBe('open');
+    ws.close();
+  });
+
+  it('drops what the socket reconnect() replaced was still validating', async () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, schema: slowSchema });
+    const received: string[] = [];
+    ws.on('message', message => received.push(message));
+    ws.connect();
+    const first = MockWebSocket.last;
+    first.open();
+    first.receive('old');
+    ws.reconnect();
+    const second = MockWebSocket.last;
+    second.open();
+    second.receive('new');
+    await vi.runAllTimersAsync();
+    expect(received).toEqual(['new']);
+    expect(ws.getSnapshot().lastMessage).toBe('new');
+    ws.close();
+  });
+
+  it('opens only the latest attempt when reconnect() comes while url() is pending', async () => {
+    const resolvers: ((url: string) => void)[] = [];
+    const ws = createWebSocket(() => new Promise<string>(resolve => resolvers.push(resolve)), {
+      WebSocket: MockImpl
+    });
+    ws.connect();
+    ws.reconnect();
+    expect(resolvers).toHaveLength(2);
+    resolvers[1]!('ws://second');
+    resolvers[0]!('ws://first'); // the attempt reconnect() replaced
+    await vi.advanceTimersByTimeAsync(0);
+    expect(MockWebSocket.instances.map(socket => socket.url)).toEqual(['ws://second']);
+    MockWebSocket.last.open();
+    expect(ws.getSnapshot()).toMatchObject({ status: 'open', attempt: 0 });
+    ws.close();
+  });
+
+  it('drops a url() that fails after close(), without an error or a retry', async () => {
+    let reject!: (error: Error) => void;
+    const ws = createWebSocket(() => new Promise<string>((_, r) => (reject = r)), {
+      WebSocket: MockImpl,
+      reconnect: noJitter
+    });
+    const onError = vi.fn();
+    ws.on('error', onError);
+    ws.connect();
+    ws.close();
+    reject(new Error('token endpoint down'));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(onError).not.toHaveBeenCalled();
+    expect(MockWebSocket.instances).toHaveLength(0);
+    expect(ws.getSnapshot().status).toBe('closed');
+  });
+
+  it('stays reconnecting, with its attempt, while a retry waits for url()', async () => {
+    let calls = 0;
+    let resolve!: (url: string) => void;
+    const ws = createWebSocket(
+      () => (++calls === 1 ? 'ws://x' : new Promise<string>(r => (resolve = r))),
+      { WebSocket: MockImpl, reconnect: noJitter }
+    );
+    const seen: string[] = [];
+    ws.subscribe(() => {
+      const { status, attempt } = ws.getSnapshot();
+      if (seen.at(-1) !== `${status} ${attempt}`) seen.push(`${status} ${attempt}`);
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.finishClose(1006);
+    vi.advanceTimersByTime(1000); // the retry asks for its URL
+    expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt: 1 });
+    resolve('ws://x');
+    await vi.advanceTimersByTimeAsync(0);
+    MockWebSocket.last.open();
+    expect(seen).toEqual(['connecting 0', 'open 0', 'reconnecting 1', 'open 0']);
+    ws.close();
+  });
+
+  it('drops what a closed socket was still validating, and keeps validating after a reopen', async () => {
+    const ws = createWebSocket('ws://x', { WebSocket: MockImpl, schema: slowSchema });
+    const received: string[] = [];
+    ws.on('message', message => received.push(message));
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.receive('before logout');
+    ws.close();
+    await vi.runAllTimersAsync();
+    expect(received).toEqual([]);
+    expect(ws.getSnapshot().lastMessage).toBeUndefined();
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.receive('after login');
+    await vi.runAllTimersAsync();
+    expect(received).toEqual(['after login']);
+    ws.close();
   });
 });

@@ -6,6 +6,62 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+This release fixes bugs in how the client, its managers and the socket wrappers move between states: what they do
+when a connection drops, closes or switches while something else is under way.
+
+### Fixed
+
+- `reconnect()` after `close()` takes back the hold of `connect()`: a client started with `connect()` stays connected
+  again until `close()`, even with no hook holding it. It used to close the new connection 5 seconds after it
+  opened.
+- A client closed, or one that gave up, in the few seconds after a connection nobody held opened (such as one a
+  Suspense render started) stays `closed` until the next hook holds it. It used to turn `idle` when those seconds
+  ran out, and reading `ready` then connected it again after `close()`.
+- A request made while the socket isn't open, on a client created with `queue: false` (or `queue.limit` 0), rejects
+  right away and sends nothing, like a volatile one. It used to wait for its timeout, forever with
+  `timeout: Infinity`, and then send a cancel for an id the server never got.
+- A request that starts a client which fails at once, such as one with an invalid URL, rejects as on a closed
+  client instead of waiting in the queue. A request made after `dispose()` rejects instead of going out with nothing
+  listening for its reply.
+- A `timeout` longer than `setTimeout` can wait, about 24.8 days, waits forever in requests and in the responder.
+  It used to time out at once.
+- The responder answers a request only on the connection it arrived on. During a `migrate()` switch, a reply, or a
+  request that an async `schema` delivered late, could reach the new connection, where the server doesn't know the
+  id.
+- A topic acquired on a socket that had just opened, from a store listener or an earlier `open` listener, is
+  subscribed once, not twice.
+- When the connection drops, only the runs that were streaming on it are aborted. A run that a listener started
+  meanwhile, such as the next prompt in a queue, was aborted with them, so a queue drained itself.
+- A run that a listener ends as soon as it starts no longer sends a resume and holds the connection for good.
+- Presence forgets the other peers when the client closes, so `close()` on logout doesn't leave the previous user's
+  peers on screen until they time out. It refreshes only after a send that went out, so no timer runs while
+  disconnected, and `set()` after `dispose()` no longer starts a refresh that never stops.
+- Latency doesn't start its ping interval when an earlier `open` listener already closed the connection.
+- The outbox sends each entry once per connection. An `add()` from an `open` listener that ran before the outbox's
+  own used to send everything again. An entry removed, sent or replaced during a flush, for example by `onExpire`,
+  is no longer sent or brought back by it. `remove()` and `clear()` after `dispose()` delete from storage instead of
+  throwing.
+- AG-UI: a chunk without a `messageId` continues its message past the activity events between chunks, instead of
+  going to the activity message. An aborted run shows no step, and a new run doesn't start with the last one's
+  step, error or result. A run followed again after a reload shows as running until its events replay, and as
+  aborted if it was stopped meanwhile.
+- After a reconnect, the timeline doesn't take latency measured on the previous connection as the server's clock,
+  which pinned `renderTime()` to a restarted server's old clock.
+- `react-websocket/webtransport`: a fallback `WebSocket` that throws, for example on protocols it rejects, or a
+  `Blob` that can't be read, fails the connection with an `error` and a `1006` close. It used to leave the socket
+  connecting forever, or drop every later send. A session that fails no longer leaves an unhandled promise
+  rejection, which error trackers reported on every fallback.
+- `react-websocket/chaos`: `close()` with a reason over 123 bytes throws `SyntaxError`, like a browser, where it used
+  to leave the socket closing for good. A stall also holds back the sends still delayed by `latency`. With
+  `latency`, a page in a background tab no longer falls behind until its heartbeat gives up: browsers hold its timers
+  back by a second to a minute, so `latency` now pauses while the tab is hidden.
+- `react-websocket/replay`: the recorder's `close()` with a code the browser rejects throws and leaves it open, where
+  it used to leave it closing and ignoring its messages. A replay's `done` resolves after the last `close` event,
+  not before it.
+- `react-websocket/tabs`: the shared connection closes once its last socket does, even after a tab's socket closed
+  while its connect was on the way. The `pagehide` listener is removed once no socket is open, and a tab disposed
+  while waiting to lead no longer throws when it takes over.
+
 ## [4.22.1] - 2026-10-30
 
 The library's code is the same as in 4.22.0. This release corrects the author details npm shows, and updates the

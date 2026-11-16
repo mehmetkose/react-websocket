@@ -140,7 +140,10 @@ const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
 /** @internal Method key on a socket that sends `volatile` messages as datagrams (WebTransport). */
 const DATAGRAM = Symbol.for('react-websocket.datagram');
 
-/** @internal Method key for what `react-websocket/devtools` shows that the snapshot doesn't. */
+/**
+ * @internal Method key for what `react-websocket/devtools` shows that the snapshot doesn't. Requests
+ * read its queue length too, to tell a dropped message from a queued one.
+ */
 const INSPECT = Symbol.for('react-websocket.inspect');
 
 function createClient<In = unknown, Out = unknown>(
@@ -180,6 +183,8 @@ function createClient<In = unknown, Out = unknown>(
   let refs = 0;
   // Set by a public `connect()`: stay connected after the last hook releases, until `close()`.
   let pinned = false;
+  // `close()` let go of `connect()`'s hold, which `reconnect()` takes back. Until it starts again.
+  let unpinned = false;
   // Stopped (`close()` or giving up) while nothing held it: the next holder starts it again,
   // as it would after the last hook unmounted.
   let unheldStop = false;
@@ -521,6 +526,8 @@ function createClient<In = unknown, Out = unknown>(
     wanted = false;
     opened = false;
     unheldStop = refs === 0;
+    // Closed while nothing holds it: it waits for the next holder, not for a stale teardown.
+    clearTimeout(teardownTimer);
     unbindWindow();
     stopMigrating();
     pending = [];
@@ -680,6 +687,7 @@ function createClient<In = unknown, Out = unknown>(
   function begin() {
     wanted = true;
     unheldStop = false;
+    unpinned = false;
     // Starting over after `close()` or giving up: wait for a new connection.
     if (snapshot.status === 'idle' || snapshot.status === 'closed') {
       opened = false;
@@ -721,9 +729,11 @@ function createClient<In = unknown, Out = unknown>(
 
   function close(code = 1000, reason?: string) {
     stop(code, reason);
+    unpinned ||= pinned;
     pinned = false;
     opened = false;
     unheldStop = refs === 0;
+    clearTimeout(teardownTimer); // as in `fail()`
     // `close()` is the logout step: what was received for one user isn't shown to the next.
     set({ status: 'closed', attempt: 0, lastMessage: undefined });
     rejectReady(new Error('WebSocket was closed'));
@@ -731,6 +741,8 @@ function createClient<In = unknown, Out = unknown>(
 
   function reconnect() {
     if (!getImpl()) return;
+    // Started again as `connect()` had it, or the new connection would close soon after opening.
+    if (unpinned) pinned = true;
     clearTimeout(retryTimer);
     retryTimer = undefined;
     stopSocketTimers();

@@ -136,6 +136,23 @@ describe('applyAgUiEvent', () => {
     ]);
   });
 
+  it('continues a chunked message past activity events, which may come between its chunks', () => {
+    const thread = fold([
+      { type: 'TEXT_MESSAGE_CHUNK', messageId: 'm1', delta: 'Hel' },
+      { type: 'ACTIVITY_SNAPSHOT', messageId: 'a1', activityType: 'search', content: { hits: 0 } },
+      { type: 'TEXT_MESSAGE_CHUNK', delta: 'lo' },
+      { type: 'REASONING_MESSAGE_CHUNK', messageId: 'r1', delta: 'so' },
+      { type: 'ACTIVITY_SNAPSHOT', messageId: 'a2', activityType: 'search', content: { hits: 1 } },
+      { type: 'REASONING_MESSAGE_CHUNK', delta: ' then' }
+    ]);
+    expect(thread.messages).toEqual([
+      { id: 'm1', role: 'assistant', content: 'Hello' },
+      { id: 'a1', role: 'activity', activityType: 'search', content: { hits: 0 } },
+      { id: 'r1', role: 'reasoning', content: 'so then' },
+      { id: 'a2', role: 'activity', activityType: 'search', content: { hits: 1 } }
+    ]);
+  });
+
   it('builds tool calls on their parent message, and their results', () => {
     const thread = fold([
       { type: 'TEXT_MESSAGE_START', messageId: 'm1', role: 'assistant' },
@@ -423,6 +440,46 @@ describe('createAgUiAgent', () => {
     expect(agent.runs.get(first)?.status).toBe('aborted');
     agent.abort();
     expect(agent.getSnapshot().status).toBe('aborted');
+  });
+
+  it("shows no step once a run is aborted, and starts the next run without the last one's step, error or result", () => {
+    const { agent } = setup();
+    const first = agent.run();
+    MockWebSocket.last.open();
+    emit(first, { type: 'RUN_STARTED', threadId: 'thread-1', runId: first });
+    emit(first, { type: 'STEP_STARTED', stepName: 'search' });
+    agent.abort();
+    expect(agent.getSnapshot()).toMatchObject({ status: 'aborted' });
+    expect(agent.getSnapshot().step).toBeUndefined();
+
+    const second = agent.run();
+    offset = 0;
+    emit(second, { type: 'RUN_STARTED', threadId: 'thread-1', runId: second });
+    emit(second, { type: 'STEP_STARTED', stepName: 'plan' });
+    emit(second, { type: 'RUN_ERROR', message: 'boom' });
+    expect(agent.getSnapshot()).toMatchObject({ status: 'error', error: { message: 'boom' } });
+
+    // Before the server's RUN_STARTED, e.g. while offline.
+    agent.run();
+    const thread = agent.getSnapshot();
+    expect(thread.status).toBe('running');
+    expect([thread.step, thread.error, thread.result]).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('shows a run followed again after a reload as running until its events replay', () => {
+    const stored = new Map([['react-websocket-runs:ag-ui', JSON.stringify({ r1: 'keep' })]]);
+    const { agent } = setup({
+      storage: {
+        getItem: key => stored.get(key) ?? null,
+        setItem: (key, value) => void stored.set(key, value),
+        removeItem: key => void stored.delete(key)
+      }
+    });
+    expect(agent.runs.get('r1')?.status).toBe('streaming');
+    expect(agent.getSnapshot().status).toBe('running');
+    agent.abort();
+    expect(agent.getSnapshot().status).toBe('aborted');
+    agent.dispose();
   });
 
   it('uses custom message formats', () => {

@@ -6,6 +6,7 @@ import {
   useWebSocketStream,
   type SendOptions,
   type UseWebSocketStreamResult,
+  type WebSocketOptions,
   type WebSocketRequests
 } from '../src';
 import { DatagramImpl, DatagramMockWebSocket, MockImpl, MockWebSocket } from './mock';
@@ -27,12 +28,14 @@ function setup(
     timeout?: number;
     done?: (message: In) => boolean;
     cancel?: (id: number) => Out;
-  } = {}
+  } = {},
+  clientOptions: WebSocketOptions<In, Out> = {}
 ) {
   const client = createWebSocket<In, Out>(`ws://requests/${++n}`, {
     WebSocket: MockImpl,
     json: true,
-    reconnect: { jitter: 0, minDelay: 1000 }
+    reconnect: { jitter: 0, minDelay: 1000 },
+    ...clientOptions
   });
   const rpc = createWebSocketRequests(client, {
     send: (message: Request, id) => ({ ...message, id }),
@@ -135,6 +138,15 @@ describe('createWebSocketRequests', () => {
 
   it('never times out with timeout: Infinity', () => {
     const { client, rpc } = setup({ timeout: Infinity });
+    client.connect();
+    MockWebSocket.last.open();
+    void rpc.request({ type: 'join', room: 'a' });
+    vi.advanceTimersByTime(60_000);
+    expect(rpc.pending()).toBe(1);
+  });
+
+  it('waits through a timeout longer than setTimeout can take', () => {
+    const { client, rpc } = setup({ timeout: Number.MAX_SAFE_INTEGER });
     client.connect();
     MockWebSocket.last.open();
     void rpc.request({ type: 'join', room: 'a' });
@@ -254,6 +266,29 @@ describe('createWebSocketRequests', () => {
     expect(sent()).toEqual([]);
   });
 
+  it.each([['queue: false', false] as const, ['queue.limit 0', { limit: 0 }] as const])(
+    'rejects right away when not open on a client with %s, and sends nothing',
+    async (_, queue) => {
+      const { client, rpc } = setup(STREAM, { queue });
+      client.connect();
+      await expect(rpc.request({ type: 'join', room: 'a' })).rejects.toThrow('request dropped');
+      expect(rpc.pending()).toBe(0);
+      MockWebSocket.last.open();
+      vi.advanceTimersByTime(10_000);
+      expect(sent()).toEqual([]);
+    }
+  );
+
+  it('rejects right away when starting the client fails at once', async () => {
+    const client = createWebSocket<In, Out>('invalid', { WebSocket: MockImpl, json: true });
+    const rpc = createWebSocketRequests(client, {
+      send: (message: Request, id) => ({ ...message, id }),
+      reply: message => (message.type === 'chat' ? undefined : message.id)
+    });
+    await expect(rpc.request({ type: 'join', room: 'a' })).rejects.toThrow('WebSocket is closed');
+    expect(rpc.pending()).toBe(0);
+  });
+
   it('rejects a request dropped by maxBuffered right away', async () => {
     const { client, rpc } = setup();
     client.connect();
@@ -364,6 +399,16 @@ describe('createWebSocketRequests', () => {
     const request = rpc.request({ type: 'join', room: 'a' });
     rpc.dispose();
     await expect(request).rejects.toThrow('disposed');
+  });
+
+  it('rejects requests made after dispose() without sending them', async () => {
+    const { client, rpc } = setup({ timeout: Infinity });
+    client.connect();
+    MockWebSocket.last.open();
+    rpc.dispose();
+    await expect(rpc.request({ type: 'join', room: 'a' })).rejects.toThrow('disposed');
+    expect(rpc.pending()).toBe(0);
+    expect(sent()).toEqual([]);
   });
 });
 

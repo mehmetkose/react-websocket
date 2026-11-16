@@ -220,6 +220,27 @@ describe('createWebTransportSocket', () => {
     client.close();
   });
 
+  it("doesn't leave a failed session's closed promise unhandled, which browsers reject too", async () => {
+    // Like a browser: a session that fails rejects `closed` along with `ready`.
+    class Failing extends FakeTransport {
+      closed = new Promise<never>((_, reject) => this.ready.catch(reject));
+    }
+    vi.stubGlobal('WebTransport', Failing);
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const { client } = await connected();
+      FakeTransport.last.rejectReady(new Error('UDP blocked'));
+      await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(unhandled).toEqual([]);
+      client.close();
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+
   it('falls back after `timeout` when no session comes', async () => {
     vi.useFakeTimers();
     const { client } = await connected({ timeout: 1000 });
@@ -247,6 +268,20 @@ describe('createWebTransportSocket', () => {
     expect(() => new (createWebTransportSocket({ fallback: false }))('wss://x')).toThrow(
       'no fallback'
     );
+  });
+
+  it('fails the connection when the fallback WebSocket throws, instead of connecting forever', async () => {
+    const Rejecting = class {
+      constructor() {
+        throw new DOMException('Invalid protocols', 'SyntaxError');
+      }
+    } as unknown as typeof WebSocket;
+    const { client, closes } = await connected({ fallback: Rejecting });
+    const errors: unknown[] = [];
+    client.on('error', error => errors.push(error));
+    FakeTransport.last.rejectReady(new Error('UDP blocked'));
+    await vi.waitFor(() => expect(closes).toEqual(['1006 ']));
+    expect(errors).toHaveLength(1);
   });
 
   it('reports the close the app asked for while connecting', async () => {
@@ -279,6 +314,25 @@ describe('createWebTransportSocket', () => {
     );
     await vi.waitFor(() => expect(client.socket!.bufferedAmount).toBe(0));
     expect(Transport.OPEN).toBe(1);
+  });
+
+  it('fails the connection, like a browser, when a Blob it sends cannot be read', async () => {
+    const { client, closes } = await connected();
+    FakeTransport.last.resolveReady();
+    await vi.waitFor(() => expect(client.getSnapshot().status).toBe('open'));
+    const errors = vi.fn();
+    client.socket!.addEventListener('error', errors);
+    const unreadable = () =>
+      Object.assign(new Blob(['gone']), {
+        arrayBuffer: () => Promise.reject(new DOMException('gone', 'NotReadableError'))
+      });
+    client.send(unreadable());
+    client.send(unreadable());
+    client.send('after');
+    await vi.waitFor(() => expect(closes).toEqual(['1006 ']));
+    expect(FakeTransport.last.closedWith).toBeDefined();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(errors).toHaveBeenCalledOnce();
   });
 
   it('throws during a server render', () => {
