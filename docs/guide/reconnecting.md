@@ -108,6 +108,8 @@ const live = createWebSocket(url, {
 
 It returns a delay in ms, or `undefined` when the server didn't ask for one. Anything else, such as `NaN` from a reason that isn't a number, is ignored.
 
+Safari 27 doesn't pass on a `1012`, `1013` or `1014` close from the server: the page gets code `1005` and no reason, so Safari users come back as after any other drop, without the wait. To slow them down too, close with a code of your own from 4000–4999 and read it in `retryAfter`, as above.
+
 ### Deploys without reconnect storms
 
 When a server restarts, every client it served reconnects at once, often to a new server that is still warming up, and each user's connection drops for a moment. Instead, the server can ask its clients to move before it stops, each at a random moment within a window, and `client.migrate()` follows:
