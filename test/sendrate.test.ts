@@ -234,3 +234,59 @@ describe('createWebSocketSendRate', () => {
     stream.send({ type: 'fire' }, 'fire');
   });
 });
+
+// Transitions that meet another one under way: a switch, a reconnect, giving up.
+describe('transitions under way', () => {
+  it('sends what waits on the new connection after a migrate() switch, measuring it afresh', () => {
+    let measurement: Latency = { rtt: 50, offset: undefined };
+    const { client, stream } = connected({ latency: { getSnapshot: () => measurement } });
+    play(stream, 100);
+    const first = MockWebSocket.last;
+    client.migrate();
+    vi.advanceTimersByTime(0);
+    const second = MockWebSocket.last;
+    measurement = { rtt: 400, offset: undefined }; // the new route is slower, but steady
+    second.open();
+    const before = first.sent.length;
+    play(stream, 500);
+    expect(first.sent).toHaveLength(before);
+    expect(sent(second).length).toBeGreaterThan(10);
+    expect(stream.getSnapshot()).toEqual({ rate: 30, congested: false });
+  });
+
+  it('keeps what waits through a reconnect, even after a flush() while closed', () => {
+    const { stream } = connected();
+    vi.advanceTimersByTime(100);
+    MockWebSocket.last.finishClose(1006);
+    stream.send(aim(1), 'aim');
+    stream.send({ type: 'chat' }, 'chat');
+    stream.flush(); // not open: nothing goes, nothing is lost
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(100);
+    expect(sent()).toEqual([aim(1), { type: 'chat' }]);
+  });
+
+  it('drops what waits when the client gives up, and like its queue, sends what comes after', () => {
+    const client = createWebSocket<unknown, Out>(`ws://rate/${++n}`, {
+      WebSocket: MockImpl,
+      json: true,
+      reconnect: { maxAttempts: 0 }
+    });
+    const stream = createWebSocketSendRate(client);
+    void client.ready.catch(() => {});
+    client.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(100);
+    stream.send(aim(1), 'aim');
+    MockWebSocket.last.finishClose(1006); // before the tick: aim 1 waits
+    expect(client.getSnapshot().status).toBe('closed');
+    expect(vi.getTimerCount()).toBe(0);
+    stream.send({ type: 'chat' }, 'chat'); // sent while closed waits for the next connection
+    client.send({ type: 'chat' }); // as the client's own queue does
+    client.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(100);
+    expect(sent()).toEqual([{ type: 'chat' }, { type: 'chat' }]);
+  });
+});

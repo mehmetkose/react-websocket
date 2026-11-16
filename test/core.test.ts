@@ -1709,6 +1709,64 @@ describe('transitions under way', () => {
     ws.close();
   });
 
+  it('opens only the latest attempt when reconnect() comes while url() is pending', async () => {
+    const resolvers: ((url: string) => void)[] = [];
+    const ws = createWebSocket(() => new Promise<string>(resolve => resolvers.push(resolve)), {
+      WebSocket: MockImpl
+    });
+    ws.connect();
+    ws.reconnect();
+    expect(resolvers).toHaveLength(2);
+    resolvers[1]!('ws://second');
+    resolvers[0]!('ws://first'); // the attempt reconnect() replaced
+    await vi.advanceTimersByTimeAsync(0);
+    expect(MockWebSocket.instances.map(socket => socket.url)).toEqual(['ws://second']);
+    MockWebSocket.last.open();
+    expect(ws.getSnapshot()).toMatchObject({ status: 'open', attempt: 0 });
+    ws.close();
+  });
+
+  it('drops a url() that fails after close(), without an error or a retry', async () => {
+    let reject!: (error: Error) => void;
+    const ws = createWebSocket(() => new Promise<string>((_, r) => (reject = r)), {
+      WebSocket: MockImpl,
+      reconnect: noJitter
+    });
+    const onError = vi.fn();
+    ws.on('error', onError);
+    ws.connect();
+    ws.close();
+    reject(new Error('token endpoint down'));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(onError).not.toHaveBeenCalled();
+    expect(MockWebSocket.instances).toHaveLength(0);
+    expect(ws.getSnapshot().status).toBe('closed');
+  });
+
+  it('stays reconnecting, with its attempt, while a retry waits for url()', async () => {
+    let calls = 0;
+    let resolve!: (url: string) => void;
+    const ws = createWebSocket(
+      () => (++calls === 1 ? 'ws://x' : new Promise<string>(r => (resolve = r))),
+      { WebSocket: MockImpl, reconnect: noJitter }
+    );
+    const seen: string[] = [];
+    ws.subscribe(() => {
+      const { status, attempt } = ws.getSnapshot();
+      if (seen.at(-1) !== `${status} ${attempt}`) seen.push(`${status} ${attempt}`);
+    });
+    ws.connect();
+    MockWebSocket.last.open();
+    MockWebSocket.last.finishClose(1006);
+    vi.advanceTimersByTime(1000); // the retry asks for its URL
+    expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt: 1 });
+    resolve('ws://x');
+    await vi.advanceTimersByTimeAsync(0);
+    MockWebSocket.last.open();
+    expect(seen).toEqual(['connecting 0', 'open 0', 'reconnecting 1', 'open 0']);
+    ws.close();
+  });
+
   it('drops what a closed socket was still validating, and keeps validating after a reopen', async () => {
     const ws = createWebSocket('ws://x', { WebSocket: MockImpl, schema: slowSchema });
     const received: string[] = [];
