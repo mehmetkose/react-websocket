@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.22.2] - 2026-11-16
+
 This release fixes bugs in how the client, its managers and the socket wrappers move between states: what they do
 when a connection drops, closes or switches while something else is under way.
 
@@ -591,7 +593,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.1...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.2...HEAD
+[4.22.2]: https://github.com/mehmetkose/react-websocket/compare/4.22.1...4.22.2
 [4.22.1]: https://github.com/mehmetkose/react-websocket/compare/4.22.0...4.22.1
 [4.22.0]: https://github.com/mehmetkose/react-websocket/compare/4.21.0...4.22.0
 [4.21.0]: https://github.com/mehmetkose/react-websocket/compare/4.20.0...4.21.0
