@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.22.3] - 2026-11-17
+
+The library's code is the same as in 4.22.2. This release updates the examples' dependencies to fix published
+security advisories.
+
 ### Documentation
 
 - The Hono and Astro examples use dependency versions that fix published security advisories: `hono` 4.13.17 and
@@ -599,7 +604,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.2...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.3...HEAD
+[4.22.3]: https://github.com/mehmetkose/react-websocket/compare/4.22.2...4.22.3
 [4.22.2]: https://github.com/mehmetkose/react-websocket/compare/4.22.1...4.22.2
 [4.22.1]: https://github.com/mehmetkose/react-websocket/compare/4.22.0...4.22.1
 [4.22.0]: https://github.com/mehmetkose/react-websocket/compare/4.21.0...4.22.0
