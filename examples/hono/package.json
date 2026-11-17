@@ -15,8 +15,8 @@
     "node": ">=22.18"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.4",
-    "hono": "^4.13.13",
+    "@hono/node-server": "^2.1.6",
+    "hono": "^4.13.17",
     "https-proxy-agent": "^9.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

@@ -14,9 +14,9 @@
     "node": ">=22.18"
   },
   "dependencies": {
-    "@astrojs/node": "^11.1.7",
+    "@astrojs/node": "^11.1.11",
     "@astrojs/react": "^7.0.1",
-    "astro": "^7.3.8",
+    "astro": "^7.4.8",
     "express": "^5.2.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

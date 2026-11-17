@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- The Hono and Astro examples use dependency versions that fix published security advisories: `hono` 4.13.17 and
+  `@hono/node-server` 2.1.6 in the Hono example, and `astro` 7.4.8 with `@astrojs/node` 11.1.11 in the Astro
+  example.
+
 ## [4.22.2] - 2026-11-16
 
 This release fixes bugs in how the client, its managers and the socket wrappers move between states: what they do
