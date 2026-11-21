@@ -323,10 +323,8 @@ export function createWebSocketOutbox<M, In, const Out>(
   if (channel) {
     channel.onmessage = ({ data }: MessageEvent<{ id?: string; before?: number } | null>) => {
       // Another tab cleared: drop everything held now, whenever it was added.
-      if (data?.before) {
-        lastCreated = Math.max(lastCreated, data.before);
-        dropAll();
-      } else if (data?.id) drop(data.id);
+      if (data?.before) dropAll();
+      else if (data?.id) drop(data.id);
     };
   }
 
@@ -369,6 +367,7 @@ export function createWebSocketOutbox<M, In, const Out>(
       const kept = (addedSinceClear = new Set<string>());
       // At once, like `remove()`: waiting for the stored entries would send them first.
       dropAll();
+      // Any truthy `before` means "cleared". Tabs still on an older version read it as a cutoff.
       channel?.postMessage({ before: lastCreated });
       // Everything stored, by other tabs and earlier page loads too, but not what's added from
       // now on.

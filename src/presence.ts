@@ -1,6 +1,4 @@
-import type { WebSocketClient } from './types';
-
-type Timer = ReturnType<typeof setTimeout> | undefined;
+import type { Timer, WebSocketClient } from './types';
 
 /** Another client's shared state, such as its cursor or what it's selected. */
 export interface PresencePeer<P> {

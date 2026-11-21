@@ -1,7 +1,5 @@
 import type { WebSocketLatency } from './latency';
-import type { WebSocketClient } from './types';
-
-type Timer = ReturnType<typeof setTimeout>;
+import type { Timer, WebSocketClient } from './types';
 
 /** Options for {@link createWebSocketSendRate}. */
 export interface WebSocketSendRateOptions {
@@ -100,7 +98,7 @@ export function createWebSocketSendRate<Out>(
   let best = Infinity; // the lowest `rtt` on this connection
   let slow = false; // `rtt` has risen too far above `best`
   let measured: unknown; // the latency snapshot already reacted to
-  let timer: Timer | undefined;
+  let timer: Timer;
   let disposed = false;
 
   function flush() {

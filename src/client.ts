@@ -7,6 +7,7 @@ import {
   type MigrateOptions,
   type SendOptions,
   type Snapshot,
+  type Timer,
   type StandardSchemaResult,
   type UrlSource,
   type WebSocketClient,
@@ -31,8 +32,6 @@ const QUEUE_LIMIT = 100;
 
 /** @internal The longest delay `setTimeout` takes; anything longer fires at once. */
 export const MAX_TIMEOUT = 2 ** 31 - 1;
-
-type Timer = ReturnType<typeof setTimeout> | undefined;
 
 /**
  * The default `reconnect.shouldReconnect`: retry every close except `1002` (protocol error),

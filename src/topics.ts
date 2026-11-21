@@ -1,6 +1,4 @@
-import type { WebSocketClient } from './types';
-
-type Timer = ReturnType<typeof setTimeout>;
+import type { Timer, WebSocketClient } from './types';
 
 /** @internal Option key for a callback run when nothing holds a topic anymore. Used by feeds. */
 export const ON_RELEASE = Symbol('react-websocket.onRelease');
@@ -103,19 +101,19 @@ export function createWebSocketTopics<const Out>(
       return () => {
         if (released) return;
         released = true;
-        const remaining = (counts.get(topic) ?? 1) - 1;
+        // Counts every handle not yet released.
+        const remaining = counts.get(topic)! - 1;
         if (remaining > 0) {
           counts.set(topic, remaining);
         } else {
           counts.delete(topic);
+          // `acquire()` cancels it if the topic is held again first.
           pendingRemoval.set(
             topic,
             setTimeout(() => {
               pendingRemoval.delete(topic);
-              if (!counts.has(topic)) {
-                unsubscribe(topic);
-                options[ON_RELEASE]?.(topic);
-              }
+              unsubscribe(topic);
+              options[ON_RELEASE]?.(topic);
             }, 0)
           );
         }

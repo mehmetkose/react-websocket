@@ -93,17 +93,7 @@ function equal(a: Json, b: Json): boolean {
   return keys.length === Object.keys(b).length && keys.every(key => equal(a[key], b[key]));
 }
 
-function fail(operation: JsonPatchOperation): never {
-  throw new Error(`JSON Patch failed: ${operation.op} ${operation.path}`);
-}
-
 const INDEX = /^(0|[1-9]\d*)$/;
-
-/** A JSON Pointer's tokens. It's empty, for the whole document, or starts with `/`. */
-function tokens(pointer: string, operation: JsonPatchOperation) {
-  if (pointer !== '' && pointer[0] !== '/') fail(operation);
-  return pointer.split('/').slice(1).map(unescape);
-}
 
 /** Whether `node` has `token`: an index in range for an array, not `length`; an own key otherwise. */
 function has(node: Json, token: string) {
@@ -129,78 +119,83 @@ function put(object: Json, key: string, value: Json) {
  */
 export function applyPatch<T>(document: T, operations: readonly JsonPatchOperation[]): T {
   let root: Json = document;
+  let operation: JsonPatchOperation;
 
-  function get(path: string, operation: JsonPatchOperation): Json {
+  const fail = (): never => {
+    throw new Error(`JSON Patch failed: ${operation.op} ${operation.path}`);
+  };
+
+  /** A JSON Pointer's tokens. It's empty, for the whole document, or starts with `/`. */
+  const tokens = (pointer: string) => {
+    if (pointer !== '' && pointer[0] !== '/') fail();
+    return pointer.split('/').slice(1).map(unescape);
+  };
+
+  function get(path: string): Json {
     let node = root;
-    for (const token of tokens(path, operation)) {
-      if (typeof node !== 'object' || node === null || !has(node, token)) fail(operation);
+    for (const token of tokens(path)) {
+      if (typeof node !== 'object' || node === null || !has(node, token)) fail();
       node = node[token];
     }
     return node;
   }
 
   // Replace the parent of `path` with a copy, change it with `change`, and copy its ancestors.
-  function edit(
-    path: string,
-    operation: JsonPatchOperation,
-    change: (parent: Json, key: string) => void
-  ) {
-    const keys = tokens(path, operation);
-    if (!keys.length) fail(operation);
+  function edit(path: string, change: (parent: Json, key: string) => void) {
+    const keys = tokens(path);
+    if (!keys.length) fail();
     const walk = (node: Json, depth: number): Json => {
-      if (typeof node !== 'object' || node === null) fail(operation);
+      if (typeof node !== 'object' || node === null) fail();
       const copy = Array.isArray(node) ? [...node] : { ...node };
       const key = keys[depth]!;
       if (depth === keys.length - 1) change(copy, key);
-      else if (!has(node, key)) fail(operation);
+      else if (!has(node, key)) fail();
       else copy[key] = walk(node[key], depth + 1);
       return copy;
     };
     root = walk(root, 0);
   }
 
-  function index(parent: Json[], key: string, operation: JsonPatchOperation, adding: boolean) {
+  function index(parent: Json[], key: string, adding: boolean) {
     // `-` is the end of the array, which only `add` can use.
     const i = key === '-' ? (adding ? parent.length : -1) : INDEX.test(key) ? +key : -1;
-    if (i < 0 || i > parent.length - (adding ? 0 : 1)) fail(operation);
+    if (i < 0 || i > parent.length - (adding ? 0 : 1)) fail();
     return i;
   }
 
-  function add(path: string, value: Json, operation: JsonPatchOperation) {
+  function add(path: string, value: Json) {
     if (path === '') return void (root = value);
-    edit(path, operation, (parent, key) => {
-      if (Array.isArray(parent)) parent.splice(index(parent, key, operation, true), 0, value);
+    edit(path, (parent, key) => {
+      if (Array.isArray(parent)) parent.splice(index(parent, key, true), 0, value);
       else put(parent, key, value);
     });
   }
 
-  function remove(path: string, operation: JsonPatchOperation) {
-    edit(path, operation, (parent, key) => {
-      if (Array.isArray(parent)) parent.splice(index(parent, key, operation, false), 1);
+  function remove(path: string) {
+    edit(path, (parent, key) => {
+      if (Array.isArray(parent)) parent.splice(index(parent, key, false), 1);
       else if (Object.hasOwn(parent, key)) delete parent[key];
-      else fail(operation);
+      else fail();
     });
   }
 
-  for (const operation of operations) {
+  for (operation of operations) {
     const { op, path, from, value } = operation;
-    if (op === 'add') add(path, value, operation);
-    else if (op === 'remove') remove(path, operation);
+    if (op === 'add') add(path, value);
+    else if (op === 'remove') remove(path);
     else if (op === 'replace') {
-      get(path, operation);
+      get(path);
+      // `get` checked that the key exists, so `put` works for an array index too.
       if (path === '') root = value;
-      else
-        edit(path, operation, (parent, key) => {
-          if (Array.isArray(parent)) parent[key as unknown as number] = value;
-          else put(parent, key, value);
-        });
+      else edit(path, (parent, key) => put(parent, key, value));
     } else if (op === 'move' || op === 'copy') {
-      const moved = get(from ?? fail(operation), operation);
-      if (op === 'move') remove(from!, operation);
-      add(path, op === 'copy' ? structuredClone(moved) : moved, operation);
+      if (from === undefined) fail();
+      const moved = get(from!);
+      if (op === 'move') remove(from!);
+      add(path, op === 'copy' ? structuredClone(moved) : moved);
     } else if (op === 'test') {
-      if (!equal(get(path, operation), value)) fail(operation);
-    } else fail(operation);
+      if (!equal(get(path), value)) fail();
+    } else fail();
   }
   return root;
 }
@@ -215,21 +210,6 @@ function updateMessage(
 
 function appendText(message: AgUiMessage, delta: string | undefined) {
   return { ...message, content: `${(message.content as string | undefined) ?? ''}${delta ?? ''}` };
-}
-
-function updateToolCall(
-  thread: AgUiThread<any>,
-  id: string | undefined,
-  change: (call: AgUiToolCall) => AgUiToolCall
-) {
-  return thread.messages.map(message =>
-    message.toolCalls?.some(call => call.id === id)
-      ? {
-          ...message,
-          toolCalls: message.toolCalls.map(call => (call.id === id ? change(call) : call))
-        }
-      : message
-  );
 }
 
 /** The last message with a tool call, for chunks that leave out `toolCallId`. */
@@ -255,6 +235,18 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
     messages: [...thread.messages, { id: e.messageId, role, content: '', ...extra }]
   });
   const known = (id: string | undefined) => thread.messages.some(m => m.id === id);
+  // Change message `id`, adding it first if the thread doesn't have it.
+  const upsert = (
+    id: string | undefined,
+    role: AgUiMessage['role'],
+    change: (message: AgUiMessage) => AgUiMessage,
+    extra?: object
+  ): AgUiThread<S> => {
+    const next = known(id)
+      ? thread
+      : { ...thread, messages: [...thread.messages, { id: id!, role, ...extra }] };
+    return { ...next, messages: updateMessage(next, id, change) };
+  };
   switch (e.type) {
     case 'RUN_STARTED':
       return { ...thread, status: 'running', step: undefined, error: undefined, result: undefined };
@@ -287,8 +279,7 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
       // chunks without ending the message.
       const id = e.messageId ?? thread.messages.filter(m => m.role !== 'activity').at(-1)?.id;
       const role = e.type === 'TEXT_MESSAGE_CHUNK' ? (e.role ?? 'assistant') : 'reasoning';
-      const next = known(id) ? thread : message(role);
-      return { ...next, messages: updateMessage(next, id, m => appendText(m, e.delta)) };
+      return upsert(id, role, m => appendText(m, e.delta), { content: '' });
     }
     case 'TOOL_CALL_START':
     case 'TOOL_CALL_CHUNK': {
@@ -303,17 +294,10 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
           type: 'function',
           function: { name: e.toolCallName, arguments: '' }
         };
-        const parent = e.parentMessageId ?? id;
-        next = known(parent)
-          ? thread
-          : { ...thread, messages: [...thread.messages, { id: parent, role: 'assistant' }] };
-        next = {
-          ...next,
-          messages: updateMessage(next, parent, m => ({
-            ...m,
-            toolCalls: [...(m.toolCalls ?? []), call]
-          }))
-        };
+        next = upsert(e.parentMessageId ?? id, 'assistant', m => ({
+          ...m,
+          toolCalls: [...(m.toolCalls ?? []), call]
+        }));
       }
       if (e.type === 'TOOL_CALL_START') return next;
       return toolArgs(next, id, e.delta);
@@ -335,15 +319,16 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
       return { ...thread, messages: e.messages };
     case 'ACTIVITY_SNAPSHOT': {
       if (known(e.messageId) && e.replace === false) return thread;
-      const next = known(e.messageId) ? thread : message('activity');
-      return {
-        ...next,
-        messages: updateMessage(next, e.messageId, m => ({
+      return upsert(
+        e.messageId,
+        'activity',
+        m => ({
           ...m,
           activityType: e.activityType,
           content: e.content
-        }))
-      };
+        }),
+        { content: '' }
+      );
     }
     case 'ACTIVITY_DELTA':
       try {
@@ -362,13 +347,28 @@ export function applyAgUiEvent<S>(thread: AgUiThread<S>, event: AgUiEvent): AgUi
   }
 }
 
+/** Append `delta` to the arguments of tool call `id`. */
 function toolArgs<S>(thread: AgUiThread<S>, id: string | undefined, delta: string | undefined) {
   return {
     ...thread,
-    messages: updateToolCall(thread, id, call => ({
-      ...call,
-      function: { ...call.function, arguments: call.function.arguments + (delta ?? '') }
-    }))
+    messages: thread.messages.map(message =>
+      message.toolCalls?.some(call => call.id === id)
+        ? {
+            ...message,
+            toolCalls: message.toolCalls.map(call =>
+              call.id === id
+                ? {
+                    ...call,
+                    function: {
+                      ...call.function,
+                      arguments: call.function.arguments + (delta ?? '')
+                    }
+                  }
+                : call
+            )
+          }
+        : message
+    )
   };
 }
 
@@ -505,7 +505,7 @@ export function createAgUiAgent<S = unknown, In = any, Out = any>(
     start: options.run ?? ((input, runId) => ({ type: 'run', runId, input }) as Out),
     resume: options.resume ?? ((runId, after) => ({ type: 'resume', runId, after }) as Out),
     cancel: options.cancel ?? (runId => ({ type: 'cancel', runId }) as Out),
-    event: message => event(message),
+    event,
     done: message => ENDS.has(event(message)!.event.type),
     // A run followed again after a reload streams before its events replay.
     initial: started(empty),

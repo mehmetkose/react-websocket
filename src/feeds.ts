@@ -92,13 +92,14 @@ export function createWebSocketFeeds<In, const Out>(
   // Topics that asked for missing messages, so a burst after a gap asks only once.
   const resuming = new Set<string>();
   const listeners = new Set<(message: In, event: MessageEvent) => void>();
+  const forget = (topic: string) => {
+    last.delete(topic);
+    resuming.delete(topic);
+  };
   const topics = createWebSocketTopics(client, {
     subscribe: topic => options.subscribe(topic, last.get(topic)),
     unsubscribe: options.unsubscribe,
-    [ON_RELEASE]: topic => {
-      last.delete(topic);
-      resuming.delete(topic);
-    }
+    [ON_RELEASE]: forget
   });
 
   const offs = [
@@ -151,12 +152,10 @@ export function createWebSocketFeeds<In, const Out>(
     },
     position: topic => last.get(topic),
     reset(topic) {
-      if (topic === undefined) {
+      if (topic !== undefined) forget(topic);
+      else {
         last.clear();
         resuming.clear();
-      } else {
-        last.delete(topic);
-        resuming.delete(topic);
       }
     },
     dispose() {

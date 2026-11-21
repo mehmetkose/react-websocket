@@ -1,3 +1,6 @@
+/** @internal A `setTimeout` handle, or none. Not exported from the entries. */
+export type Timer = ReturnType<typeof setTimeout> | undefined;
+
 /**
  * Where to connect: a URL, or a function that returns one (sync or async).
  *
