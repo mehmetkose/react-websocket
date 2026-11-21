@@ -154,9 +154,10 @@ export function createWebSocketPresence<P, In, const Out>(
       changed();
     }),
     client.subscribe(() => {
-      // `close()` is the logout step, and a client that gave up hears from no one: forget the
-      // peers instead of showing them until they time out.
-      if (client.getSnapshot().status !== 'closed' || !peers.size) return;
+      // `close()` is the logout step, a client that gave up hears from no one, and one nothing
+      // holds anymore is torn down: forget the peers instead of showing them until they time out.
+      const { status } = client.getSnapshot();
+      if ((status !== 'closed' && status !== 'idle') || !peers.size) return;
       peers.clear();
       clearTimeout(expiryTimer);
       expiryTimer = undefined;
