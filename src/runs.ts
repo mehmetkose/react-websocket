@@ -166,7 +166,8 @@ export function createWebSocketRuns<Req, T, In, const Out>(
   // Start requests not yet answered by an event, sent again on a new connection.
   const starting = new Map<string, Req>();
   const policies = new Map<string, RunPolicy>();
-  const releases = new Map<string, () => void>();
+  // At once with `true`: see topics' `acquire()`.
+  const releases = new Map<string, (now?: true) => void>();
   // Cancels waiting for the next connection, each with a way to take it back.
   const cancels = new Set<() => void>();
   const listeners = new Set<() => void>();
@@ -216,7 +217,7 @@ export function createWebSocketRuns<Req, T, In, const Out>(
 
   /** Stop following a run that ended. */
   function end(runId: string, patch: Partial<AgentRun<T>>) {
-    releases.get(runId)?.();
+    releases.get(runId)?.(true);
     releases.delete(runId);
     starting.delete(runId);
     policies.delete(runId);
@@ -244,19 +245,24 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       off();
       release();
     };
+    // Let go first: the send is still on this open socket, and a builder that throws can't keep
+    // the hold.
     const off = client.on('open', () => {
-      cancels.delete(drop);
-      off();
+      drop();
       client.send(message(runId));
-      release();
     });
     cancels.add(drop);
   }
 
   function abort(runId: string) {
     if (runs.get(runId)?.status !== 'streaming') return;
-    cancel(runId);
-    end(runId, { status: 'aborted' });
+    // Ended even if the cancel builder throws. The cancel goes first, ahead of any run that a
+    // listener hearing of the end starts.
+    try {
+      cancel(runId);
+    } finally {
+      end(runId, { status: 'aborted' });
+    }
   }
 
   let status = client.getSnapshot().status;
@@ -343,14 +349,17 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       };
     },
     delete(runId) {
-      abort(runId);
-      if (runs.delete(runId)) {
-        list = [...runs.values()];
-        for (const listener of [...listeners]) listener();
+      try {
+        abort(runId);
+      } finally {
+        if (runs.delete(runId)) {
+          list = [...runs.values()];
+          for (const listener of [...listeners]) listener();
+        }
       }
     },
     clear() {
-      for (const release of releases.values()) release();
+      for (const release of releases.values()) release(true);
       releases.clear();
       for (const drop of [...cancels]) drop();
       // Runs found in storage that would be cancelled once nobody claims them.
@@ -368,7 +377,7 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       for (const listener of [...listeners]) listener();
     },
     dispose() {
-      for (const release of releases.values()) release();
+      for (const release of releases.values()) release(true);
       releases.clear();
       for (const off of offs) off();
     }
