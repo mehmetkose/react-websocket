@@ -1,6 +1,6 @@
 # Roadmap
 
-Ideas that have been checked against the current code (4.21.0) and are worth doing. Nothing here is a
+Ideas that have been checked against the current code (4.22.3) and are worth doing. Nothing here is a
 promise or a schedule. Items marked **behavior change** alter a default, so they need either a major version
 or an opt-in first.
 

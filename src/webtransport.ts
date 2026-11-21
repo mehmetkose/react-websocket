@@ -296,8 +296,9 @@ export function createWebTransportSocket(
             const view = new DataView(buffer.buffer, buffer.byteOffset);
             const length = view.getUint32(1);
             if (buffer.byteLength < 5 + length) break;
+            // A copy of the payload, but only a view of the rest: no copy per frame.
             this.#frame(view.getUint8(0), buffer.slice(5, 5 + length));
-            buffer = buffer.slice(5 + length);
+            buffer = buffer.subarray(5 + length);
           }
         }
       } catch {

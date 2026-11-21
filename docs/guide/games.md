@@ -415,7 +415,7 @@ export const scores = createWebSocketState(game, {
 });
 ```
 
-Don't read `at()`, `predicted()` or `renderTime()` through `useSyncExternalStore`: they change with time, not when the timeline notifies. `timeline.pending()` and `timeline.latest()` are fine there.
+Don't read `at()`, `predicted()` or `renderTime()` through `useSyncExternalStore`: they change with time, not when the timeline notifies. `timeline.latest()` is fine there, and so is `timeline.pending()`, as of the latest snapshot.
 
 ## Rejoining after a reconnect
 

@@ -1,3 +1,4 @@
+import { MAX_TIMEOUT } from './client';
 import type { WebSocketClient } from './types';
 
 /** What `request` returns for a request: any object with these fields, such as the message itself. */
@@ -32,9 +33,10 @@ export interface WebSocketResponderOptions<Q extends RequestFields, R, In, Out> 
   /** Build the reply to request `id`. Annotate `result` to type what handlers return. */
   respond: (id: number | string, result: R) => Out;
   /**
-   * Build the error reply to request `id`: what a handler threw, a `NotFoundError` `DOMException`
-   * when nothing is registered for the method, a `TimeoutError` after `timeout`, or an
-   * `AbortError` from `dispose()`.
+   * Build the error reply to request `id`: what a handler threw or `reject()` was given, a
+   * `NotFoundError` `DOMException` when nothing is registered for the method, a `TimeoutError`
+   * after `timeout`, an `AbortError` from `dispose()`, or what building or encoding the reply
+   * threw.
    */
   error: (id: number | string, error: unknown) => Out;
   /**
@@ -44,7 +46,8 @@ export interface WebSocketResponderOptions<Q extends RequestFields, R, In, Out> 
   cancel?: (message: In) => number | string | null | undefined;
   /**
    * Time to answer a request, in ms. When it runs out, the `error` reply (a `TimeoutError`)
-   * is sent and the request's `signal` aborts.
+   * is sent and the request's `signal` aborts. `0` or less, `Infinity`, or anything over about
+   * 24.8 days waits forever.
    * @default Infinity
    */
   timeout?: number;
@@ -125,9 +128,6 @@ interface Entry {
 }
 
 const abortError = (message: string) => new DOMException(message, 'AbortError');
-
-// The longest delay `setTimeout` takes; anything longer fires at once.
-const MAX_TIMEOUT = 2 ** 31 - 1;
 
 /**
  * Answer requests the server sends: run a handler for tools that only exist in the browser

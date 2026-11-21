@@ -98,11 +98,15 @@ export interface WebSocketTimeline<S, I> {
    * `delay`. It never goes backward until the timeline starts over. `undefined` before any snapshot.
    */
   renderTime(): number | undefined;
-  /** How many inputs were sent but not confirmed yet. */
+  /**
+   * How many inputs were sent but not confirmed yet. `input()` and a new connection change it
+   * without notifying, so through `subscribe` it's as of the latest snapshot.
+   */
   pending(): number;
   /**
    * Called after each new snapshot and on `reset()`. Compatible with `useSyncExternalStore` for
-   * `latest` and `pending`, but not for `at`, `predicted` or `renderTime`, which change with time.
+   * `latest`, and for `pending` as of the latest snapshot, but not for `at`, `predicted` or
+   * `renderTime`, which change with time.
    */
   subscribe(listener: () => void): () => void;
   /** Forget all snapshots and pending inputs now. `seq` keeps counting. */

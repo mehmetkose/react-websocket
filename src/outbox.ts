@@ -31,8 +31,9 @@ export interface OutboxStorage {
 /** Options for {@link createWebSocketOutbox}. */
 export interface WebSocketOutboxOptions<M, In, Out> {
   /**
-   * Names the outbox's IndexedDB database, `react-websocket-outbox:<name>`. Give each outbox
-   * its own. Unused with `storage`.
+   * Names the outbox's IndexedDB database, `react-websocket-outbox:<name>`, and the
+   * BroadcastChannel its tabs share, also with `storage`. Give each outbox its own: two with the
+   * same name remove and clear each other's entries.
    */
   name: string;
   /**
@@ -111,14 +112,19 @@ export function indexedDBStorage(name: string): OutboxStorage {
       open.onupgradeneeded = () => open.result.createObjectStore('entries', { keyPath: 'id' });
       open.onsuccess = () => {
         const connection = open.result;
-        // Let another page delete or upgrade the database: the next write opens it again.
-        connection.onversionchange = () => {
+        // Let another page delete or upgrade the database, and survive the browser closing it
+        // (site data cleared, a crashed storage process): the next write opens it again.
+        connection.onversionchange = connection.onclose = () => {
           connection.close();
           db = undefined;
         };
         resolve(connection);
       };
-      open.onerror = () => reject(open.error);
+      // Not kept: the next write tries again.
+      open.onerror = () => {
+        db = undefined;
+        reject(open.error);
+      };
     });
     const transaction = (await db).transaction('entries', mode);
     const req = ask(transaction.objectStore('entries'));
@@ -264,6 +270,8 @@ export function createWebSocketOutbox<M, In, const Out>(
     const now = Date.now();
     let sent = false;
     for (const entry of [...entries.values()]) {
+      // Closed by `onExpire` or a listener: what's left would go to the client's queue.
+      if (socket.readyState !== 1) break;
       // Sent, removed or replaced meanwhile, by `onExpire` or a listener.
       if (entry.sent || entries.get(entry.id) !== entry) continue;
       if (now - entry.createdAt > maxAge) {
@@ -323,10 +331,8 @@ export function createWebSocketOutbox<M, In, const Out>(
   if (channel) {
     channel.onmessage = ({ data }: MessageEvent<{ id?: string; before?: number } | null>) => {
       // Another tab cleared: drop everything held now, whenever it was added.
-      if (data?.before) {
-        lastCreated = Math.max(lastCreated, data.before);
-        dropAll();
-      } else if (data?.id) drop(data.id);
+      if (data?.before) dropAll();
+      else if (data?.id) drop(data.id);
     };
   }
 
@@ -369,6 +375,7 @@ export function createWebSocketOutbox<M, In, const Out>(
       const kept = (addedSinceClear = new Set<string>());
       // At once, like `remove()`: waiting for the stored entries would send them first.
       dropAll();
+      // Any truthy `before` means "cleared". Tabs still on an older version read it as a cutoff.
       channel?.postMessage({ before: lastCreated });
       // Everything stored, by other tabs and earlier page loads too, but not what's added from
       // now on.

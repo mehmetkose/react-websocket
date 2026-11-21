@@ -71,17 +71,22 @@ export interface UseWebSocketResult<In, Out> extends Snapshot<In> {
   client: WebSocketClient<In, Out> | null;
 }
 
-const IDLE: Snapshot<never> = Object.freeze({ status: 'idle', lastMessage: undefined, attempt: 0 });
+const IDLE: Snapshot<never> = /* @__PURE__ */ Object.freeze({
+  status: 'idle',
+  lastMessage: undefined,
+  attempt: 0
+});
 const idleSnapshot = () => IDLE;
 const idleStatus = (): Status => 'idle';
-const NO_LATENCY: Latency = Object.freeze({ rtt: undefined, offset: undefined });
+const NO_LATENCY: Latency = /* @__PURE__ */ Object.freeze({ rtt: undefined, offset: undefined });
 const noLatency = () => NO_LATENCY;
 // Not frozen: a call would keep it in bundles that never use the hook.
 const NO_REQUESTS: readonly never[] = [];
 const noRequests = () => NO_REQUESTS;
 const noopSubscribe = () => () => {};
 const noopSend = () => false;
-const noop = () => {};
+const noop = (): undefined => {};
+const NO_ACTIONS = { send: noopSend, close: noop, reconnect: noop };
 
 // Same key as `ON_TEARDOWN` in ./client, which this entry must not import directly.
 const ON_TEARDOWN = Symbol.for('react-websocket.onTeardown');
@@ -217,7 +222,7 @@ function useLatest<T>(value: T) {
   return ref;
 }
 
-function useHold(client: WebSocketClient<any, any> | null, enabled: boolean) {
+function useHold(client: WebSocketClient<any, any> | null | undefined, enabled: boolean) {
   useEffect(() => {
     if (client && enabled) return client.acquire();
   }, [client, enabled]);
@@ -313,7 +318,7 @@ export function useWebSocket<In, Out>(
       registryChanged();
     }
     return registry.get(key)!.acquire();
-  }, [key, own, client, enabled]);
+  }, [key, own, enabled]);
   useHold(key === null ? client : null, enabled);
 
   // For a URL, act on the shared client at call time, so a message sent from a mount effect
@@ -331,13 +336,8 @@ export function useWebSocket<In, Out>(
     [key, own]
   );
 
-  return {
-    ...snapshot,
-    send: actions ? actions.send : client ? client.send : noopSend,
-    close: actions ? actions.close : client ? client.close : noop,
-    reconnect: actions ? actions.reconnect : client ? client.reconnect : noop,
-    client
-  };
+  const { send, close, reconnect } = actions ?? client ?? NO_ACTIONS;
+  return { ...snapshot, send, close, reconnect, client };
 }
 
 /**
@@ -382,7 +382,7 @@ export function useWebSocketStatus(client: WebSocketClient<any, any> | null | un
     client ? () => client.getSnapshot().status : idleStatus,
     idleStatus
   );
-  useHold(client ?? null, true);
+  useHold(client, true);
   return status;
 }
 
@@ -499,8 +499,6 @@ export function useWebSocketOutbox<M>(
   );
 }
 
-const noRun = () => undefined;
-
 /**
  * Whether an element is on screen, from an `IntersectionObserver`, for dashboards that stream
  * full detail only for what's visible: pick a topic with it and pass it to `useWebSocketTopic`,
@@ -552,13 +550,13 @@ export function useWebSocketPresence<P>(
     presence?.getSnapshot ?? noRequests,
     noRequests
   );
-  useHold(presence?.client ?? null, true);
+  useHold(presence?.client, true);
   return peers;
 }
 
 /**
  * The thread of an AG-UI agent from `react-websocket/ag-ui`: its messages, shared state and
- * status, re-rendering on every event.
+ * status, re-rendering when the thread changes rather than on every event.
  *
  * @example
  * ```tsx
@@ -594,7 +592,7 @@ export function useAgentRun<T>(
   const run = useSyncExternalStore(
     runs?.subscribe ?? noopSubscribe,
     () => (runs && runId ? runs.get(runId) : undefined),
-    noRun
+    noop
   );
   useEffect(() => {
     if (runs && runId) runs.attach(runId);
@@ -636,7 +634,7 @@ export function useAgentApproval<P, R>(
   useEffect(() => {
     if (responder && method != null) return responder.onRequest(method);
   }, [responder, method]);
-  useHold(responder?.client ?? null, method != null);
+  useHold(responder?.client, method != null);
   return useMemo(() => {
     const mine = waiting.filter(request => request.method === method);
     return mine.length ? mine : NO_REQUESTS;
@@ -716,12 +714,14 @@ export function useWebSocketStream<Req, In>(
   rpc: WebSocketRequests<Req, In> | null | undefined,
   options: Partial<UseWebSocketStreamOptions<In, any>> = {}
 ): UseWebSocketStreamResult<Req, unknown> {
-  type Status = UseWebSocketStreamResult<Req, unknown>['status'];
-  const [state, setState] = useState<{ value: unknown; status: Status; error: unknown }>(() => ({
-    value: options.reduce ? options.initial : NO_REQUESTS,
-    status: 'idle',
-    error: undefined
-  }));
+  type StreamStatus = UseWebSocketStreamResult<Req, unknown>['status'];
+  const [state, setState] = useState<{ value: unknown; status: StreamStatus; error: unknown }>(
+    () => ({
+      value: options.reduce ? options.initial : NO_REQUESTS,
+      status: 'idle',
+      error: undefined
+    })
+  );
   const latest = useLatest({ rpc, options });
   const running = useRef<AbortController | null>(null);
 
@@ -736,7 +736,7 @@ export function useWebSocketStream<Req, In>(
         let value: unknown = reduce ? initial : NO_REQUESTS;
         let frame = false;
         // A stream that was started over no longer shows; ending also skips a pending frame.
-        const show = (status: Status, error?: unknown) => {
+        const show = (status: StreamStatus, error?: unknown) => {
           frame = false;
           if (running.current === controller) setState({ value, status, error });
         };
@@ -767,7 +767,7 @@ export function useWebSocketStream<Req, In>(
   );
   // Unmounting, or replies from another manager: stop this one's stream.
   useEffect(() => actions.abort, [actions, rpc]);
-  useHold(rpc?.client ?? null, true);
+  useHold(rpc?.client, true);
 
   return { ...state, ...actions };
 }

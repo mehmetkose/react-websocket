@@ -56,6 +56,8 @@ A button in the corner shows how many clients there are, with a dot for the wors
 
 ## Props
 
+The props type is `WebSocketDevtoolsProps`, from `react-websocket/devtools` too.
+
 | Prop | Type | |
 | --- | --- | --- |
 | `sources` | `unknown[]` | Clients from `createWebSocket`, and topics, feeds, latency trackers, outboxes, presence and runs created on them, which are shown with their client. Optional: the clients that `useWebSocket(url)` shares are listed by themselves, in development |

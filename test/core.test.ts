@@ -518,6 +518,36 @@ describe('reconnecting', () => {
     vi.restoreAllMocks();
   });
 
+  it('keeps the defaults of reconnect options passed as undefined', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // the default jitter of 1 takes nothing off
+    const ws = createWebSocket('ws://x', {
+      WebSocket: MockImpl,
+      reconnect: {
+        maxAttempts: undefined,
+        minDelay: undefined,
+        maxDelay: undefined,
+        factor: undefined,
+        jitter: undefined,
+        minUptime: undefined,
+        shouldReconnect: undefined,
+        retryAfter: undefined
+      }
+    });
+    ws.connect();
+    MockWebSocket.last.finishClose(1006);
+    expect(ws.getSnapshot()).toMatchObject({ status: 'reconnecting', attempt: 1 });
+    vi.advanceTimersByTime(999);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    MockWebSocket.last.finishClose(1006);
+    vi.advanceTimersByTime(1999); // 1000 * 2
+    expect(MockWebSocket.instances).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(3);
+    vi.restoreAllMocks();
+  });
+
   it('gives up after maxAttempts and rejects ready', async () => {
     const ws = createWebSocket('ws://x', {
       WebSocket: MockImpl,

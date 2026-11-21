@@ -2,8 +2,11 @@ import { createWebSocket } from '../src/core';
 import { createTabsWebSocket, type TabsWebSocket } from '../src/tabs';
 import { MockImpl, MockWebSocket } from './mock';
 
-/** A Web Locks API with one queue per name, as the browser keeps across all tabs. */
-function fakeLocks() {
+/**
+ * A Web Locks API with one queue per name, as the browser keeps across all tabs. With `delay`, a
+ * free lock is granted that many ms later, as browsers grant it after the page goes on.
+ */
+function fakeLocks(delay?: number) {
   const queues = new Map<string, (() => unknown)[]>();
   const held = new Set<string>();
   const next = (name: string) => {
@@ -16,7 +19,9 @@ function fakeLocks() {
     request(name: string, callback: () => unknown) {
       if (!queues.has(name)) queues.set(name, []);
       queues.get(name)!.push(callback);
-      if (!held.has(name)) next(name);
+      const grant = () => held.has(name) || next(name);
+      if (delay === undefined) grant();
+      else setTimeout(grant, delay);
       return Promise.resolve();
     }
   };
@@ -39,7 +44,7 @@ let url = '';
 const clients: ReturnType<typeof createWebSocket>[] = [];
 const client = (Shared: TabsWebSocket, json = false) => {
   const created = createWebSocket(url, {
-    WebSocket: Shared as unknown as typeof WebSocket,
+    WebSocket: Shared,
     json,
     reconnect: { minDelay: 20, maxDelay: 20, jitter: 0, minUptime: 0 }
   });
@@ -179,7 +184,7 @@ describe('createTabsWebSocket', () => {
     const listen = vi.spyOn(window, 'addEventListener');
     // A page that goes away runs nothing more, so its client doesn't reconnect.
     const b = createWebSocket(url, {
-      WebSocket: tab(options) as unknown as typeof WebSocket,
+      WebSocket: tab(options),
       json: true,
       reconnect: false
     });
@@ -226,6 +231,16 @@ describe('createTabsWebSocket', () => {
     MockWebSocket.last.receive('pong');
     MockWebSocket.last.receive('42');
     await vi.waitFor(() => expect(received).toEqual(['pong', '42']));
+  });
+
+  it('asks a tab that leads only after the socket connected to connect it', async () => {
+    // The socket's `connect` goes out before any tab leads, and reaches no one.
+    setLocks(fakeLocks(20));
+    const a = client(tab());
+    a.connect();
+    await vi.waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    MockWebSocket.last.open();
+    await vi.waitFor(() => expect(a.getSnapshot().status).toBe('open'));
   });
 
   it('hands over to another tab when the leading one goes away', async () => {
@@ -360,9 +375,9 @@ describe('createTabsWebSocket', () => {
   it('gives binary messages the binaryType asked for where the Web Locks API is missing', () => {
     setLocks(undefined);
     const Shared = tab();
-    const blobs = createWebSocket(url, { WebSocket: Shared as unknown as typeof WebSocket });
+    const blobs = createWebSocket(url, { WebSocket: Shared });
     const buffers = createWebSocket(url, {
-      WebSocket: Shared as unknown as typeof WebSocket,
+      WebSocket: Shared,
       binaryType: 'arraybuffer'
     });
     clients.push(blobs, buffers);

@@ -57,6 +57,21 @@ describe('applyPatch', () => {
     expect(next.nested).toBe(doc.nested);
   });
 
+  it('replaces, tests, copies and moves array elements', () => {
+    const next = applyPatch<Record<string, unknown>>(doc, [
+      { op: 'replace', path: '/list/1', value: 20 },
+      { op: 'test', path: '/list', value: [1, 20, 3] },
+      { op: 'copy', from: '/list/2', path: '/third' },
+      { op: 'move', from: '/list/0', path: '/list/-' }
+    ]);
+    expect(next).toMatchObject({ list: [20, 3, 1], third: 3 });
+    expect(doc.list).toEqual([1, 2, 3]);
+    // Both have no keys, but an array isn't an object.
+    expect(() => applyPatch({ a: [] }, [{ op: 'test', path: '/a', value: {} }])).toThrow(
+      'JSON Patch failed'
+    );
+  });
+
   it('replaces or adds the whole document at the root path', () => {
     expect(applyPatch(doc, [{ op: 'replace', path: '', value: [1] }])).toEqual([1]);
     expect(applyPatch(doc, [{ op: 'add', path: '', value: 'x' }])).toBe('x');

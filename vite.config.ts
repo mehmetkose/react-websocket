@@ -43,7 +43,7 @@ export default defineConfig({
   pack: [
     // `react-websocket/core` has no React dependency and no client directive.
     { ...shared, entry: { core: 'src/core.ts' }, format: ['esm', 'cjs'] },
-    // Tools with no imports, built on their own so they share no chunks with `core`.
+    // Tools with no runtime imports, built on their own so they share no chunks with `core`.
     {
       ...shared,
       entry: {
@@ -54,7 +54,7 @@ export default defineConfig({
       },
       format: ['esm', 'cjs']
     },
-    // Imports only types from `core`, so they ship no imports and need no client directive.
+    // Imports only types from `core`, so they ship no runtime imports and need no client directive.
     {
       ...shared,
       entry: { timeline: 'src/timeline.ts', outbox: 'src/outbox.ts' },

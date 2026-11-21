@@ -262,6 +262,69 @@ describe('createWebSocketRuns', () => {
     expect(runs.get('r1')?.status).toBe('aborted');
   });
 
+  it('starts a run again under the id of one it just deleted', () => {
+    const { runs } = setup();
+    runs.start('hello', { runId: 'r1' });
+    MockWebSocket.last.open();
+    token('r1', 1);
+    runs.delete('r1');
+    runs.start('again', { runId: 'r1' });
+    expect(sent()).toEqual([
+      { type: 'run', runId: 'r1', prompt: 'hello' },
+      { type: 'cancel', runId: 'r1' },
+      { type: 'run', runId: 'r1', prompt: 'again' }
+    ]);
+    token('r1', 1, 'new ');
+    expect(runs.get('r1')?.value).toBe('new ');
+  });
+
+  it('ends a run, and lets go of the connection, when its cancel builder throws', () => {
+    const thrown: unknown[] = [];
+    vi.spyOn(globalThis, 'queueMicrotask').mockImplementation(callback => {
+      try {
+        callback();
+      } catch (error) {
+        thrown.push(error);
+      }
+    });
+    const client = createWebSocket<In, Out>(`ws://runs/${++n}`, {
+      WebSocket: MockImpl,
+      json: true,
+      reconnect: { jitter: 0, minDelay: 1000 }
+    });
+    const runs = createWebSocketRuns(client, {
+      name: `throwing-${n}`,
+      storage: null,
+      start: (prompt: string, runId) => ({ type: 'run', runId, prompt }),
+      resume: (runId, after) => ({ type: 'resume', runId, after }),
+      cancel: () => {
+        throw new Error('cancel failed');
+      },
+      event: message => (message.type === 'other' ? undefined : message),
+      initial: '',
+      reduce: text => text,
+      policy: 'cancel'
+    });
+    runs.start('one', { runId: 'r1' });
+    MockWebSocket.last.open();
+    expect(() => runs.abort('r1')).toThrow('cancel failed');
+    expect(runs.get('r1')?.status).toBe('aborted');
+    runs.start('two', { runId: 'r2' });
+    expect(() => runs.delete('r2')).toThrow('cancel failed');
+    expect(runs.get('r2')).toBeUndefined();
+
+    // Aborted by the drop: its cancel waits for the next connection, and throws there.
+    runs.start('three', { runId: 'r3' });
+    MockWebSocket.last.finishClose(1006);
+    expect(runs.get('r3')?.status).toBe('aborted');
+    vi.advanceTimersByTime(1000);
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(0);
+    vi.restoreAllMocks();
+    expect(thrown).toEqual([new Error('cancel failed')]);
+    expect(client.getSnapshot().status).toBe('idle');
+  });
+
   it("starts nothing for a runId it already knows, and doesn't hold the connection for it", () => {
     const { client, runs } = setup();
     runs.start('hello', { runId: 'r1' });

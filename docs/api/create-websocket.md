@@ -68,6 +68,7 @@ It closes **one tick after the last hook unmounts** (or the last `acquire()` is 
 | `connecting` | The socket opens | `open` |
 | `connecting`, `open` | The connection fails or drops | `reconnecting` (backoff, then retry) |
 | `reconnecting` | A retry opens | `open` |
+| `connecting`, `open`, `reconnecting` | `reconnect()` | `connecting`, with the backoff reset |
 | any | `close()`, or reconnecting gives up | `closed` |
 | `closed` | `connect()` or `reconnect()` | `connecting` |
 | `closed` while nothing held it | A hook mounts | `connecting` |

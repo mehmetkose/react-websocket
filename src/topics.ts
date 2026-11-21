@@ -1,6 +1,4 @@
-import type { WebSocketClient } from './types';
-
-type Timer = ReturnType<typeof setTimeout>;
+import type { Timer, WebSocketClient } from './types';
 
 /** @internal Option key for a callback run when nothing holds a topic anymore. Used by feeds. */
 export const ON_RELEASE = Symbol('react-websocket.onRelease');
@@ -100,24 +98,26 @@ export function createWebSocketTopics<const Out>(
       subscribe(topic);
 
       let released = false;
-      return () => {
+      // `release(true)` lets go at once, for a hold that doesn't come from a render (runs), so the
+      // topic can be held again in the same tick and subscribed afresh.
+      return (now?: boolean) => {
         if (released) return;
         released = true;
-        const remaining = (counts.get(topic) ?? 1) - 1;
+        // Counts every handle not yet released.
+        const remaining = counts.get(topic)! - 1;
         if (remaining > 0) {
           counts.set(topic, remaining);
         } else {
           counts.delete(topic);
-          pendingRemoval.set(
-            topic,
-            setTimeout(() => {
-              pendingRemoval.delete(topic);
-              if (!counts.has(topic)) {
-                unsubscribe(topic);
-                options[ON_RELEASE]?.(topic);
-              }
-            }, 0)
-          );
+          const remove = () => {
+            pendingRemoval.delete(topic);
+            unsubscribe(topic);
+            options[ON_RELEASE]?.(topic);
+          };
+          // A tick later, so StrictMode and route changes don't churn subscriptions. `acquire()`
+          // cancels it if the topic is held again first.
+          if (now === true) remove();
+          else pendingRemoval.set(topic, setTimeout(remove, 0));
         }
         releaseConnection();
       };

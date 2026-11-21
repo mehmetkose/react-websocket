@@ -6,7 +6,7 @@ description: 'react-websocket/ag-ui: createAgUiAgent, useAgUiAgent, applyAgUiEve
 
 Run [AG-UI](https://docs.ag-ui.com) agents over a WebSocket. The guide is [AG-UI over WebSockets](../guide/ag-ui.md).
 
-The entry has no React dependency. [`useAgUiAgent`](#useaguiagent) comes from `react-websocket`. `createAgUiAgent` is about 3.5 kB min+gzip, including the [runs](./create-websocket-runs.md) and [feeds](./create-websocket-feeds.md) it uses, which it shares with the other entries.
+The entry has no React dependency. [`useAgUiAgent`](#useaguiagent) comes from `react-websocket`. `createAgUiAgent` is about 3.9 kB min+gzip, including the [runs](./create-websocket-runs.md) and [feeds](./create-websocket-feeds.md) it uses, which it shares with the other entries.
 
 ## createAgUiAgent
 
@@ -52,7 +52,7 @@ Returns an `AgUiAgent<S>`:
 | `subscribe(listener)` | Get notified when the thread changes. Compatible with `useSyncExternalStore` |
 | `runs` | The [runs](./create-websocket-runs.md) underneath |
 | `client` | The client |
-| `dispose()` | Stop following runs and release the connection |
+| `dispose()` | Stop following runs and release the connection. Cancels waiting for a connection still go out once it opens; `reset()` first takes them back |
 
 ### AgUiThread
 
@@ -76,7 +76,7 @@ interface AgUiThread<S> {
 function useAgUiAgent<S>(agent: AgUiAgent<S>): AgUiThread<S>;
 ```
 
-From `react-websocket`. The agent's thread, re-rendering on every event.
+From `react-websocket`. The agent's thread. It re-renders when the thread changes, not on every event: an event that changes nothing, or that belongs to an earlier run, doesn't re-render.
 
 ## applyAgUiEvent
 

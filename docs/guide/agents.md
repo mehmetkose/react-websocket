@@ -244,7 +244,7 @@ What happens:
 
 ### Background agents or a chat answer
 
-Each run has a policy for when its connection drops. `keep`, the default, resumes it, for agents that work in the background. `cancel` aborts it and sends `cancel` first thing on the next connection, for a chat answer nobody may be waiting for, so the server stops spending:
+Each run has a policy for when its connection drops. `keep`, the default, resumes it, for agents that work in the background. `cancel` aborts it and sends `cancel` on the next connection, ahead of anything queued, for a chat answer nobody may be waiting for, so the server stops spending:
 
 ```ts
 const runId = runs.start(prompt, { policy: 'cancel' });

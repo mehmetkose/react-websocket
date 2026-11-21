@@ -65,7 +65,7 @@ function Canvas({ name }: { name: string }) {
 
 - the server says it left: `receive` returns `state: null`,
 - nothing has arrived from it for `timeout` ms (30 s by default). This catches the ghosts: a peer whose connection died without the server telling anyone, or
-- this client closes, with `close()` or by giving up on reconnecting.
+- this client closes, with `close()` or by giving up on reconnecting, or the connection closes because nothing holds it anymore.
 
 Keep `refresh` well below `timeout`, so a peer that's still there but idle isn't dropped. The defaults leave room for two lost refreshes.
 

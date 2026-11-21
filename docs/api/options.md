@@ -172,9 +172,9 @@ Buffer `send()` calls made while not connected, and send them in order when the 
 | `{ maxAge: ms }` | Drop a queued message that has waited longer than `ms` instead of sending it, calling its `onDrop`. Checked when the socket opens and whenever another message is queued. A message's own `maxAge` overrides it. Default `Infinity` |
 | `false` | Don't queue. `send()` while not open drops the message and returns `false` |
 
-To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `send()`: `{ volatile: true }` drops one message, `{ key }` keeps only the newest queued message per key, and `{ priority: true }` queues a message ahead of the others, and `{ maxAge }` drops one that waited too long.
+To decide per message instead, pass [`SendOptions`](./types.md#sendoptions) to `send()`: `{ volatile: true }` drops one message, `{ key }` keeps only the newest queued message per key, `{ priority: true }` queues a message ahead of the others, and `{ maxAge }` drops one that waited too long.
 
-Queued messages are sent right after `open` listeners run, so a handshake sent from `onOpen` goes out first. See [First-message auth](../guide/authentication.md#first-message-auth). The queue is cleared by `close()` and when the client gives up reconnecting.
+Queued messages are sent right after `open` listeners run, so a handshake sent from `onOpen` goes out first. See [First-message auth](../guide/authentication.md#first-message-auth). The queue is cleared by `close()`, when the client gives up reconnecting, and when it's torn down after the last hook unmounts. `onDrop` isn't called for those.
 
 ```ts
 { queue: { limit: 500, maxAge: 60_000 } }

@@ -55,6 +55,34 @@ describe('createWebSocketPresence', () => {
     expect(xs.at(-1)).toBe(50);
   });
 
+  it('waits for a timeout or refresh longer than setTimeout can', () => {
+    const { client, presence } = setup({ timeout: 2 ** 32, refresh: 2 ** 32 });
+    client.connect();
+    MockWebSocket.last.open();
+    presence.set({ x: 1, y: 1 });
+    peerMoves('b', { x: 2, y: 2 });
+    vi.advanceTimersByTime(1000);
+    expect(sent()).toHaveLength(1);
+    expect(presence.getSnapshot()).toHaveLength(1);
+    vi.advanceTimersByTime(2 ** 32);
+    expect(presence.getSnapshot()).toHaveLength(0);
+  });
+
+  it('forgets the peers once nothing holds the client, but not across a remount in one tick', () => {
+    const { client, presence } = setup();
+    let release = client.acquire();
+    MockWebSocket.last.open();
+    peerMoves('b', { x: 1, y: 1 });
+    release();
+    release = client.acquire(); // StrictMode's unmount and remount
+    vi.advanceTimersByTime(0);
+    expect(presence.getSnapshot()).toHaveLength(1);
+    release();
+    vi.advanceTimersByTime(0);
+    expect(client.getSnapshot().status).toBe('idle');
+    expect(presence.getSnapshot()).toEqual([]);
+  });
+
   it('sends its state again on every new connection, not from the queue', () => {
     const { client, presence } = setup();
     client.connect();

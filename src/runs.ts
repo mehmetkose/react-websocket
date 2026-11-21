@@ -72,7 +72,9 @@ export interface WebSocketRuns<Req, T> {
    * Start a run and return its `runId`. The start message is sent as soon as the socket is
    * open, and the run is remembered until it ends. `initial` overrides the `initial` option for
    * this run. A `runId` it already knows, streaming or ended, starts nothing: the server starts
-   * a run only once per id. `delete()` it first to use the id again.
+   * a run only once per id. `delete()` it first to use the id again, while connected and once
+   * the old run has ended: a cancel still waiting for the connection goes out after the new
+   * start and cancels it, and late events of the old run count for the new one.
    */
   start(request: Req, options?: { runId?: string; policy?: RunPolicy; initial?: T }): string;
   /**
@@ -97,7 +99,11 @@ export interface WebSocketRuns<Req, T> {
    * server first, while connected.
    */
   clear(): void;
-  /** Stop following runs, and release the connection. Remembered runs stay remembered. */
+  /**
+   * Stop following runs, and release the connection. Remembered runs stay remembered. Cancels
+   * waiting for a connection still hold it and go out once it opens; `clear()` first takes them
+   * back.
+   */
   dispose(): void;
 }
 
@@ -133,7 +139,7 @@ function defaultStorage(): RunStorage | null {
  * - Streaming runs are remembered in `sessionStorage`. After a reload they're followed again from
  *   their first event, rebuilding the value, so `list()` or `useAgentRun` can show them.
  * - A run whose policy is `cancel` is aborted when its connection drops, and `cancel` is sent
- *   first thing on the next one.
+ *   on the next one, ahead of anything queued.
  *
  * Built on `createWebSocketFeeds`, with each run a topic. While runs are streaming, it holds
  * the client's connection.
@@ -166,7 +172,8 @@ export function createWebSocketRuns<Req, T, In, const Out>(
   // Start requests not yet answered by an event, sent again on a new connection.
   const starting = new Map<string, Req>();
   const policies = new Map<string, RunPolicy>();
-  const releases = new Map<string, () => void>();
+  // At once with `true`: see topics' `acquire()`.
+  const releases = new Map<string, (now?: true) => void>();
   // Cancels waiting for the next connection, each with a way to take it back.
   const cancels = new Set<() => void>();
   const listeners = new Set<() => void>();
@@ -216,7 +223,7 @@ export function createWebSocketRuns<Req, T, In, const Out>(
 
   /** Stop following a run that ended. */
   function end(runId: string, patch: Partial<AgentRun<T>>) {
-    releases.get(runId)?.();
+    releases.get(runId)?.(true);
     releases.delete(runId);
     starting.delete(runId);
     policies.delete(runId);
@@ -244,19 +251,24 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       off();
       release();
     };
+    // Let go first: the send is still on this open socket, and a builder that throws can't keep
+    // the hold.
     const off = client.on('open', () => {
-      cancels.delete(drop);
-      off();
+      drop();
       client.send(message(runId));
-      release();
     });
     cancels.add(drop);
   }
 
   function abort(runId: string) {
     if (runs.get(runId)?.status !== 'streaming') return;
-    cancel(runId);
-    end(runId, { status: 'aborted' });
+    // Ended even if the cancel builder throws. The cancel goes first, ahead of any run that a
+    // listener hearing of the end starts.
+    try {
+      cancel(runId);
+    } finally {
+      end(runId, { status: 'aborted' });
+    }
   }
 
   let status = client.getSnapshot().status;
@@ -343,14 +355,17 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       };
     },
     delete(runId) {
-      abort(runId);
-      if (runs.delete(runId)) {
-        list = [...runs.values()];
-        for (const listener of [...listeners]) listener();
+      try {
+        abort(runId);
+      } finally {
+        if (runs.delete(runId)) {
+          list = [...runs.values()];
+          for (const listener of [...listeners]) listener();
+        }
       }
     },
     clear() {
-      for (const release of releases.values()) release();
+      for (const release of releases.values()) release(true);
       releases.clear();
       for (const drop of [...cancels]) drop();
       // Runs found in storage that would be cancelled once nobody claims them.
@@ -368,7 +383,7 @@ export function createWebSocketRuns<Req, T, In, const Out>(
       for (const listener of [...listeners]) listener();
     },
     dispose() {
-      for (const release of releases.values()) release();
+      for (const release of releases.values()) release(true);
       releases.clear();
       for (const off of offs) off();
     }

@@ -1,3 +1,5 @@
+import type { Timer } from './types';
+
 /** A duration in ms, or `[min, max]` for a uniformly random one each time it's used. */
 export type ChaosRange = number | readonly [min: number, max: number];
 
@@ -88,7 +90,10 @@ export interface ChaosOptions extends ChaosFaults {
  * keyboard shortcut, the console or a test.
  */
 export interface ChaosControls {
-  /** Change faults while running, merged into the current ones. Open connections restart their `drop` and `stall` timers. */
+  /**
+   * Change faults while running, merged into the current ones. Changing `drop`, `stall` or
+   * `enabled` restarts the `drop` and `stall` timers of open connections.
+   */
   configure(faults: ChaosFaults): void;
   /**
    * Drop every connection now: `error`, then `close` with code `1006`. Pass a code to simulate the
@@ -108,7 +113,6 @@ export interface ChaosControls {
 export type ChaosWebSocket = typeof WebSocket & ChaosControls;
 
 type Data = Parameters<WebSocket['send']>[0];
-type Timer = ReturnType<typeof setTimeout>;
 
 const CONNECTING = 0;
 const OPEN = 1;
@@ -188,13 +192,12 @@ function watch() {
  */
 function createQueue() {
   let items: { at: number; run: () => void; data?: Data }[] = [];
-  let timer: Timer | undefined;
+  let timer: Timer;
   // Bumped by `clear()`, so a task already posted does nothing.
   let turn = 0;
   let waiting = false;
   function stopTimer() {
     clearTimeout(timer);
-    timer = undefined;
     timed.delete(hurry);
   }
   function run(mine: number) {
@@ -451,9 +454,7 @@ export function createChaosWebSocket(options: ChaosOptions = {}): ChaosWebSocket
     /** Queue an event from the server, unless the connection is gone or silent. */
     #receive(run: () => void, random = this.#in) {
       if (this.#state === CLOSED || this.#stalled) return;
-      this.#incoming.push(delay(random), () => {
-        if (!this.#stalled) run();
-      });
+      this.#incoming.push(delay(random), run);
     }
 
     #message(data: unknown) {
@@ -483,6 +484,7 @@ export function createChaosWebSocket(options: ChaosOptions = {}): ChaosWebSocket
     #stall() {
       if (this.#state !== OPEN || this.#stalled) return;
       this.#stalled = true;
+      this.#incoming.clear();
       // Sends still on the way never leave either.
       this.#unsent += this.#outgoing.bytes();
       this.#outgoing.clear();

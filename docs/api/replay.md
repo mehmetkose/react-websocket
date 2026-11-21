@@ -4,7 +4,7 @@ description: 'react-websocket/replay: createRecordingWebSocket records WebSocket
 
 # react-websocket/replay
 
-Record WebSocket sessions and play them back without a server. Both functions return `WebSocket` classes to pass as the [`WebSocket`](./options.md#websocket) option. The entry has no React dependency and no imports, and is about 1.8 kB min+gzip. The guide is [Recording and replay](../guide/replay.md).
+Record WebSocket sessions and play them back without a server. Both functions return `WebSocket` classes to pass as the [`WebSocket`](./options.md#websocket) option. The entry has no React dependency and no imports, and is about 1.7 kB min+gzip. The guide is [Recording and replay](../guide/replay.md).
 
 ## createRecordingWebSocket
 
@@ -40,7 +40,7 @@ function createReplayWebSocket(
 | --- | --- |
 | `sent` | What the app sent during the replay, one array per connection, as recorded data |
 | `done` | Resolves once every recorded connection has been played to its end, after its last `close` event |
-| `reset()` | Start again from the first recorded connection. Connections still playing stop where they are, without a `close` event |
+| `reset()` | Start again from the first recorded connection. Connections still playing stop where they are, without a `close` event, and the previous `done` resolves. Read `done` again for the new one |
 
 Each socket it creates replays the next recorded connection. One beyond the end of the recording fails with an `error` and a `1006` close. `bufferedAmount` is `0`, and `send()` throws while connecting, like a real socket.
 
@@ -53,14 +53,17 @@ interface WebSocketRecording {
   connections: {
     url: string;
     at: number; // Date.now() when it was created
-    events: (
-      | { t: number; type: 'open'; protocol: string }
-      | { t: number; type: 'send' | 'message'; data: string | { binary: string } }
-      | { t: number; type: 'error' }
-      | { t: number; type: 'close'; code: number; reason: string; wasClean: boolean }
-    )[];
+    events: RecordedEvent[];
   }[];
 }
+
+type RecordedEvent =
+  | { t: number; type: 'open'; protocol: string }
+  | { t: number; type: 'send' | 'message'; data: RecordedData }
+  | { t: number; type: 'error' }
+  | { t: number; type: 'close'; code: number; reason: string; wasClean: boolean };
+
+type RecordedData = string | { binary: string };
 ```
 
-`t` is in ms since the connection was created. Binary data is `{ binary }`, base64. It's plain JSON, so you can write or edit a recording by hand.
+`t` is in ms since the connection was created. Text is recorded as it was, and binary data as `{ binary }`, base64. It's plain JSON, so you can write or edit a recording by hand. `Replay.sent` holds `RecordedData` too. A `Blob` the app sends is recorded as `{ binary: '' }` at once, and its bytes are filled in once read.
