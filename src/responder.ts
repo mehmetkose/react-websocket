@@ -1,3 +1,4 @@
+import { MAX_TIMEOUT } from './client';
 import type { WebSocketClient } from './types';
 
 /** What `request` returns for a request: any object with these fields, such as the message itself. */
@@ -125,9 +126,6 @@ interface Entry {
 }
 
 const abortError = (message: string) => new DOMException(message, 'AbortError');
-
-// The longest delay `setTimeout` takes; anything longer fires at once.
-const MAX_TIMEOUT = 2 ** 31 - 1;
 
 /**
  * Answer requests the server sends: run a handler for tools that only exist in the browser

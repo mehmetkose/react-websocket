@@ -50,7 +50,7 @@ export interface WebSocketLatency {
   dispose(): void;
 }
 
-const EMPTY: Latency = Object.freeze({ rtt: undefined, offset: undefined });
+const EMPTY: Latency = /* @__PURE__ */ Object.freeze({ rtt: undefined, offset: undefined });
 
 function median(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);

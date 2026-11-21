@@ -1,3 +1,4 @@
+import { MAX_TIMEOUT } from './client';
 import type { SendOptions, WebSocketClient } from './types';
 
 /** Options for {@link createWebSocketRequests}: how requests and replies look on the wire. */
@@ -97,9 +98,6 @@ const INSPECT = Symbol.for('react-websocket.inspect');
 /** How many messages `client` holds in its send queue, if it tells. */
 const queued = (client: WebSocketClient<any, any>) =>
   (client as unknown as Record<symbol, (() => { queued: number }) | undefined>)[INSPECT]?.().queued;
-
-// The longest delay `setTimeout` takes; anything longer fires at once.
-const MAX_TIMEOUT = 2 ** 31 - 1;
 
 const noop = () => {};
 

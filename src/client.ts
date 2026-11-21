@@ -29,8 +29,8 @@ const RECONNECT_DEFAULTS = {
 
 const QUEUE_LIMIT = 100;
 
-// The longest delay `setTimeout` takes; anything longer fires at once.
-const MAX_TIMEOUT = 2 ** 31 - 1;
+/** @internal The longest delay `setTimeout` takes; anything longer fires at once. */
+export const MAX_TIMEOUT = 2 ** 31 - 1;
 
 type Timer = ReturnType<typeof setTimeout> | undefined;
 
@@ -109,8 +109,8 @@ function createDeferred(): Deferred {
       promise.value = undefined;
       resolve();
     },
+    // Only ever called on a deferred that hasn't settled: `rejectReady` replaces a settled one.
     reject(reason) {
-      if (deferred.settled) return;
       deferred.settled = true;
       promise.status = 'rejected';
       promise.reason = reason;
@@ -146,11 +146,30 @@ const DATAGRAM = Symbol.for('react-websocket.datagram');
  */
 const INSPECT = Symbol.for('react-websocket.inspect');
 
-function createClient<In = unknown, Out = unknown>(
+/**
+ * Create a WebSocket client, usually at module level, to share across components.
+ *
+ * Nothing connects until a hook uses it, `ready` is read, or `connect()` is called.
+ * It closes one tick after the last hook unmounts, unless `connect()` was called.
+ *
+ * @param url - A URL, or a function (sync or async) called before every connection
+ *   attempt, e.g. to put a fresh auth token in the URL on each reconnect.
+ * @typeParam In - Type of incoming messages. Inferred from `options.schema` if given.
+ * @typeParam Out - Type accepted by `send()`.
+ *
+ * @example
+ * ```ts
+ * type ChatIn = { user: string; text: string };
+ * type ChatOut = { text: string };
+ *
+ * export const chat = createWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', { json: true });
+ * ```
+ */
+export function createWebSocket<In = unknown, Out = unknown>(
   url: UrlSource,
-  options: WebSocketOptions<In, Out> & { [ON_TEARDOWN]?: () => void } = {}
+  options: WebSocketOptions<In, Out> = {}
 ): WebSocketClient<In, Out> {
-  const onTeardown = options[ON_TEARDOWN];
+  const onTeardown = (options as { [ON_TEARDOWN]?: () => void })[ON_TEARDOWN];
   const log = options.logger ?? (() => {});
   const retry =
     options.reconnect === false
@@ -335,6 +354,17 @@ function createClient<In = unknown, Out = unknown>(
     return Math.round(base * (1 - jitter * Math.random()));
   }
 
+  /** Close the current connection, still reporting its close event, and return it. */
+  function closeCurrent(reason: string) {
+    stopSocketTimers();
+    const socket = ws;
+    if (socket) {
+      detach(socket, true);
+      socket.close(1000, reason);
+    }
+    return socket;
+  }
+
   /** Stop a `migrate()` that hasn't switched yet. */
   function dropIncoming() {
     if (incoming) {
@@ -415,12 +445,7 @@ function createClient<In = unknown, Out = unknown>(
         incoming = null;
         clearTimeout(retryTimer);
         retryTimer = undefined;
-        stopSocketTimers();
-        if (ws) {
-          const old = (replaced = ws);
-          detach(old, true);
-          old.close(1000, 'migrated');
-        }
+        replaced = closeCurrent('migrated');
         ws = socket;
       }
       log('open');
@@ -543,19 +568,9 @@ function createClient<In = unknown, Out = unknown>(
 
     // Async schema validation must not reorder messages.
     const run = () => decode(event, socket);
-    if (inbox) {
-      // One failed delivery must not stop the chain, or every later message is dropped.
-      const next: Promise<void> = inbox
-        .then(run)
-        .catch(rethrowAsync)
-        .then(() => {
-          if (inbox === next) inbox = null;
-        });
-      inbox = next;
-      return;
-    }
-    const result = run();
+    const result = inbox ? inbox.then(run) : run();
     if (result) {
+      // One failed delivery must not stop the chain, or every later message is dropped.
       const next: Promise<void> = result.catch(rethrowAsync).then(() => {
         if (inbox === next) inbox = null;
       });
@@ -688,11 +703,10 @@ function createClient<In = unknown, Out = unknown>(
     wanted = true;
     unheldStop = false;
     unpinned = false;
-    // Starting over after `close()` or giving up: wait for a new connection.
-    if (snapshot.status === 'idle' || snapshot.status === 'closed') {
-      opened = false;
-      if (ready?.settled) ready = null;
-    }
+    // Starting over after `close()` or giving up: wait for a new connection. (`opened` is
+    // already false: every way to `idle` or `closed` resets it.)
+    if ((snapshot.status === 'idle' || snapshot.status === 'closed') && ready?.settled)
+      ready = null;
     failures = 0;
     snapshot = { ...snapshot, attempt: 0 }; // open() notifies
     bindWindow();
@@ -731,27 +745,18 @@ function createClient<In = unknown, Out = unknown>(
     stop(code, reason);
     unpinned ||= pinned;
     pinned = false;
-    opened = false;
-    unheldStop = refs === 0;
-    clearTimeout(teardownTimer); // as in `fail()`
     // `close()` is the logout step: what was received for one user isn't shown to the next.
-    set({ status: 'closed', attempt: 0, lastMessage: undefined });
-    rejectReady(new Error('WebSocket was closed'));
+    snapshot = { ...snapshot, lastMessage: undefined }; // fail() notifies
+    // `stop()` reset `failures`, so the snapshot reads attempt 0.
+    fail(new Error('WebSocket was closed'));
   }
 
   function reconnect() {
     if (!getImpl()) return;
     // Started again as `connect()` had it, or the new connection would close soon after opening.
     if (unpinned) pinned = true;
-    clearTimeout(retryTimer);
-    retryTimer = undefined;
-    stopSocketTimers();
-    if (ws) {
-      const socket = ws;
-      detach(socket, true);
-      socket.close(1000, 'reconnect');
-    }
-    begin();
+    closeCurrent('reconnect');
+    begin(); // `open()` clears the retry timer
   }
 
   function teardown() {
@@ -835,30 +840,4 @@ function createClient<In = unknown, Out = unknown>(
     acquire,
     [INSPECT]: () => ({ queued: pending.length })
   } as WebSocketClient<In, Out>;
-}
-
-/**
- * Create a WebSocket client, usually at module level, to share across components.
- *
- * Nothing connects until a hook uses it, `ready` is read, or `connect()` is called.
- * It closes one tick after the last hook unmounts, unless `connect()` was called.
- *
- * @param url - A URL, or a function (sync or async) called before every connection
- *   attempt, e.g. to put a fresh auth token in the URL on each reconnect.
- * @typeParam In - Type of incoming messages. Inferred from `options.schema` if given.
- * @typeParam Out - Type accepted by `send()`.
- *
- * @example
- * ```ts
- * type ChatIn = { user: string; text: string };
- * type ChatOut = { text: string };
- *
- * export const chat = createWebSocket<ChatIn, ChatOut>('wss://api.example.com/chat', { json: true });
- * ```
- */
-export function createWebSocket<In = unknown, Out = unknown>(
-  url: UrlSource,
-  options?: WebSocketOptions<In, Out>
-): WebSocketClient<In, Out> {
-  return createClient(url, options);
 }
