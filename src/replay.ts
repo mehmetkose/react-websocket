@@ -194,7 +194,7 @@ export function createRecordingWebSocket(
 
   class RecordingSocket extends Base implements WebSocket {
     #inner: WebSocket;
-    #binaryType: BinaryType = 'blob';
+    binaryType: BinaryType = 'blob';
 
     static recording(): WebSocketRecording {
       return JSON.parse(
@@ -237,7 +237,7 @@ export function createRecordingWebSocket(
         const data = event.data as string | ArrayBuffer;
         record({ type: 'message', data: typeof data === 'string' ? data : encode(data) });
         this.received(
-          typeof data === 'string' || this.#binaryType !== 'blob' ? data : new Blob([data])
+          typeof data === 'string' || this.binaryType !== 'blob' ? data : new Blob([data])
         );
       };
       inner.onerror = () => {
@@ -251,14 +251,6 @@ export function createRecordingWebSocket(
     }
 
     #record: (event: Untimed) => void;
-
-    get binaryType() {
-      return this.#binaryType;
-    }
-
-    set binaryType(value) {
-      this.#binaryType = value;
-    }
 
     get bufferedAmount() {
       return this.#inner.bufferedAmount;
@@ -350,9 +342,9 @@ export function createReplayWebSocket(
       done = new Promise<void>(resolve => (finish = resolve));
     }
 
-    constructor(url: string | URL, protocols?: string | string[]) {
+    // Without `protocols`: the recording says which one the server picked.
+    constructor(url: string | URL) {
       super(url);
-      void protocols;
       const connection = recording.connections[next++];
       sent.push(this.#sent);
       // More connections than were recorded: refused, like a server that's gone.
@@ -424,8 +416,8 @@ export function createReplayWebSocket(
     }
 
     /** Finished once the close event is out, so `done` comes after it. */
+    // Its two callers, `close()` and a recorded `close`, have already stopped playing.
     #end(code: number, reason: string, wasClean: boolean) {
-      this.#stop();
       this.ended(code, reason, wasClean);
       this.#finished();
     }

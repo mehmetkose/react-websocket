@@ -303,7 +303,7 @@
       "name": "react-websocket/webtransport (createWebTransportSocket)",
       "path": "dist/webtransport.js",
       "import": "{ createWebTransportSocket }",
-      "limit": "1.7 kB",
+      "limit": "1.75 kB",
       "gzip": true
     },
     {

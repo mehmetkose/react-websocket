@@ -19,7 +19,10 @@ export interface TabsTopics {
 
 /** Options for {@link createTabsWebSocket}. */
 export interface TabsWebSocketOptions {
-  /** The `WebSocket` the leading tab opens. Defaults to the global one. */
+  /**
+   * The `WebSocket` the leading tab opens, and each tab's own where tabs can't share one (no
+   * `BroadcastChannel` or Web Locks). Defaults to the global one.
+   */
   WebSocket?: typeof WebSocket;
   /** Messages are JSON: the `topics` functions get them parsed. */
   json?: boolean;
@@ -117,8 +120,9 @@ const UNREAD = Symbol();
  */
 export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWebSocket {
   const linger = options.linger ?? 1000;
-  // One per URL in this tab: it waits to lead, and leads while it holds the lock.
-  const agents = new Map<string, { channel: BroadcastChannel; stop: () => void }>();
+  // One per session, URL and protocols in this tab: it waits to lead, and leads while it holds
+  // the lock. Each is the function that stops it.
+  const agents = new Map<string, () => void>();
 
   const read = (data: unknown) => {
     if (!options.json || typeof data !== 'string') return data;
@@ -181,7 +185,9 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
         for (const [id, told] of clients) if (!told) opened(id);
       };
       socket.onmessage = event => {
-        const topic = topicOf(options.topics?.topic, read(event.data));
+        // Parsed only to find the topic: every tab parses the message for itself.
+        const recognize = options.topics?.topic;
+        const topic = recognize && topicOf(recognize, read(event.data));
         if (topic === undefined) return post({ t: 'message', data: event.data });
         const to = [...(holders.get(topic) ?? [])];
         if (to.length) post({ t: 'message', data: event.data, to });
@@ -230,7 +236,8 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
         if (!clients.size) {
           clearTimeout(lingerTimer);
           lingerTimer = setTimeout(() => {
-            if (clients.size || !real) return;
+            // A tab that connected meanwhile cleared this timer.
+            if (!real) return;
             // Forget it first: a tab connecting while it closes gets a new one.
             const socket = real;
             real = undefined;
@@ -240,17 +247,14 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       }
     }
 
-    const self = {
-      channel,
-      stop() {
-        clearTimeout(lingerTimer);
-        channel.close();
-        if (real) {
-          real.onclose = null;
-          real.close(1000);
-        }
-        release?.();
+    const self = () => {
+      clearTimeout(lingerTimer);
+      channel.close();
+      if (real) {
+        real.onclose = null;
+        real.close(1000);
       }
+      release?.();
     };
     agents.set(key, self);
     void navigator.locks.request(key, () => {
@@ -263,8 +267,6 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       return new Promise<void>(resolve => (release = resolve));
     });
   }
-
-  const Fallback = options.WebSocket;
 
   class TabSocket extends EventTarget implements WebSocket {
     static readonly CONNECTING = CONNECTING;
@@ -297,7 +299,7 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
     #inner: WebSocket | undefined;
 
     static dispose() {
-      for (const { stop } of agents.values()) stop();
+      for (const stop of agents.values()) stop();
       agents.clear();
     }
 
@@ -313,7 +315,10 @@ export function createTabsWebSocket(options: TabsWebSocketOptions = {}): TabsWeb
       }
       this.url = String(url);
       if (typeof BroadcastChannel === 'undefined' || !globalThis.navigator?.locks) {
-        const inner = (this.#inner = new (Fallback ?? globalThis.WebSocket)(url, protocols));
+        const inner = (this.#inner = new (options.WebSocket ?? globalThis.WebSocket)(
+          url,
+          protocols
+        ));
         // As from the leading tab: `#message` turns it into what `binaryType` asks for.
         inner.binaryType = 'arraybuffer';
         inner.onopen = () => this.#open(inner.protocol);
