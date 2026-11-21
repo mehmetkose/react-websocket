@@ -1,3 +1,4 @@
+import { MAX_TIMEOUT } from './client';
 import type { WebSocketClient } from './types';
 
 /** Options for {@link createWebSocketLatency}: how pings and pongs look on the wire. */
@@ -88,7 +89,8 @@ export function createWebSocketLatency<In, const Out>(
   client: WebSocketClient<In, Out>,
   options: WebSocketLatencyOptions<NoInfer<In>, NoInfer<Out>>
 ): WebSocketLatency {
-  const interval = options.interval ?? 2000;
+  // Longer than `setTimeout` can wait would fire at once.
+  const interval = Math.min(MAX_TIMEOUT, options.interval ?? 2000);
   const keep = Math.max(1, options.samples ?? 5);
   const listeners = new Set<() => void>();
   let snapshot = EMPTY;

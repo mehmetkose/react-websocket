@@ -46,6 +46,14 @@ describe('createWebSocketLatency', () => {
     expect(sent().at(-1)).toEqual({ type: 'ping', id: 2 });
   });
 
+  it('pings at most once per setTimeout maximum for a longer interval', () => {
+    const { client } = setup({ interval: Infinity });
+    client.connect();
+    MockWebSocket.last.open();
+    vi.advanceTimersByTime(1000);
+    expect(sent()).toEqual([{ type: 'ping', id: 1 }]);
+  });
+
   it('measures the round trip and the server clock offset', () => {
     const { client, latency } = setup();
     client.connect();

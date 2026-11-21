@@ -1,3 +1,4 @@
+import { MAX_TIMEOUT } from './client';
 import type { Timer, WebSocketClient } from './types';
 
 /** Another client's shared state, such as its cursor or what it's selected. */
@@ -90,7 +91,9 @@ export function createWebSocketPresence<P, In, const Out>(
   options: WebSocketPresenceOptions<P, NoInfer<In>, NoInfer<Out>>
 ): WebSocketPresence<P> {
   const timeout = options.timeout ?? 30_000;
-  const refresh = options.refresh ?? timeout / 3;
+  // Delays longer than `setTimeout` can wait would fire at once. An expiry timer that fires
+  // early finds nothing expired and waits again.
+  const refresh = Math.min(MAX_TIMEOUT, options.refresh ?? timeout / 3);
   const interval = 1000 / (options.maxRate ?? 20);
   const peers = new Map<string, PresencePeer<P>>();
   const listeners = new Set<() => void>();
@@ -133,7 +136,7 @@ export function createWebSocketPresence<P, In, const Out>(
       if (at <= now) removed = peers.delete(peer);
       else next = Math.min(next, at);
     }
-    if (next < Infinity) expiryTimer = setTimeout(expire, next - now);
+    if (next < Infinity) expiryTimer = setTimeout(expire, Math.min(MAX_TIMEOUT, next - now));
     if (removed) changed();
   }
 
@@ -146,7 +149,7 @@ export function createWebSocketPresence<P, In, const Out>(
         if (!peers.delete(update.peer)) return;
       } else {
         peers.set(update.peer, { peer: update.peer, state: update.state, updatedAt: Date.now() });
-        expiryTimer ??= setTimeout(expire, timeout);
+        expiryTimer ??= setTimeout(expire, Math.min(MAX_TIMEOUT, timeout));
       }
       changed();
     }),

@@ -55,6 +55,19 @@ describe('createWebSocketPresence', () => {
     expect(xs.at(-1)).toBe(50);
   });
 
+  it('waits for a timeout or refresh longer than setTimeout can', () => {
+    const { client, presence } = setup({ timeout: 2 ** 32, refresh: 2 ** 32 });
+    client.connect();
+    MockWebSocket.last.open();
+    presence.set({ x: 1, y: 1 });
+    peerMoves('b', { x: 2, y: 2 });
+    vi.advanceTimersByTime(1000);
+    expect(sent()).toHaveLength(1);
+    expect(presence.getSnapshot()).toHaveLength(1);
+    vi.advanceTimersByTime(2 ** 32);
+    expect(presence.getSnapshot()).toHaveLength(0);
+  });
+
   it('sends its state again on every new connection, not from the queue', () => {
     const { client, presence } = setup();
     client.connect();

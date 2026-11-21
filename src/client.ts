@@ -2,7 +2,6 @@ import {
   MessageError,
   type CloseInfo,
   type EventMap,
-  type ReconnectOptions,
   type SendData,
   type MigrateOptions,
   type SendOptions,
@@ -18,15 +17,6 @@ const OPEN = 1;
 
 // Defined in workers only, and missing from the DOM typings.
 declare const WorkerGlobalScope: unknown;
-
-const RECONNECT_DEFAULTS = {
-  maxAttempts: Infinity,
-  minDelay: 1000,
-  maxDelay: 30_000,
-  factor: 2,
-  jitter: 1,
-  minUptime: 5000
-} satisfies ReconnectOptions;
 
 const QUEUE_LIMIT = 100;
 
@@ -170,12 +160,20 @@ export function createWebSocket<In = unknown, Out = unknown>(
 ): WebSocketClient<In, Out> {
   const onTeardown = (options as { [ON_TEARDOWN]?: () => void })[ON_TEARDOWN];
   const log = options.logger ?? (() => {});
+  const custom = typeof options.reconnect === 'object' ? options.reconnect : {};
+  // `??`, not a spread: an option passed as `undefined` keeps its default.
   const retry =
     options.reconnect === false
       ? null
       : {
-          ...RECONNECT_DEFAULTS,
-          ...(typeof options.reconnect === 'object' ? options.reconnect : {})
+          maxAttempts: custom.maxAttempts ?? Infinity,
+          minDelay: custom.minDelay ?? 1000,
+          maxDelay: custom.maxDelay ?? 30_000,
+          factor: custom.factor ?? 2,
+          jitter: custom.jitter ?? 1,
+          minUptime: custom.minUptime ?? 5000,
+          shouldReconnect: custom.shouldReconnect ?? retryableClose,
+          retryAfter: custom.retryAfter ?? retryAfter
         };
   const queue = typeof options.queue === 'object' ? options.queue : {};
   const queueLimit = options.queue === false ? 0 : Math.max(0, queue.limit ?? QUEUE_LIMIT);
@@ -495,14 +493,9 @@ export function createWebSocket<In = unknown, Out = unknown>(
   }
 
   function retryOrFail(info: CloseInfo, error?: Error) {
-    if (
-      wanted &&
-      retry &&
-      failures < retry.maxAttempts &&
-      (retry.shouldReconnect ?? retryableClose)(info)
-    ) {
+    if (wanted && retry && failures < retry.maxAttempts && retry.shouldReconnect(info)) {
       const attempt = ++failures;
-      const asked = (retry.retryAfter ?? retryAfter)(info);
+      const asked = retry.retryAfter(info);
       const named = asked! >= 0; // not for undefined, NaN or a negative delay
       // A server that names a delay gets it, plus the usual backoff so clients told the same
       // delay don't all return at once. An overloaded one (1013) gets the longest backoff.
@@ -659,13 +652,12 @@ export function createWebSocket<In = unknown, Out = unknown>(
     const now = Date.now();
     // Drop what's too old to send, and an older message with the same key. Their `onDrop`s run
     // once the queue is updated, so one that sends again doesn't lose its message.
-    const before = pending;
-    pending = before.filter(
-      entry => entry.expires >= now && (key === undefined || entry.key !== key)
+    const removed: typeof pending = [];
+    pending = pending.filter(
+      entry =>
+        (entry.expires >= now && (key === undefined || entry.key !== key)) || !removed.push(entry)
     );
-    for (const entry of before) {
-      if (!pending.includes(entry)) (entry.expires < now ? expired : dropped)(entry);
-    }
+    for (const entry of removed) (entry.expires < now ? expired : dropped)(entry);
     let head = pending.findIndex(entry => !entry.priority);
     if (head < 0) head = pending.length;
     const entry = {
