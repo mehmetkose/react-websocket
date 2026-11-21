@@ -438,7 +438,10 @@ export interface AgUiAgent<S> {
   getSnapshot(): AgUiThread<S>;
   /** Get notified when the thread changes. Compatible with `useSyncExternalStore`. */
   subscribe(listener: () => void): () => void;
-  /** Stop following runs, and release the connection. */
+  /**
+   * Stop following runs, and release the connection. Cancels waiting for a connection still go
+   * out once it opens; `reset()` first takes them back.
+   */
   dispose(): void;
 }
 

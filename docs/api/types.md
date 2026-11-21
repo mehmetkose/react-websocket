@@ -144,14 +144,14 @@ interface SendOptions {
 
 | Option | |
 | --- | --- |
-| `volatile` | While not open, drop the message and return `false` instead of queueing it. For data that's stale by the time a reconnect finishes, such as player input |
+| `volatile` | While not open, drop the message and return `false` instead of queueing it. For data that's stale by the time a reconnect finishes, such as player input. Over [WebTransport](./webtransport.md), it's also sent as a datagram while open, which can be lost |
 | `key` | While not open, replace any queued message with the same key. The new one moves to the back of the queue (or of the priority messages, for a priority one). For state where only the latest value matters, such as an aim angle or a cursor position |
 | `priority` | While not open, queue the message ahead of every message queued without `priority`, after earlier priority messages. Messages sent from `open` listeners still go first. For control messages that must not wait behind a backlog: cancel, interrupt, a token refresh |
 | `maxBuffered` | While open, drop the message and return `false` if more than this many bytes are already waiting in the browser's send buffer (`socket.bufferedAmount`). For high-rate streams on a slow link, where a late message is worse than none |
 | `maxAge` | Drop the queued message instead of sending it once it has waited this many ms, for messages that go stale during an outage. Overrides [`queue.maxAge`](./options.md#queue). Checked when the socket opens and whenever another message is queued |
-| `onDrop` | Called if the queued message is dropped without being sent: replaced by a newer message with the same `key`, evicted by [`queue.limit`](./options.md#queue), or older than `maxAge`. Not called when the queue is cleared because the client closed or gave up, or when `send()` drops the message right away and returns `false` |
+| `onDrop` | Called if the queued message is dropped without being sent: replaced by a newer message with the same `key`, evicted by [`queue.limit`](./options.md#queue), or older than `maxAge`. Not called when the queue is cleared because the client closed, gave up or was torn down after its last holder let go, or when `send()` drops the message right away and returns `false` |
 
-`volatile`, `key`, `priority` and `maxAge` only matter while the socket isn't open, and `maxBuffered` only while it is. Once a message is handed to the browser, nothing can overtake it, so `priority` can't jump ahead of data already sent. Keep that buffer short by sending bulky streams with `maxBuffered`.
+`volatile`, `key`, `priority` and `maxAge` only matter while the socket isn't open (except `volatile` over WebTransport), and `maxBuffered` only while it is. Once a message is handed to the browser, nothing can overtake it, so `priority` can't jump ahead of data already sent. Keep that buffer short by sending bulky streams with `maxBuffered`.
 
 ```ts
 game.send({ type: 'input', dx, dy }, { volatile: true, maxBuffered: 4096 });
@@ -209,8 +209,8 @@ interface WebSocketClient<In = unknown, Out = unknown> {
 | `getSnapshot()` | The current [`Snapshot`](#snapshot) |
 | `on(type, listener)` | Listen to an [event](#eventmap). Returns an unsubscribe function. Subscribing the same function twice creates two independent subscriptions |
 | `send(message, options?)` | Encode and send now, or queue until open (see [`queue`](./options.md#queue) and [`SendOptions`](#sendoptions)). Returns `true` if sent immediately |
-| `connect()` | Start connecting, and stay connected even with no hooks mounted, until `close()`. Does nothing if already connecting or open |
-| `close(code = 1000, reason?)` | Close, stop reconnecting and clear the queue. Status becomes `'closed'`. Like `WebSocket.close()`, it throws for a code or reason the socket rejects (browsers take `1000` or `3000`–`4999`), and then nothing has changed |
+| `connect()` | Start connecting, and stay connected even with no hooks mounted, until `close()`. Already connecting or open, it opens no second connection, but still keeps this one until `close()` |
+| `close(code = 1000, reason?)` | Close, stop reconnecting, and clear the queue, a `migrate()` target and `lastMessage`. Status becomes `'closed'`. Like `WebSocket.close()`, it throws for a code or reason the socket rejects (browsers take `1000` or `3000`–`4999`), and then nothing has changed |
 | `reconnect()` | Drop the current socket and connect again now, resetting the backoff. Also restarts a `'closed'` client: one that `connect()` had started stays connected again until `close()`, even with no hook holding it |
 | `migrate(options?)` | Move to a new connection without a gap: at a random moment within `within` ms, open one (to `url`, if given), then close the current one once it's open. See [`MigrateOptions`](#migrateoptions) and [Deploys](../guide/reconnecting.md#deploys-without-reconnect-storms) |
 | `acquire()` | Hold the connection open until the returned release function is called. The hooks use this; it's useful for non-React integrations. The release function is safe to call more than once |

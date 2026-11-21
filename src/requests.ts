@@ -32,7 +32,8 @@ export interface WebSocketRequestsOptions<Req, In, Out> {
   cancel?: (id: number) => Out;
   /**
    * Default time to wait for a reply, in ms. For a stream, the time to wait for each reply,
-   * including the first. `Infinity`, or anything over about 24.8 days, waits forever.
+   * including the first. `0` or less, `Infinity`, or anything over about 24.8 days waits
+   * forever.
    * @default 10000
    */
   timeout?: number;
@@ -60,7 +61,10 @@ export interface WebSocketRequests<Req, In> {
    * aborted, and with an `Error` when the connection it was sent on closes (the reply can
    * no longer arrive) or the client stops. A request made while disconnected is queued like
    * any other message and waits for the connection; it rejects if it is dropped from the
-   * queue (replaced by a newer request with the same `key`, or evicted by `queue.limit`).
+   * queue (replaced by a newer request with the same `key`, evicted by `queue.limit`, or older
+   * than `maxAge`). It rejects at once, sending nothing, on a closed client, when `maxBuffered`
+   * drops it while open, with `volatile` or `queue: false` while not open, and when building or
+   * encoding it throws.
    */
   request(message: Req, options?: RequestOptions): Promise<In>;
   /**

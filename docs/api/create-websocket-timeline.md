@@ -106,7 +106,7 @@ interface TimelineSnapshot<S> {
 | `input(input)` | Send an input and predict it. Returns its `seq`, or `undefined` if it couldn't be sent, in which case it isn't predicted |
 | `latest()` | The newest snapshot, as `snapshot` returned it |
 | `renderTime()` | The server time `at()` renders by default. It never goes backward until the timeline starts over |
-| `pending()` | How many inputs were sent but not confirmed yet |
+| `pending()` | How many inputs were sent but not confirmed yet. `input()` and a new connection change it without notifying, so through `subscribe` it's as of the latest snapshot |
 | `subscribe(listener)` | Called after each new snapshot and on `reset()`. Returns an unsubscribe function |
 | `reset()` | Forget all snapshots and pending inputs now. `seq` keeps counting |
 | `dispose()` | Stop listening. Only for timelines created dynamically |
@@ -132,6 +132,6 @@ What `at()` returns, by render time:
 - **Reconnects.** On `open`, unconfirmed inputs are dropped, since the old connection can't confirm them. The old snapshots stay visible until the new connection's first snapshot, which replaces them even if its time is earlier (a restarted server).
 - **Doesn't connect.** It listens from creation but doesn't hold the connection. Hold it with [`useWebSocketStatus`](./use-websocket-status.md) in the component that renders the game.
 - **Snapshots are messages.** Snapshots also reach `onMessage`, `lastMessage` and state stores. With `useWebSocket`, that's a render per snapshot, so prefer `useWebSocketStatus`.
-- **Not a React store.** `at()`, `predicted()` and `renderTime()` change with time, not with notifications. Read them in `requestAnimationFrame` or React Three Fiber's `useFrame`, not with `useSyncExternalStore`. `latest()` and `pending()` are fine there.
+- **Not a React store.** `at()`, `predicted()` and `renderTime()` change with time, not with notifications. Read them in `requestAnimationFrame` or React Three Fiber's `useFrame`, not with `useSyncExternalStore`. `latest()` is fine there, and so is `pending()`, as of the latest snapshot.
 - **Errors.** A `snapshot` that throws leaves the timeline unchanged, and the client re-throws the error asynchronously.
 - **Requires TypeScript 5.4+** for the inferred message types (it uses `NoInfer`).

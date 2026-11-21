@@ -151,7 +151,8 @@ Every entry point ships as ESM and CommonJS with type declarations for each.
 | [`TabsWebSocketOptions`](./tabs.md#parameters), [`TabsTopics`](./tabs.md#parameters) | `{ WebSocket?, json?, topics?, linger? }` and `{ subscribe, unsubscribe, topic? }` |
 | [`ChaosWebSocket`](./chaos.md#returns) | The class from `createChaosWebSocket`: `typeof WebSocket` plus its controls |
 | [`ChaosOptions`](./chaos.md#parameters) | `{ WebSocket?, seed?, logger? }` plus the faults |
-| [`WebSocketRecording`](./replay.md#websocketrecording), [`RecordingWebSocket`](./replay.md#createrecordingwebsocket), [`ReplayWebSocket`](./replay.md#createreplaywebsocket), [`ReplayOptions`](./replay.md#createreplaywebsocket) | From `react-websocket/replay` |
+| [`WebSocketRecording`](./replay.md#websocketrecording), [`RecordedEvent`](./replay.md#websocketrecording), [`RecordedData`](./replay.md#websocketrecording), [`RecordingWebSocket`](./replay.md#createrecordingwebsocket), [`ReplayWebSocket`](./replay.md#createreplaywebsocket), [`ReplayOptions`](./replay.md#createreplaywebsocket) | From `react-websocket/replay` |
+| [`WebSocketDevtoolsProps`](./devtools.md#props) | `{ sources?, open?, position? }`, from `react-websocket/devtools` |
 | [`ChaosFaults`](./chaos.md#types) | `{ enabled?, latency?, loss?, refuse?, drop?, stall?, corrupt? }` for `configure()` |
 | [`ChaosControls`](./chaos.md#returns) | `configure`, `drop`, `stall` and `inject` |
 | [`ChaosRange`](./chaos.md#types) | A duration in ms, or `[min, max]` |

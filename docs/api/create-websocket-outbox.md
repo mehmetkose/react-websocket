@@ -20,7 +20,7 @@ function createWebSocketOutbox<M, In, Out>(
 ): WebSocketOutbox<M>;
 ```
 
-Available only from `react-websocket/outbox`. It has no React dependency, and its size (about 1.1 kB min+gzip) is separate from the main entry's. List its entries in React with [`useWebSocketOutbox`](./use-websocket-outbox.md).
+Available only from `react-websocket/outbox`. It has no React dependency, and its size (about 1.4 kB min+gzip) is separate from the main entry's. List its entries in React with [`useWebSocketOutbox`](./use-websocket-outbox.md).
 
 ## Usage
 
@@ -48,7 +48,7 @@ Annotate `send`'s `message` parameter: that's what `outbox.add()` accepts. The g
 | Parameter | Type | |
 | --- | --- | --- |
 | `client` | [`WebSocketClient<In, Out>`](./types.md#websocketclient) | The client to send on. `In` and `Out` are taken from it |
-| `options.name` | `string` | Names the IndexedDB database, `react-websocket-outbox:<name>`. Give each outbox its own. Unused with `storage` |
+| `options.name` | `string` | Names the IndexedDB database, `react-websocket-outbox:<name>`, and the BroadcastChannel its tabs share, also with `storage`. Give each outbox its own, in tests too: two with the same name remove and clear each other's entries |
 | `options.send` | `(message: M, id: string) => Out` | Build the message to send, with `id` as its idempotency key |
 | `options.ack` | `(message: In) => string \| null \| undefined` | Optional. Recognize the server's acknowledgement and return the id it confirms. An entry stays until it's acknowledged. Without `ack`, an entry is removed once sent |
 | `options.maxAge` | `number` | Optional. Drop an entry instead of sending it once it's older than this many ms. Checked on every new connection and when stored entries are loaded. Default `Infinity` |

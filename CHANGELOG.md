@@ -6,6 +6,55 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+This release fixes edge cases found in an audit of the library, and corrects the docs that no longer matched the
+code.
+
+### Fixed
+
+- A `reconnect` option passed as `undefined`, such as `reconnect: { maxAttempts: props.retries }`, keeps its default.
+  It used to replace it: `maxAttempts: undefined` never reconnected, and `minDelay`, `maxDelay`, `factor` or `jitter`
+  as `undefined` retried at once, with no backoff.
+- Presence's `timeout` and `refresh`, and latency's `interval`, wait as long as `setTimeout` can (about 24.8 days)
+  when they're longer, such as `Infinity`. They used to fire at once, sending in a loop.
+- Queueing a message while disconnected takes time in proportion to the queue's length, not its square, which
+  `queue: { limit: Infinity }` made noticeable during a long outage.
+- Runs: reusing a run id as documented, `delete(runId)` and then `start(request, { runId })` in the same tick, sends
+  the new run's start and keeps its first event. A `cancel` builder that throws no longer leaves the run streaming,
+  keeps the run after `delete()`, or, for a cancel that waited for the next connection, holds that connection for
+  good.
+- Outbox: IndexedDB storage opens the database again after an open that failed, or a connection the browser closed
+  (for example when the user clears site data), instead of failing every add, remove and clear until a reload. A
+  flush during which `onExpire` or a listener closes the socket, for example with `reconnect()`, stops there. It
+  used to hand the rest to the client's queue, which sent them a second time on the next connection.
+- Presence forgets the other peers when the client tears down after its last holder lets go, as it does on
+  `close()`. A page that hid the presence UI and showed it again used to show the old peers. StrictMode's unmount
+  and remount keeps them; a route change that suspends for longer than a tick shows peers again as they next send.
+- `react-websocket/replay`: `done` resolves after the last `close` event when a replayed listener closes the
+  connection too. `Replay.sent` has the bytes of a `Blob` the app sent, not `{ binary: '' }`. `reset()` resolves
+  the previous `done` even when some recorded connections hadn't started, and a connection the app was closing no
+  longer fires its `close` event after `reset()`.
+
+### Documentation
+
+- The responder's replies go out only while their connection is open, and aren't `volatile`; the page said they
+  were.
+- The outbox's `name` also names the BroadcastChannel its tabs share, with any `storage`: give each outbox its own.
+- Client: `connect()` on a client already connecting or open keeps it connected until `close()`. The send queue is
+  also cleared, without `onDrop`, when the client tears down after the last hook unmounts. `migrate()` on an idle or
+  closed client does nothing. `close()` also clears `lastMessage` and a `migrate()` target. Over WebTransport,
+  `volatile` sends a datagram while open. The lifecycle table has `reconnect()`.
+- Runs: after `dispose()`, cancels waiting for a connection still go out (`clear()` takes them back). Reuse a run id
+  while connected, once the old run has ended.
+- Requests and the responder: a `timeout` of `0` or less waits forever, `request()` lists every reason it rejects at
+  once, and the responder's `error` reply also covers a reply that couldn't be built or encoded.
+- The timeline's `pending()` changes on `input()` and on a new connection without notifying.
+- `useAgUiAgent` re-renders when the thread changes, not on every event.
+- `react-websocket/chaos`: `configure()` restarts timers only when it changes `drop`, `stall` or `enabled`.
+- `WebSocketState`'s docs show in editors; they sat above `MessageSource`.
+- The replay page documents `RecordedEvent` and `RecordedData`, and the devtools page `WebSocketDevtoolsProps`.
+- Size claims match the measurement: about 3.9 kB min+gzip for `createAgUiAgent`, 1.4 kB for the outbox and 1.7 kB
+  for replay.
+
 ## [4.22.3] - 2026-11-17
 
 The library's code is the same as in 4.22.2. This release updates the examples' dependencies to fix published

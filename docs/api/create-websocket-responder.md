@@ -58,7 +58,7 @@ A request registered without a handler waits for a person. [`useAgentApproval`](
 | `options.respond` | `(id, result: R) => Out` | Builds the reply. Annotate `result`: its type is what handlers return |
 | `options.error` | `(id, error: unknown) => Out` | Builds the error reply. See [Errors](#errors) |
 | `options.cancel` | `(message: In) => number \| string \| null \| undefined` | Optional. The id of a request the server withdrew, or `undefined` if the message isn't a cancellation |
-| `options.timeout` | `number` | Optional. Time to answer a request, in ms. Default `Infinity`: the server times out its own requests, and people take a while to decide. Anything over about 24.8 days waits forever too |
+| `options.timeout` | `number` | Optional. Time to answer a request, in ms. Default `Infinity`: the server times out its own requests, and people take a while to decide. `0` or less, or anything over about 24.8 days, waits forever too |
 
 Handlers receive `params` typed as `request` returns them. If they're optional in your message type, handlers get `params | undefined`. Ids are typed `number | string`, so your `Out` type must accept both.
 
@@ -129,7 +129,7 @@ Pass the signal on to `fetch`, a geolocation watch, or anything else the handler
 ## Behavior
 
 - **One answer per request.** While its connection lives, every request gets exactly one reply or error reply. A request the server sends again with an id that's still in flight is ignored.
-- **Tied to its connection.** A request can only be answered on the connection it arrived on. When that connection closes, including through `reconnect()`, the request is dropped and its signal aborts, and a late result is discarded. Replies are sent with `volatile`, so they're never queued for the next connection, where the server wouldn't know the id. If your server keeps work across reconnects, have it send pending requests again when the client reconnects.
+- **Tied to its connection.** A request can only be answered on the connection it arrived on. When that connection closes, including through `reconnect()`, the request is dropped and its signal aborts, and a late result is discarded. Replies are sent only while their connection is open, and never queued for the next connection, where the server wouldn't know the id. They aren't `volatile` either, so over [WebTransport](./webtransport.md) they go on the reliable stream, never as a datagram. If your server keeps work across reconnects, have it send pending requests again when the client reconnects.
 - **Doesn't connect.** It answers whenever the client is open, but doesn't hold the connection, even while a request waits for a person. `useAgentApproval` holds it while mounted.
 - **Requests are messages.** Requests also reach `onMessage`, `lastMessage` and state stores. The same goes for cancellations.
 - **One per client.** Two responders on one client both see every request, and one of them answers `NotFoundError`. Also make sure `request` doesn't match the replies a [`createWebSocketRequests`](./create-websocket-requests.md) manager on the same client waits for. With JSON-RPC, for example, a request has a `method` and a reply doesn't.

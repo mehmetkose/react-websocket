@@ -23,12 +23,6 @@ export interface WebSocketStateOptions<S, In> {
 }
 
 /**
- * State derived from a client's messages. Read it with `useWebSocketState(store, selector)`,
- * or with `getState`/`subscribe` outside React.
- *
- * @typeParam S - The state type. Don't use a function type: `setState` treats functions as updaters.
- */
-/**
  * Messages from somewhere other than the client itself, such as the in-order messages of
  * `createWebSocketFeeds`, for `createWebSocketState`.
  */
@@ -38,6 +32,12 @@ export interface MessageSource<In> {
   on(type: 'message', listener: (message: In, event: MessageEvent) => void): () => void;
 }
 
+/**
+ * State derived from a client's messages. Read it with `useWebSocketState(store, selector)`,
+ * or with `getState`/`subscribe` outside React.
+ *
+ * @typeParam S - The state type. Don't use a function type: `setState` treats functions as updaters.
+ */
 export interface WebSocketState<S> {
   /** The client whose messages this store reduces. Hooks reading the store keep it connected. */
   readonly client: WebSocketClient<any, any>;

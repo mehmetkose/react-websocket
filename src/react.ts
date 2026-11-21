@@ -556,7 +556,7 @@ export function useWebSocketPresence<P>(
 
 /**
  * The thread of an AG-UI agent from `react-websocket/ag-ui`: its messages, shared state and
- * status, re-rendering on every event.
+ * status, re-rendering when the thread changes rather than on every event.
  *
  * @example
  * ```tsx

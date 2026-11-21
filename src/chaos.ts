@@ -90,7 +90,10 @@ export interface ChaosOptions extends ChaosFaults {
  * keyboard shortcut, the console or a test.
  */
 export interface ChaosControls {
-  /** Change faults while running, merged into the current ones. Open connections restart their `drop` and `stall` timers. */
+  /**
+   * Change faults while running, merged into the current ones. Changing `drop`, `stall` or
+   * `enabled` restarts the `drop` and `stall` timers of open connections.
+   */
   configure(faults: ChaosFaults): void;
   /**
    * Drop every connection now: `error`, then `close` with code `1006`. Pass a code to simulate the

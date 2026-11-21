@@ -142,7 +142,7 @@ tools.onRequest('approve');
 | Policy | When the connection drops | When the page reloads | For |
 | --- | --- | --- | --- |
 | `keep` (default) | The server keeps writing. The client resumes after the last event it got | The new page follows the answer again from its first event | Chat answers, agents that work in the background |
-| `cancel` | The client stops the answer, and sends `cancel` first thing on the next connection | The new page sends `cancel` | Expensive answers that are worthless once the user has gone, like autocomplete |
+| `cancel` | The client stops the answer, and sends `cancel` on the next connection, ahead of anything queued | The new page sends `cancel` | Expensive answers that are worthless once the user has gone, like autocomplete |
 
 Pass `policy: 'cancel'` to `createWebSocketRuns`, or per answer to `start()`.
 

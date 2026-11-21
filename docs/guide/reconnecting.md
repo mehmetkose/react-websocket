@@ -127,7 +127,7 @@ live.on('message', message => {
 
 - **`url`** moves the client to another server, for example from a blue to a green deployment. It can be a string, or a function called before the connection, like the client's own `url`. Later reconnects go there too, until the client is closed, gives up or is torn down. Without it, the new connection uses the client's current URL, and a load balancer can route it to a new instance.
 - **If the new connection fails**, the current one stays. When the server stops, the client reconnects as after any other drop.
-- **If the client isn't open** when its moment comes, only the URL changes, for its next attempt.
+- **If the client is connecting or reconnecting** when its moment comes, only the URL changes, for its next attempt. If it's idle or closed, nothing changes.
 
 On the server, send the notice, wait for the window to pass, then close whoever is left with `1012` (Service Restart). Its reason can say, in seconds, when to come back: the default `retryAfter` reads it like a `1013`'s, so those clients wait that long plus the usual backoff instead of retrying within a second. With the [`ws`](https://github.com/websockets/ws) package:
 

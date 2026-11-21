@@ -181,6 +181,8 @@ export interface SendOptions {
   /**
    * Drop the message instead of queueing it when the socket isn't open. For data that
    * is stale by the time a reconnect finishes, such as player input or cursor positions.
+   * Over `react-websocket/webtransport`, it's also sent as a datagram while open, which can be
+   * lost.
    * @default false
    */
   volatile?: boolean;
@@ -227,9 +229,9 @@ export interface SendOptions {
   /**
    * Called if the message is dropped from the queue without being sent: replaced by a
    * newer message with the same `key`, evicted by `queue.limit`, or older than `maxAge`. Not
-   * called when the queue is cleared because the client closed or gave up, or when `send()`
-   * drops the message right away (`volatile` while not open, or `maxBuffered`) and returns
-   * `false`.
+   * called when the queue is cleared because the client closed, gave up or was torn down after
+   * its last holder let go, or when `send()` drops the message right away (`volatile` while not
+   * open, or `maxBuffered`) and returns `false`.
    */
   onDrop?: () => void;
 }
@@ -322,7 +324,8 @@ export interface WebSocketOptions<In = unknown, Out = unknown> {
    * Buffer `send()` calls made while not connected and send them, in order, on open
    * (right after `open` listeners run). It holds up to 100 messages, dropping the oldest;
    * `{ limit }` changes that. `false` drops messages instead of queueing them.
-   * The queue is cleared by `close()` or when the client gives up.
+   * The queue is cleared, without `onDrop`, by `close()`, when the client gives up, and when
+   * it's torn down after the last hook unmounts.
    * @default true
    */
   queue?: boolean | QueueOptions;
@@ -445,7 +448,8 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
   send(message: Out, options?: SendOptions): boolean;
   /**
    * Start connecting, and keep the connection open even when no hook is using the
-   * client, until `close()` is called. Does nothing if already connecting or open.
+   * client, until `close()` is called. Already connecting or open, it opens no second
+   * connection, but still keeps this one until `close()`.
    */
   connect(): void;
   /**
@@ -476,8 +480,9 @@ export interface WebSocketClient<In = unknown, Out = unknown> {
    * `open` listeners run for the new connection, as after any reconnect, so handshakes and
    * topic subscriptions are sent again. Requests the old connection hadn't answered fail as on
    * a lost connection. If the new connection fails before opening, the current one stays. If
-   * the client isn't open when the moment comes, only the URL changes, for the next attempt.
-   * A later call replaces one that hasn't moved yet.
+   * the client is connecting or reconnecting when the moment comes, only the URL changes, for
+   * the next attempt; if it's idle or closed, nothing changes. A later call replaces one that
+   * hasn't moved yet.
    *
    * @example
    * ```ts

@@ -72,7 +72,9 @@ export interface WebSocketRuns<Req, T> {
    * Start a run and return its `runId`. The start message is sent as soon as the socket is
    * open, and the run is remembered until it ends. `initial` overrides the `initial` option for
    * this run. A `runId` it already knows, streaming or ended, starts nothing: the server starts
-   * a run only once per id. `delete()` it first to use the id again.
+   * a run only once per id. `delete()` it first to use the id again, while connected and once
+   * the old run has ended: a cancel still waiting for the connection goes out after the new
+   * start and cancels it, and late events of the old run count for the new one.
    */
   start(request: Req, options?: { runId?: string; policy?: RunPolicy; initial?: T }): string;
   /**
@@ -97,7 +99,11 @@ export interface WebSocketRuns<Req, T> {
    * server first, while connected.
    */
   clear(): void;
-  /** Stop following runs, and release the connection. Remembered runs stay remembered. */
+  /**
+   * Stop following runs, and release the connection. Remembered runs stay remembered. Cancels
+   * waiting for a connection still hold it and go out once it opens; `clear()` first takes them
+   * back.
+   */
   dispose(): void;
 }
 
@@ -133,7 +139,7 @@ function defaultStorage(): RunStorage | null {
  * - Streaming runs are remembered in `sessionStorage`. After a reload they're followed again from
  *   their first event, rebuilding the value, so `list()` or `useAgentRun` can show them.
  * - A run whose policy is `cancel` is aborted when its connection drops, and `cancel` is sent
- *   first thing on the next one.
+ *   on the next one, ahead of anything queued.
  *
  * Built on `createWebSocketFeeds`, with each run a topic. While runs are streaming, it holds
  * the client's connection.

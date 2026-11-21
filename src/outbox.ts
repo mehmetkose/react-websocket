@@ -31,8 +31,9 @@ export interface OutboxStorage {
 /** Options for {@link createWebSocketOutbox}. */
 export interface WebSocketOutboxOptions<M, In, Out> {
   /**
-   * Names the outbox's IndexedDB database, `react-websocket-outbox:<name>`. Give each outbox
-   * its own. Unused with `storage`.
+   * Names the outbox's IndexedDB database, `react-websocket-outbox:<name>`, and the
+   * BroadcastChannel its tabs share, also with `storage`. Give each outbox its own: two with the
+   * same name remove and clear each other's entries.
    */
   name: string;
   /**
