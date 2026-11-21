@@ -87,7 +87,7 @@ const decode = (bytes: Uint8Array) => ({
 async function connected(options: Parameters<typeof createWebTransportSocket>[0] = {}) {
   const Transport = createWebTransportSocket({ fallback: MockImpl, ...options });
   const client = createWebSocket('wss://game.example.com/play', {
-    WebSocket: Transport as unknown as typeof WebSocket,
+    WebSocket: Transport,
     binaryType: 'arraybuffer',
     reconnect: false
   });
@@ -133,6 +133,33 @@ describe('createWebTransportSocket', () => {
     await vi.waitFor(() => expect(received).toHaveLength(2));
     expect(received[0]).toBe('one');
     expect(new Uint8Array(received[1] as ArrayBuffer)).toEqual(new Uint8Array([9]));
+  });
+
+  it('waits for the rest of a frame, and reads several frames from one chunk', async () => {
+    const { client, received } = await connected();
+    FakeTransport.last.resolveReady();
+    await vi.waitFor(() => expect(client.getSnapshot().status).toBe('open'));
+    const long = frame(0, 'a longer message');
+    FakeTransport.last.stream.push(long.slice(0, 8)); // its header, and part of its payload
+    FakeTransport.last.stream.push(long.slice(8));
+    FakeTransport.last.stream.push(new Uint8Array([...frame(0, 'two'), ...frame(0, 'three')]));
+    await vi.waitFor(() => expect(received).toEqual(['a longer message', 'two', 'three']));
+  });
+
+  it('hands binary messages over as a Blob by default, as a WebSocket does', async () => {
+    const Transport = createWebTransportSocket({ fallback: MockImpl });
+    const socket = new Transport('wss://game.example.com/play');
+    const received: unknown[] = [];
+    socket.onmessage = event => received.push(event.data);
+    FakeTransport.last.resolveReady();
+    await vi.waitFor(() => expect(socket.readyState).toBe(1));
+    FakeTransport.last.stream.push(frame(1, new Uint8Array([7, 8])));
+    await vi.waitFor(() => expect(received).toHaveLength(1));
+    expect(received[0]).toBeInstanceOf(Blob);
+    expect(new Uint8Array(await (received[0] as Blob).arrayBuffer())).toEqual(
+      new Uint8Array([7, 8])
+    );
+    socket.close();
   });
 
   it('sends volatile messages as datagrams, unless too big for one', async () => {

@@ -16,8 +16,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const as = (Class: unknown) => Class as typeof WebSocket;
-
 /** A recording with two connections: the first answers a question, then drops. */
 const chat: WebSocketRecording = {
   format: 'react-websocket-recording',
@@ -50,7 +48,7 @@ describe('createRecordingWebSocket', () => {
   it('records each connection: open, sends, messages, errors and closes, with their times', () => {
     const Recorder = createRecordingWebSocket({ WebSocket: MockImpl });
     const client = createWebSocket('ws://chat', {
-      WebSocket: as(Recorder),
+      WebSocket: Recorder,
       binaryType: 'arraybuffer'
     });
     const received: unknown[] = [];
@@ -115,7 +113,9 @@ describe('createRecordingWebSocket', () => {
         super.close(code, reason);
       }
     }
-    const Recorder = createRecordingWebSocket({ WebSocket: as(Strict) });
+    const Recorder = createRecordingWebSocket({
+      WebSocket: Strict as unknown as typeof WebSocket
+    });
     const socket = new Recorder('ws://chat');
     const received: unknown[] = [];
     socket.onmessage = event => received.push(event.data);
@@ -147,7 +147,7 @@ describe('createReplayWebSocket', () => {
   it('replays each recorded connection, waiting for the app to send what it sent', async () => {
     const Replay = createReplayWebSocket(chat);
     const client = createWebSocket('ws://chat', {
-      WebSocket: as(Replay),
+      WebSocket: Replay,
       binaryType: 'arraybuffer',
       reconnect: { minDelay: 1000, jitter: 0 }
     });
@@ -186,7 +186,7 @@ describe('createReplayWebSocket', () => {
 
   it('plays faster with speed, and follows the clock alone without waitForSends', () => {
     const Replay = createReplayWebSocket(chat, { speed: 10, waitForSends: false });
-    const client = createWebSocket('ws://chat', { WebSocket: as(Replay), reconnect: false });
+    const client = createWebSocket('ws://chat', { WebSocket: Replay, reconnect: false });
     const received: unknown[] = [];
     client.on('message', message => received.push(message));
     client.connect();
@@ -277,7 +277,7 @@ describe('createReplayWebSocket', () => {
 
   it('takes chaos on top, for faults that never happened in the recording', () => {
     const Replay = createReplayWebSocket(chat, { waitForSends: false });
-    const Chaos = createChaosWebSocket({ WebSocket: as(Replay) });
+    const Chaos = createChaosWebSocket({ WebSocket: Replay });
     const client = createWebSocket('ws://chat', { WebSocket: Chaos, reconnect: false });
     client.connect();
     vi.advanceTimersByTime(20);
