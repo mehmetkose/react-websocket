@@ -111,14 +111,19 @@ export function indexedDBStorage(name: string): OutboxStorage {
       open.onupgradeneeded = () => open.result.createObjectStore('entries', { keyPath: 'id' });
       open.onsuccess = () => {
         const connection = open.result;
-        // Let another page delete or upgrade the database: the next write opens it again.
-        connection.onversionchange = () => {
+        // Let another page delete or upgrade the database, and survive the browser closing it
+        // (site data cleared, a crashed storage process): the next write opens it again.
+        connection.onversionchange = connection.onclose = () => {
           connection.close();
           db = undefined;
         };
         resolve(connection);
       };
-      open.onerror = () => reject(open.error);
+      // Not kept: the next write tries again.
+      open.onerror = () => {
+        db = undefined;
+        reject(open.error);
+      };
     });
     const transaction = (await db).transaction('entries', mode);
     const req = ask(transaction.objectStore('entries'));
@@ -264,6 +269,8 @@ export function createWebSocketOutbox<M, In, const Out>(
     const now = Date.now();
     let sent = false;
     for (const entry of [...entries.values()]) {
+      // Closed by `onExpire` or a listener: what's left would go to the client's queue.
+      if (socket.readyState !== 1) break;
       // Sent, removed or replaced meanwhile, by `onExpire` or a listener.
       if (entry.sent || entries.get(entry.id) !== entry) continue;
       if (now - entry.createdAt > maxAge) {

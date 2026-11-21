@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react';
-import { IDBFactory } from 'fake-indexeddb';
+import { forceCloseDatabase, IDBFactory } from 'fake-indexeddb';
 import { createWebSocket, useWebSocketOutbox } from '../src';
 import {
   createWebSocketOutbox,
@@ -225,6 +225,24 @@ describe('createWebSocketOutbox', () => {
     MockWebSocket.last.open();
     expect(sent()).toEqual([]);
     expect(outbox.getSnapshot()).toEqual([]);
+  });
+
+  it("stops a flush once its socket closes, so nothing goes to the client's queue", async () => {
+    const holder: { client?: { reconnect(): void } } = {};
+    const { client, outbox } = setup({
+      maxAge: 60_000,
+      onExpire: () => holder.client!.reconnect()
+    });
+    holder.client = client;
+    await outbox.ready;
+    outbox.add({ table: 1 }, 'stale');
+    vi.advanceTimersByTime(60_001);
+    outbox.add({ table: 2 }, 'fresh');
+    const first = MockWebSocket.last;
+    first.open(); // 'stale' expires first, and its onExpire reconnects
+    expect(sent(first)).toEqual([]);
+    MockWebSocket.last.open();
+    expect(sent()).toEqual([{ type: 'order', id: 'fresh', order: { table: 2 } }]);
   });
 
   it('sends each message once per connection, even when an earlier open listener adds one', async () => {
@@ -474,6 +492,43 @@ describe('indexedDBStorage', () => {
     // The next write opens it again.
     await storage.put({ id: 'b', message: { table: 2 }, createdAt: 2 });
     expect((await storage.load()).map(record => record.id)).toEqual(['b']);
+  });
+
+  it('opens the database again after opening it failed', async () => {
+    // A newer version of the database: opening version 1 fails.
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('react-websocket-outbox:failing', 2);
+      request.onsuccess = () => {
+        request.result.close();
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+    const storage = indexedDBStorage('failing');
+    const record: OutboxRecord = { id: 'a', message: { table: 1 }, createdAt: 1 };
+    await expect(storage.put(record)).rejects.toThrow();
+    await new Promise(resolve => {
+      indexedDB.deleteDatabase('react-websocket-outbox:failing').onsuccess = resolve;
+    });
+    await storage.put(record);
+    expect(await storage.load()).toEqual([record]);
+  });
+
+  it('opens the database again after its connection was lost', async () => {
+    const opened: IDBDatabase[] = [];
+    const open = indexedDB.open.bind(indexedDB);
+    vi.spyOn(indexedDB, 'open').mockImplementation((...args) => {
+      const request = open(...args);
+      request.addEventListener('success', () => opened.push(request.result));
+      return request;
+    });
+    const storage = indexedDBStorage('lost');
+    await storage.put({ id: 'a', message: { table: 1 }, createdAt: 1 });
+    // As when the browser closes it, e.g. after the user clears site data.
+    forceCloseDatabase(opened[0] as unknown as Parameters<typeof forceCloseDatabase>[0]);
+    await storage.put({ id: 'b', message: { table: 2 }, createdAt: 2 });
+    expect(opened).toHaveLength(2);
+    expect((await storage.load()).map(record => record.id)).toEqual(['a', 'b']);
   });
 
   it('is the default where IndexedDB exists', async () => {
