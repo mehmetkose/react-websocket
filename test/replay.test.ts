@@ -238,6 +238,43 @@ describe('createReplayWebSocket', () => {
     expect(events).toEqual(['close', 'done']);
   });
 
+  it('resolves done after the close event when a replayed listener closes the connection', async () => {
+    const Replay = createReplayWebSocket({ ...chat, connections: chat.connections.slice(1) });
+    const socket = new Replay('ws://chat');
+    const events: string[] = [];
+    socket.onmessage = () => socket.close();
+    socket.onclose = () => events.push('close');
+    void Replay.done.then(() => events.push('done'));
+    await vi.runAllTimersAsync();
+    expect(events).toEqual(['close', 'done']);
+  });
+
+  it('keeps the bytes of a Blob the app sends', async () => {
+    vi.useRealTimers();
+    const Replay = createReplayWebSocket(chat, { speed: Infinity });
+    const socket = new Replay('ws://chat');
+    await vi.waitFor(() => expect(socket.readyState).toBe(1));
+    socket.send(new Blob(['ab']));
+    await vi.waitFor(() => expect(Replay.sent).toEqual([[{ binary: btoa('ab') }]]));
+    socket.close();
+  });
+
+  it('resolves the previous done on reset(), and stops what was playing without a close', async () => {
+    const Replay = createReplayWebSocket(chat);
+    // The first of two recorded connections, closing when reset() comes.
+    const closing = new Replay('ws://chat');
+    const events: string[] = [];
+    closing.onclose = () => events.push('closed');
+    vi.advanceTimersByTime(20);
+    closing.close();
+    const previous = Replay.done;
+    void previous.then(() => events.push('done'));
+    Replay.reset();
+    await vi.runAllTimersAsync();
+    expect(events).toEqual(['done']);
+    expect(Replay.done).not.toBe(previous);
+  });
+
   it('takes chaos on top, for faults that never happened in the recording', () => {
     const Replay = createReplayWebSocket(chat, { waitForSends: false });
     const Chaos = createChaosWebSocket({ WebSocket: as(Replay) });

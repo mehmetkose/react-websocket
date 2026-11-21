@@ -77,7 +77,7 @@ export interface ReplayWebSocket extends Statics {
   readonly done: Promise<void>;
   /**
    * Start again from the first recorded connection. Connections still playing stop where they are,
-   * without a `close` event.
+   * without a `close` event, and the previous `done` resolves. Read `done` again for the new one.
    */
   reset(): void;
 }
@@ -110,6 +110,15 @@ function encode(bytes: ArrayBuffer | ArrayBufferView): RecordedData {
   let text = '';
   for (const byte of view) text += String.fromCharCode(byte);
   return { binary: btoa(text) };
+}
+
+/** What the app sent, as recorded. A Blob's bytes are filled in once read. */
+function recorded(data: Parameters<WebSocket['send']>[0]): RecordedData {
+  if (typeof data === 'string') return data;
+  if (!(data instanceof Blob)) return encode(data);
+  const entry = { binary: '' };
+  void data.arrayBuffer().then(buffer => Object.assign(entry, encode(buffer)));
+  return entry;
 }
 
 function decode(data: RecordedData, binaryType: BinaryType): unknown {
@@ -258,13 +267,8 @@ export function createRecordingWebSocket(
 
     send(data: Parameters<WebSocket['send']>[0]) {
       this.#inner.send(data);
-      if (typeof data === 'string') this.#record({ type: 'send', data });
-      else if (data instanceof Blob) {
-        // Recorded where it was sent; its bytes are filled in once read.
-        const event = { type: 'send', data: { binary: '' } } as const;
-        this.#record(event);
-        void data.arrayBuffer().then(buffer => Object.assign(event.data, encode(buffer)));
-      } else this.#record({ type: 'send', data: encode(data) });
+      // Recorded where it was sent, even a Blob, whose bytes come later.
+      this.#record({ type: 'send', data: recorded(data) });
     }
 
     close(code?: number, reason?: string) {
@@ -333,10 +337,10 @@ export function createReplayWebSocket(
     }
 
     static reset() {
-      for (const socket of live) {
-        socket.#stop();
-        socket.#finished();
-      }
+      for (const socket of live) socket.#stop();
+      live.clear();
+      // Whoever awaits the previous `done`: nothing more of that playback comes.
+      finish();
       next = 0;
       sent = [];
       done = new Promise<void>(resolve => (finish = resolve));
@@ -361,9 +365,7 @@ export function createReplayWebSocket(
         throw new DOMException('WebSocket is still in CONNECTING state', 'InvalidStateError');
       }
       if (this.state !== OPEN) return;
-      this.#sent.push(
-        typeof data === 'string' ? data : data instanceof Blob ? { binary: '' } : encode(data)
-      );
+      this.#sent.push(recorded(data));
       if (this.#paused) {
         this.#paused = false;
         this.#schedule();
@@ -374,13 +376,17 @@ export function createReplayWebSocket(
       if (this.state >= CLOSING) return;
       this.state = CLOSING;
       this.#stop();
-      setTimeout(() => this.#end(code, reason, true), 0);
+      // In `#timer`, so `reset()` stops it too.
+      this.#timer = setTimeout(() => this.#end(code, reason, true), 0);
     }
 
     #schedule(): void {
+      // Closed by the app, maybe from a listener of the event just played: `close()` finishes it,
+      // after its close event.
+      if (this.state >= CLOSING) return;
       clearTimeout(this.#timer);
       const event = this.#events[this.#index];
-      if (!event || this.state === CLOSED) return this.#finished();
+      if (!event) return this.#finished();
       if (event.type === 'send') {
         if (waitForSends) {
           // Wait until the app has sent as many messages, then go on from that moment.
@@ -415,16 +421,18 @@ export function createReplayWebSocket(
       this.#index = this.#events.length;
     }
 
-    /** Finished once the close event is out, so `done` comes after it. */
-    // Its two callers, `close()` and a recorded `close`, have already stopped playing.
+    /**
+     * Finished once the close event is out, so `done` comes after it. Its two callers, `close()`
+     * and a recorded `close`, have already stopped playing.
+     */
     #end(code: number, reason: string, wasClean: boolean) {
       this.ended(code, reason, wasClean);
       this.#finished();
     }
 
     #finished() {
-      live.delete(this);
-      if (next >= recording.connections.length && !live.size) finish();
+      // Not one from before `reset()`, which would finish the new playback.
+      if (live.delete(this) && next >= recording.connections.length && !live.size) finish();
     }
   }
 
