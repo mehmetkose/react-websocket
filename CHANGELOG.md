@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- The README's bundle size badge measures `useWebSocket` without React, matching the 4 kB claim.
+
 ## [4.22.4] - 2026-11-21
 
 This release fixes edge cases found in an audit of the library, and corrects the docs that no longer matched the
