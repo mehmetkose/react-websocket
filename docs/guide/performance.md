@@ -102,9 +102,23 @@ The hooks are compatible with the [React Compiler](https://react.dev/learn/react
 | Entry | Import | Size (min + gzip) |
 | --- | --- | --- |
 | `react-websocket` | `useWebSocket` | ~4.1 kB |
+| `react-websocket` | every export | ~9.7 kB |
 | `react-websocket/core` | `createWebSocket` | ~3.4 kB |
+| `react-websocket/core` | every export | ~8.1 kB |
+| `react-websocket/ag-ui` | `createAgUiAgent` | ~3.9 kB |
+| `react-websocket/chaos` | `createChaosWebSocket` | ~2.2 kB |
+| `react-websocket/tabs` | `createTabsWebSocket` | ~1.9 kB |
+| `react-websocket/devtools` | `WebSocketDevtools` | ~1.8 kB |
+| `react-websocket/replay` | both functions | ~1.7 kB |
+| `react-websocket/webtransport` | `createWebTransportSocket` | ~1.7 kB |
+| `react-websocket/outbox` | `createWebSocketOutbox` | ~1.4 kB |
+| `react-websocket/timeline` | `createWebSocketTimeline` | ~0.85 kB |
 
-Sizes are measured by [size-limit](https://github.com/ai/size-limit) in CI, with budgets that fail the build if they grow. React is a peer dependency and not counted.
+Sizes are measured by [size-limit](https://github.com/ai/size-limit) in CI, with budgets that fail the build if they grow. React is a peer dependency and not counted. `createAgUiAgent` includes the runs and feeds it uses from `react-websocket/core`, so an app that already uses `core` or the main entry ships less for it.
+
+Bundle-size sites can show a bigger number. [bundlejs](https://bundlejs.com/?q=react-websocket), for example, measures `export * from 'react-websocket'` by default: every hook at once, with React itself bundled in. Your bundler keeps only the exports you import, and React is already in your app. To check an import yourself, [mark React as external and pick the exports](https://bundlejs.com/?q=react-websocket&treeshake=%5B%7BuseWebSocket%7D%5D&config=%7B%22esbuild%22%3A%7B%22external%22%3A%5B%22react%22%2C%22react-dom%22%5D%7D%7D).
+
+These sizes assume a bundler that uses the ES module build, as Vite, webpack, Turbopack, Rollup and esbuild do. Code that loads the package with `require()` gets the CommonJS build, which bundlers can't tree-shake reliably: about 10 kB, whatever you use.
 
 - **Zero dependencies.** Nothing else is installed with the package.
 - **Tree-shakeable.** The package is marked `"sideEffects": false` and ships ES modules, so bundlers drop what you don't import.

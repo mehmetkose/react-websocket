@@ -213,6 +213,23 @@
       "gzip": true
     },
     {
+      "name": "react-websocket (everything)",
+      "path": "dist/index.js",
+      "import": "*",
+      "ignore": [
+        "react"
+      ],
+      "limit": "9.7 kB",
+      "gzip": true
+    },
+    {
+      "name": "react-websocket/core (everything)",
+      "path": "dist/core.js",
+      "import": "*",
+      "limit": "8.1 kB",
+      "gzip": true
+    },
+    {
       "name": "react-websocket (topics + state hooks)",
       "path": "dist/index.js",
       "import": "{ useWebSocketTopic, useWebSocketState, createWebSocketTopics, createWebSocketState }",

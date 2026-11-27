@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Documentation
+
+- The README's bundle-size badge measured every export of the main entry with React bundled in, 13.3 kB, next to a
+  claim of about 4 kB for `useWebSocket`. It now measures `useWebSocket` without React, as the claim does. The README
+  also gives the size of the whole main entry, about 10 kB.
+- The performance page lists the size of every entry, explains why bundle-size sites can show a bigger number, and
+  notes that the CommonJS build isn't tree-shaken.
+- size-limit also checks the whole main entry and the whole `core` entry.
+
 ## [4.22.4] - 2026-11-21
 
 This release fixes edge cases found in an audit of the library, and corrects the docs that no longer matched the

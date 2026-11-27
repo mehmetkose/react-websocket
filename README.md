@@ -1,10 +1,10 @@
 # react-websocket
 
-**The real-time toolkit for React 18 and 19.** Start with one hook, `useWebSocket`: shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 4 kB (min+gzip) with zero dependencies. Add topics, state, requests, presence, games and AI agents on the same connection when you need them. Each is a separate import, so you only ship what you use.
+**The real-time toolkit for React 18 and 19.** Start with one hook, `useWebSocket`: shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 4 kB (min+gzip) with zero dependencies. Add topics, state, requests, presence, games and AI agents on the same connection when you need them. Each is a separate import, so you only ship what you use: the whole main entry, every hook included, is about 10 kB.
 
 [![npm](https://img.shields.io/npm/v/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
 [![CI](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml)
-[![bundle size](https://img.shields.io/bundlejs/size/react-websocket)](https://bundlejs.com/?q=react-websocket)
+[![useWebSocket size](https://img.shields.io/bundlejs/size/react-websocket?exports=useWebSocket&externals=react,react-dom&label=useWebSocket%20%28min%2Bgzip%29)](https://bundlejs.com/?q=react-websocket&treeshake=%5B%7BuseWebSocket%7D%5D&config=%7B%22esbuild%22%3A%7B%22external%22%3A%5B%22react%22%2C%22react-dom%22%5D%7D%7D)
 [![types](https://img.shields.io/npm/types/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
 [![license](https://img.shields.io/npm/l/react-websocket.svg)](LICENSE)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fmehmetkose%2Freact-websocket?ref=badge_shield)
