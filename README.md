@@ -1,6 +1,6 @@
 # react-websocket
 
-**The real-time toolkit for React 18 and 19.** Start with one hook, `useWebSocket`: shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 4 kB (min+gzip) with zero dependencies. Add topics, state, requests, presence, games and AI agents on the same connection when you need them. Each is a separate import, so you only ship what you use: the whole main entry, every hook included, is about 10 kB.
+**The real-time toolkit for React 18 and 19.** Start with one hook, `useWebSocket`: shared connections, automatic reconnects, a send queue, typed and validated messages, and Suspense, in about 4 kB (min+gzip) with zero dependencies. Add topics, state, requests, presence, games and AI agents on the same connection when you need them. Each is a separate import, so you only ship what you use.
 
 [![npm](https://img.shields.io/npm/v/react-websocket.svg)](https://www.npmjs.com/package/react-websocket)
 [![CI](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml/badge.svg)](https://github.com/mehmetkose/react-websocket/actions/workflows/ci.yml)
