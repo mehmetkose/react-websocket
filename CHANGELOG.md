@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.22.5] - 2026-11-27
+
+The library's code is the same as in 4.22.4. This release brings the corrected badge to npm.
+
 ### Documentation
 
 - The README's bundle size badge measures `useWebSocket` without React, matching the 4 kB claim.
@@ -659,7 +663,8 @@ framework-agnostic client. See the [migration guide](https://mehmetkose.github.i
 2.1.0 and earlier have no changelog. [npm](https://www.npmjs.com/package/react-websocket?activeTab=versions) lists
 them, and some have [git tags](https://github.com/mehmetkose/react-websocket/tags).
 
-[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.4...HEAD
+[Unreleased]: https://github.com/mehmetkose/react-websocket/compare/4.22.5...HEAD
+[4.22.5]: https://github.com/mehmetkose/react-websocket/compare/4.22.4...4.22.5
 [4.22.4]: https://github.com/mehmetkose/react-websocket/compare/4.22.3...4.22.4
 [4.22.3]: https://github.com/mehmetkose/react-websocket/compare/4.22.2...4.22.3
 [4.22.2]: https://github.com/mehmetkose/react-websocket/compare/4.22.1...4.22.2
